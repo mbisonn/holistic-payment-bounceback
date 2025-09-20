@@ -1,0 +1,66 @@
+-- Force-apply RLS & interconnection changes (idempotent)
+create extension if not exists pgcrypto;
+
+-- Orders ownership + RLS
+alter table if exists public.orders
+  add column if not exists user_id uuid references auth.users(id) on delete set null;
+alter table if exists public.orders enable row level security;
+drop policy if exists "Users can view their orders" on public.orders;
+drop policy if exists "Admins can manage orders" on public.orders;
+create policy "Users can view their orders"
+on public.orders for select to authenticated
+using (user_id = auth.uid() or public.has_role(auth.uid(), 'admin'));
+create policy "Admins can manage orders"
+on public.orders for all to authenticated
+using (public.has_role(auth.uid(), 'admin'));
+
+-- Email Outbox tighten + columns
+alter table if exists public.email_outbox add column if not exists user_id uuid;
+alter table if exists public.email_outbox add column if not exists tries int default 0;
+alter table if exists public.email_outbox add column if not exists last_error text;
+alter table if exists public.email_outbox add column if not exists sent_at timestamptz;
+alter table if exists public.email_outbox add column if not exists status text default 'queued';
+alter table if exists public.email_outbox enable row level security;
+drop policy if exists "Users view own outbox" on public.email_outbox;
+drop policy if exists "Admins manage outbox" on public.email_outbox;
+create policy "Admins manage outbox"
+on public.email_outbox for all to authenticated
+using (public.has_role(auth.uid(), 'admin'));
+
+-- Storage policies for meal_plans_v1
+insert into storage.buckets (id, name, public)
+values ('meal_plans_v1', 'meal_plans_v1', false)
+on conflict (id) do nothing;
+-- drop if exist by names then recreate
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Admins can read meal plan PDFs'
+  ) THEN
+    EXECUTE 'DROP POLICY "Admins can read meal plan PDFs" ON storage.objects';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Admins can write meal plan PDFs'
+  ) THEN
+    EXECUTE 'DROP POLICY "Admins can write meal plan PDFs" ON storage.objects';
+  END IF;
+END $$;
+create policy "Admins can read meal plan PDFs"
+on storage.objects for select to authenticated
+using (bucket_id = 'meal_plans_v1' and public.has_role(auth.uid(), 'admin'));
+create policy "Admins can write meal plan PDFs"
+on storage.objects for all to authenticated
+using (bucket_id = 'meal_plans_v1' and public.has_role(auth.uid(), 'admin'))
+with check (bucket_id = 'meal_plans_v1' and public.has_role(auth.uid(), 'admin'));
+
+-- user_roles visibility
+drop policy if exists "Users can view their own roles" on public.user_roles;
+create policy "Users can view their own roles"
+on public.user_roles for select to authenticated
+using (user_id = auth.uid());
+drop policy if exists "Admins can manage all user roles" on public.user_roles;
+create policy "Admins can manage all user roles"
+on public.user_roles for all to authenticated
+using (public.has_role(auth.uid(), 'admin'));

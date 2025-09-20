@@ -1,0 +1,32 @@
+-- Grant admin access to ebuchenna1@gmail.com
+-- This migration ensures the user has admin privileges
+
+-- 1) Set admin role in auth metadata (for JWT claims)
+UPDATE auth.users 
+SET raw_app_meta_data = COALESCE(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object('role', 'admin'),
+    updated_at = NOW()
+WHERE email = 'ebuchenna1@gmail.com';
+
+-- 2) Insert or update user_roles table entry
+INSERT INTO public.user_roles (user_id, role)
+SELECT id, 'admin'
+FROM auth.users 
+WHERE email = 'ebuchenna1@gmail.com'
+ON CONFLICT (user_id, role) 
+DO UPDATE SET role = 'admin';
+
+-- Log the result
+DO $$
+DECLARE
+    user_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO user_count
+    FROM auth.users 
+    WHERE email = 'ebuchenna1@gmail.com';
+    
+    IF user_count > 0 THEN
+        RAISE NOTICE 'Admin access granted to ebuchenna1@gmail.com';
+    ELSE
+        RAISE NOTICE 'User ebuchenna1@gmail.com not found in system';
+    END IF;
+END $$;

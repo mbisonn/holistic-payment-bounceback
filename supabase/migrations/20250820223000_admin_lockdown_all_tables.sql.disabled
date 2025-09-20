@@ -1,0 +1,63 @@
+-- Admin-only RLS across all tables in public and storage schemas
+-- Idempotent and safe to re-run
+
+-- 0) Ensure helper exists: current_user_is_admin()
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname='public' AND p.proname='current_user_is_admin' AND p.pronargs=0
+  ) THEN
+    CREATE OR REPLACE FUNCTION public.current_user_is_admin()
+    RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS 'SELECT false';
+  END IF;
+END $$;
+
+-- (Re)define helper with correct body & attributes
+CREATE OR REPLACE FUNCTION public.current_user_is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT coalesce((SELECT (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'), false);
+$$;
+
+-- 1) Apply admin-only RLS to every BASE TABLE in public + storage
+DO $$
+DECLARE r record;
+DECLARE pol record;
+BEGIN
+  -- Iterate only over tables we own to avoid permission errors (e.g., storage.objects)
+  FOR r IN
+    SELECT schemaname AS table_schema, tablename AS table_name
+    FROM pg_tables
+    WHERE schemaname IN ('public','storage')
+      AND tableowner = current_user
+    ORDER BY schemaname, tablename
+  LOOP
+    -- Enable RLS
+    EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', r.table_schema, r.table_name);
+
+    -- Drop all existing policies on the table
+    FOR pol IN
+      SELECT policyname FROM pg_policies
+      WHERE schemaname = r.table_schema AND tablename = r.table_name
+    LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', pol.policyname, r.table_schema, r.table_name);
+    END LOOP;
+
+    -- Create admin-only SELECT policy
+    EXECUTE format(
+      'CREATE POLICY %I ON %I.%I FOR SELECT TO authenticated USING (public.current_user_is_admin())',
+      r.table_name || '_admin_select', r.table_schema, r.table_name
+    );
+
+    -- Create admin-only CRUD policy
+    EXECUTE format(
+      'CREATE POLICY %I ON %I.%I FOR ALL TO authenticated USING (public.current_user_is_admin()) WITH CHECK (public.current_user_is_admin())',
+      r.table_name || '_admin_all', r.table_schema, r.table_name
+    );
+  END LOOP;
+END $$;

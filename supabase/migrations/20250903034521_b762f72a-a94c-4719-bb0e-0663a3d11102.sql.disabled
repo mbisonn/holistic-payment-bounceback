@@ -1,0 +1,34 @@
+-- Create email_settings table for enhanced email configuration
+CREATE TABLE IF NOT EXISTS public.email_settings (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  from_name text,
+  from_email text,
+  smtp_enabled boolean DEFAULT false,
+  smtp_host text,
+  smtp_port integer DEFAULT 587,
+  smtp_username text,
+  smtp_password text,
+  admin_recipients text[],
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- Enable RLS for email_settings
+ALTER TABLE public.email_settings ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for admin access to email settings
+CREATE POLICY "Admins can manage email settings"
+  ON public.email_settings
+  FOR ALL
+  USING (is_admin(current_user_id()));
+
+-- Create trigger for updated_at
+CREATE TRIGGER update_email_settings_updated_at
+  BEFORE UPDATE ON public.email_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Insert default email settings row if none exists
+INSERT INTO public.email_settings (from_name, from_email, smtp_enabled)
+VALUES ('Bounce Back to Life Consult', 'noreply@bouncebacktolifeconsult.pro', false)
+ON CONFLICT DO NOTHING;

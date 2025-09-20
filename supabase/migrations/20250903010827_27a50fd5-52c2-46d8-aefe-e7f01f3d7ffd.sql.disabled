@@ -1,0 +1,57 @@
+-- Add secure replacement policies for customer data protection
+
+-- Product reviews: Only approved reviews can be viewed publicly
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'product_reviews' AND policyname = 'Anyone can view approved product reviews') THEN
+    CREATE POLICY "Anyone can view approved product reviews" ON public.product_reviews
+    FOR SELECT USING (is_approved = true);
+  END IF;
+END $$;
+
+-- Order bumps: Can be viewed by everyone for storefront (no customer data)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'order_bumps' AND policyname = 'Anyone can view active order bumps') THEN
+    CREATE POLICY "Anyone can view active order bumps" ON public.order_bumps
+    FOR SELECT USING (is_active = true);
+  END IF;
+END $$;
+
+-- Upsell products: Can be viewed by everyone for storefront (no customer data)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'upsell_products' AND policyname = 'Anyone can view active upsell products') THEN
+    CREATE POLICY "Anyone can view active upsell products" ON public.upsell_products
+    FOR SELECT USING (is_active = true);
+  END IF;
+END $$;
+
+-- Product categories: Can be viewed by everyone for storefront (no customer data)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'product_categories' AND policyname = 'Anyone can view product categories') THEN
+    CREATE POLICY "Anyone can view product categories" ON public.product_categories
+    FOR SELECT USING (true);
+  END IF;
+END $$;
+
+-- Shipping settings: Can be viewed by everyone for checkout calculations (no customer data)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'shipping_settings' AND policyname = 'Anyone can view active shipping settings') THEN
+    CREATE POLICY "Anyone can view active shipping settings" ON public.shipping_settings
+    FOR SELECT USING (is_active = true);
+  END IF;
+END $$;
+
+-- Discount codes: Users can validate codes without seeing usage stats
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'discount_codes' AND policyname = 'Users can validate discount codes') THEN
+    CREATE POLICY "Users can validate discount codes" ON public.discount_codes
+    FOR SELECT USING (is_active = true AND (expires_at IS NULL OR expires_at > now()));
+  END IF;
+END $$;
+
+-- Role types: Authenticated users can view available roles
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'role_types' AND policyname = 'Authenticated users can view role types') THEN
+    CREATE POLICY "Authenticated users can view role types" ON public.role_types
+    FOR SELECT TO authenticated USING (true);
+  END IF;
+END $$;

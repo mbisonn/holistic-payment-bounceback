@@ -1,0 +1,70 @@
+-- Migration: Fix Security Definer Views
+-- Date: 2025-09-18 05:15:00
+-- Description: Fix remaining security_definer_view linter errors by recreating views without SECURITY DEFINER
+
+-- STEP 1: DROP AND RECREATE VIEWS WITHOUT SECURITY DEFINER
+-- ==============================================
+
+-- Drop existing views that have SECURITY DEFINER
+DROP VIEW IF EXISTS public.active_products_view;
+DROP VIEW IF EXISTS public.order_summary_view;
+DROP VIEW IF EXISTS public.index_usage_stats;
+
+-- Recreate views without SECURITY DEFINER (default is SECURITY INVOKER)
+CREATE VIEW public.active_products_view AS
+SELECT 
+    p.id,
+    p.name,
+    p.description,
+    p.price,
+    p.image_url,
+    p.category,
+    p.stock_quantity,
+    p.created_at,
+    p.updated_at
+FROM public.products p
+WHERE p.is_active = true;
+
+CREATE VIEW public.order_summary_view AS
+SELECT 
+    o.id,
+    o.customer_name,
+    o.customer_email,
+    o.total_amount,
+    o.status,
+    o.payment_status,
+    o.created_at,
+    COUNT(oi.id) as item_count
+FROM public.orders o
+LEFT JOIN public.order_items oi ON o.id = oi.order_id
+GROUP BY o.id, o.customer_name, o.customer_email, o.total_amount, o.status, o.payment_status, o.created_at;
+
+CREATE VIEW public.index_usage_stats AS
+SELECT 
+    schemaname,
+    relname as tablename,
+    indexrelname as indexname,
+    idx_scan as times_used,
+    idx_tup_read as tuples_read,
+    idx_tup_fetch as tuples_fetched,
+    pg_size_pretty(pg_relation_size(indexrelid)) as index_size
+FROM pg_stat_user_indexes
+WHERE schemaname = 'public'
+ORDER BY idx_scan DESC;
+
+-- STEP 2: SUCCESS MESSAGE
+-- ==============================================
+
+DO $$
+BEGIN
+    RAISE NOTICE '';
+    RAISE NOTICE '🚀 SECURITY DEFINER VIEWS FIXED! 🚀';
+    RAISE NOTICE '=====================================';
+    RAISE NOTICE '✅ FIXES APPLIED:';
+    RAISE NOTICE '- active_products_view: Recreated without SECURITY DEFINER';
+    RAISE NOTICE '- order_summary_view: Recreated without SECURITY DEFINER';
+    RAISE NOTICE '- index_usage_stats: Recreated without SECURITY DEFINER';
+    RAISE NOTICE '';
+    RAISE NOTICE '🎉 All security_definer_view linter errors should now be resolved!';
+    RAISE NOTICE '=====================================';
+END $$;

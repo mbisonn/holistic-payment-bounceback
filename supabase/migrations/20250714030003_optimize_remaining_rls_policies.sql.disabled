@@ -1,0 +1,71 @@
+
+-- Continue optimizing RLS policies for remaining tables
+
+-- Invoices - consolidate and optimize
+DROP POLICY IF EXISTS "Admins can manage invoices" ON public.invoices;
+DROP POLICY IF EXISTS "Invoices are viewable by admins" ON public.invoices;
+
+CREATE POLICY "Admins can manage invoices" ON public.invoices
+FOR ALL USING (
+  has_role((SELECT auth.uid()), 'admin')
+);
+
+-- Order bumps - optimize
+DROP POLICY IF EXISTS "Admins can manage order bumps" ON public.order_bumps;
+
+CREATE POLICY "Admins can manage order bumps" ON public.order_bumps
+FOR ALL USING (
+  has_role((SELECT auth.uid()), 'admin')
+);
+
+-- Orders - consolidate and optimize
+DROP POLICY IF EXISTS "Admins can manage orders" ON public.orders;
+DROP POLICY IF EXISTS "Admins can view all orders" ON public.orders;
+
+CREATE POLICY "Admins can manage orders" ON public.orders
+FOR ALL USING (
+  has_role((SELECT auth.uid()), 'admin')
+);
+
+-- Products - optimize
+DROP POLICY IF EXISTS "Admins can manage products" ON public.products;
+
+CREATE POLICY "Admins can manage products" ON public.products
+FOR ALL USING (
+  has_role((SELECT auth.uid()), 'admin')
+);
+
+-- Profiles - optimize
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+
+CREATE POLICY "Users can insert their own profile" ON public.profiles
+FOR INSERT WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY "Users can update their own profile" ON public.profiles
+FOR UPDATE USING ((SELECT auth.uid()) = user_id);
+
+-- Shipping settings - optimize
+DROP POLICY IF EXISTS "Admins can manage shipping settings" ON public.shipping_settings;
+
+CREATE POLICY "Admins can manage shipping settings" ON public.shipping_settings
+FOR ALL USING (
+  has_role((SELECT auth.uid()), 'admin')
+);
+
+-- Upsell products - optimize
+DROP POLICY IF EXISTS "Admins can manage upsell products" ON public.upsell_products;
+
+CREATE POLICY "Admins can manage upsell products" ON public.upsell_products
+FOR ALL USING (
+  has_role((SELECT auth.uid()), 'admin')
+);
+
+-- User roles - consolidate and optimize
+DROP POLICY IF EXISTS "Admins can manage user roles" ON public.user_roles;
+DROP POLICY IF EXISTS "Admins can view all user roles" ON public.user_roles;
+
+CREATE POLICY "Admins can manage user roles" ON public.user_roles
+FOR ALL USING (
+  has_role((SELECT auth.uid()), 'admin')
+);

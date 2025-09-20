@@ -1,0 +1,46 @@
+-- Create app_role enum and user_has_role() helper for RLS
+-- Safe to run multiple times
+
+-- 1) Create enum app_role if missing
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'app_role') THEN
+    CREATE TYPE public.app_role AS ENUM ('user', 'verified', 'admin', 'moderator', 'manager');
+  END IF;
+END$$;
+
+-- 2) Ensure public.user_roles.role uses app_role when currently text
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'user_roles'
+      AND column_name = 'role'
+      AND data_type = 'text'
+  ) THEN
+    ALTER TABLE public.user_roles
+      ALTER COLUMN role TYPE public.app_role
+      USING (role::public.app_role);
+  END IF;
+END$$;
+
+-- 3) Create or replace function user_has_role
+CREATE OR REPLACE FUNCTION public.user_has_role(check_user_id uuid, required_role text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_roles ur
+    WHERE ur.user_id = check_user_id
+      AND ur.role = required_role::public.app_role
+  );
+$$;
+
+-- 4) Grants
+GRANT EXECUTE ON FUNCTION public.user_has_role(uuid, text) TO anon, authenticated;

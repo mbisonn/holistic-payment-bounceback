@@ -1,0 +1,43 @@
+-- Fix: Lint 0011 - Function search_path mutable
+-- Sets a fixed search_path for all overloads of specified functions in schema public
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT n.nspname AS schema_name,
+           p.proname  AS function_name,
+           pg_get_function_identity_arguments(p.oid) AS args,
+           p.oid
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname IN (
+        'update_notification_settings_updated_at',
+        'create_access_request'
+      )
+  LOOP
+    EXECUTE format('ALTER FUNCTION %I.%I(%s) SET search_path = public', r.schema_name, r.function_name, r.args);
+  END LOOP;
+END $$ LANGUAGE plpgsql;
+
+-- Fix: Lint 0009 - Duplicate Index on public.user_roles
+-- Keep idx_user_roles_user_id_role and drop the duplicate if both exist
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_indexes 
+    WHERE schemaname = 'public' AND indexname = 'idx_user_roles_user_id_role'
+  ) AND EXISTS (
+    SELECT 1 FROM pg_indexes 
+    WHERE schemaname = 'public' AND indexname = 'user_roles_user_id_role_idx'
+  ) THEN
+    EXECUTE 'DROP INDEX IF EXISTS public.user_roles_user_id_role_idx';
+  END IF;
+END $$ LANGUAGE plpgsql;
+
+-- Notes (manual/console actions required):
+-- - Enable leaked password protection in Supabase Auth settings (Dashboard > Authentication > Settings > Password Protection).
+-- - Consider consolidating multiple permissive RLS SELECT policies on listed tables to improve performance.
+--   Review policies carefully in Dashboard to avoid unintended access changes.
+

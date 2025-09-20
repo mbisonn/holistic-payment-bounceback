@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tenera Landing Page Integration Code</title>
+  <style>
+    .code-block {
+      background: #f5f5f5;
+      border-left: 4px solid #27ae60;
+      padding: 15px;
+      margin: 20px 0;
+      font-family: monospace;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+    .instructions {
+      background: #eaf2f8;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+    h2 {
+      color: #2c3e50;
+    }
+    .step {
+      margin-bottom: 30px;
+    }
+    .important {
+      background: #f9e79f;
+      border-left: 4px solid #f39c12;
+      padding: 10px 15px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tenera Landing Page Integration Code</h1>
+  
+  <div class="instructions">
+    <h2>How to Set Up Your Landing Page</h2>
+    <p>Follow these steps to integrate your landing page with the Tenera checkout system:</p>
+    
+    <div class="step">
+      <h3>Step 1: Replace the script tag</h3>
+      <p>Replace this script tag in your landing page:</p>
+      <div class="code-block">&lt;script src="https://holistic-payment-hub.lovable.app/landingPageIntegration.js"&gt;&lt;/script&gt;</div>
+      
+      <p>With this direct integration script:</p>
+      <div class="code-block">&lt;script src="https://e84d0afb-f51a-49f1-b3e0-2d35cebef2bd.lovableproject.com/directLandingPageIntegration.js"&gt;&lt;/script&gt;</div>
+      
+      <div class="important">
+        <strong>IMPORTANT:</strong> Make sure this script tag appears BEFORE your landing page script that contains the product configuration and checkout functions.
+      </div>
+    </div>
+    
+    <div class="step">
+      <h3>Step 2: Update your proceedToCheckout function</h3>
+      <p>Replace your current proceedToCheckout function with this updated version that properly sends data and redirects:</p>
+      <div class="code-block">function proceedToCheckout() {
+  if (cart.length === 0) {
+    showNotification('Your cart is empty');
+    return;
+  }
+  
+  // Format cart items in the exact format the checkout app expects
+  const cartItems = cart.map(item => ({
+    id: item.sku,          // Important: use sku as id
+    sku: item.sku,
+    name: item.name,
+    price: item.price,
+    quantity: item.quantity
+  }));
+  
+  // Store cart data in all available locations for maximum compatibility
+  const cartData = JSON.stringify(cartItems);
+  localStorage.setItem('systemeCart', cartData);
+  localStorage.setItem('cart', cartData);
+  localStorage.setItem('cartItems', cartData);
+  localStorage.setItem('teneraCart', cartData);
+  localStorage.setItem('pendingOrderData', cartData);
+  
+  console.log("Cart data saved to all storage locations:", cartItems);
+  
+  // Define the correct checkout URL
+  const checkoutUrl = "https://www.teneraholisticandwellness.com/order-payment";
+  
+  // Try to use the Tenera integration if it's available
+  if (window.teneraIntegration && typeof window.teneraIntegration.sendCartToCheckout === 'function') {
+    console.log("Using teneraIntegration.sendCartToCheckout");
+    window.teneraIntegration.sendCartToCheckout(cartItems);
+    return;
+  }
+  
+  // Send order data to API then redirect
+  fetch("https://xjfkeblnxyjhxukqurvc.functions.supabase.co/orders", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      items: cartItems,
+      totalAmount: cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+      timestamp: new Date().toISOString(),
+      source: window.location.href
+    })
+  })
+  .then(response => response.json())
+  .then(() => {
+    // Add cart data to URL as a fallback mechanism
+    const encodedCart = encodeURIComponent(JSON.stringify(cartItems));
+    window.location.href = `${checkoutUrl}?cart=${encodedCart}&t=${Date.now()}`;
+  })
+  .catch(error => {
+    console.error('Error sending order data:', error);
+    // Still redirect to checkout with cart data in URL
+    const encodedCart = encodeURIComponent(JSON.stringify(cartItems));
+    window.location.href = `${checkoutUrl}?cart=${encodedCart}&t=${Date.now()}`;
+  });
+}</div>
+    </div>
+    
+    <div class="step">
+      <h3>Step 3: Update the configuration</h3>
+      <p>Make sure your config object has the correct URLs:</p>
+      <div class="code-block">// Configuration for products and URL paths
+const config = {
+  orderFormUrl: "https://www.teneraholisticandwellness.com/order-payment",  // This is correct
+  dataPostUrl: "https://xjfkeblnxyjhxukqurvc.functions.supabase.co/orders",
+  currency: "₦", // Nigerian Naira symbol
+  debug: true,  // Set to true for console debugging
+  // ... rest of your config
+};</div>
+
+      <div class="important">
+        <strong>NOTE:</strong> Do NOT set the orderFormUrl to the Lovable app URL directly. Set it to your order form page that contains the Lovable embed.
+      </div>
+    </div>
+    
+    <div class="step">
+      <h3>Step 4: Important - Keep your products' SKUs consistent</h3>
+      <p>Make sure the SKUs used in your landing page match exactly with the SKUs in your dashboard products:</p>
+      <div class="code-block">// Example of product configuration
+config.products = {
+  "blood-booster": { 
+    sku: "blood_booster",  // This SKU must match exactly with your dashboard product
+    name: "Blood Booster", 
+    price: 25000,
+    defaultQuantity: 1
+  },
+  // other products...
+};</div>
+    </div>
+  </div>
+  
+  <div class="instructions">
+    <h2>Important Notes</h2>
+    <ul>
+      <li>The integration will send cart data to the checkout app and then redirect to your order payment URL.</li>
+      <li>Cart data is stored in multiple storage locations for maximum compatibility.</li>
+      <li>When testing, check browser console logs for debugging information.</li>
+      <li>Make sure your products have matching SKUs in both systems.</li>
+      <li>Try clearing your browser cache if you're having issues after updating the code.</li>
+    </ul>
+  </div>
+</body>
+</html>

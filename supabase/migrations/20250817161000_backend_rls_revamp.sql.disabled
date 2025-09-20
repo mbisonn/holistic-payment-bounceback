@@ -1,0 +1,124 @@
+-- Backend RLS revamp and interconnections
+-- Safe, idempotent migration
+
+-- prerequisites
+create extension if not exists pgcrypto;
+
+-- 1) Orders: add ownership and RLS
+alter table if exists public.orders
+  add column if not exists user_id uuid references auth.users(id) on delete set null;
+
+alter table if exists public.orders enable row level security;
+
+-- Drop old policies by name if present
+drop policy if exists "Admins can view all orders" on public.orders;
+drop policy if exists "Admins can manage orders" on public.orders;
+drop policy if exists "Users can view their orders" on public.orders;
+
+-- Users can view their own orders; Admins can view all
+create policy if not exists "Users can view their orders"
+on public.orders
+for select
+to authenticated
+using (
+  user_id = auth.uid() or public.has_role(auth.uid(), 'admin')
+);
+
+-- Admins can manage
+create policy if not exists "Admins can manage orders"
+on public.orders
+for all
+to authenticated
+using (public.has_role(auth.uid(), 'admin'));
+
+
+-- 2) Email outbox: tracking columns and RLS
+-- Ensure optional columns exist
+alter table if exists public.email_outbox add column if not exists user_id uuid;
+alter table if exists public.email_outbox add column if not exists tries int default 0;
+alter table if exists public.email_outbox add column if not exists last_error text;
+alter table if exists public.email_outbox add column if not exists sent_at timestamptz;
+alter table if exists public.email_outbox add column if not exists status text default 'queued';
+
+alter table if exists public.email_outbox enable row level security;
+
+-- Clean previous policies
+drop policy if exists "Users view own outbox" on public.email_outbox;
+drop policy if exists "Admins update outbox" on public.email_outbox;
+drop policy if exists "Admins manage outbox" on public.email_outbox;
+
+-- Keep outbox hidden from normal users by default; admins can manage
+create policy if not exists "Admins manage outbox"
+on public.email_outbox
+for all
+to authenticated
+using (public.has_role(auth.uid(), 'admin'));
+
+-- If you later want users to read their own outbox rows, uncomment below:
+-- create policy if not exists "Users view own outbox"
+-- on public.email_outbox
+-- for select
+-- to authenticated
+-- using (user_id = auth.uid() or public.has_role(auth.uid(), 'admin'));
+
+
+-- 3) Storage: ensure private bucket and admin-only policies for PDFs
+insert into storage.buckets (id, name, public)
+values ('meal_plans_v1', 'meal_plans_v1', false)
+on conflict (id) do nothing;
+
+-- storage.objects RLS policies for bucket 'meal_plans_v1'
+-- Note: storage RLS is enabled by default; define policies to restrict
+
+-- Drop pre-existing policies if any
+do $$
+begin
+  if exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'Admins can read meal plan PDFs'
+  ) then
+    execute 'drop policy "Admins can read meal plan PDFs" on storage.objects';
+  end if;
+  if exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects' and policyname = 'Admins can write meal plan PDFs'
+  ) then
+    execute 'drop policy "Admins can write meal plan PDFs" on storage.objects';
+  end if;
+end $$;
+
+create policy "Admins can read meal plan PDFs"
+on storage.objects
+for select
+to authenticated
+using (
+  bucket_id = 'meal_plans_v1' and public.has_role(auth.uid(), 'admin')
+);
+
+create policy "Admins can write meal plan PDFs"
+on storage.objects
+for all
+to authenticated
+using (
+  bucket_id = 'meal_plans_v1' and public.has_role(auth.uid(), 'admin')
+)
+with check (
+  bucket_id = 'meal_plans_v1' and public.has_role(auth.uid(), 'admin')
+);
+
+
+-- 4) user_roles: ensure users read own role; admins manage (already exists)
+drop policy if exists "Users can view their own roles" on public.user_roles;
+create policy "Users can view their own roles"
+on public.user_roles
+for select
+to authenticated
+using (user_id = auth.uid());
+
+-- Admin manage policy assumed present per previous migration; ensure it exists
+drop policy if exists "Admins can manage all user roles" on public.user_roles;
+create policy "Admins can manage all user roles"
+on public.user_roles
+for all
+to authenticated
+using (public.has_role(auth.uid(), 'admin'));

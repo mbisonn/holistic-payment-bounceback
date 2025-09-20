@@ -1,0 +1,82 @@
+
+-- First, let's update the order_bumps table to add an isactive column if it doesn't exist
+-- and ensure we have proper RLS policies
+DO $$ 
+BEGIN
+    -- Check if isactive column exists, if not add it
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'order_bumps' AND column_name = 'isactive') THEN
+        ALTER TABLE order_bumps ADD COLUMN isactive BOOLEAN DEFAULT true;
+    END IF;
+END $$;
+
+-- Update the existing shipping_settings table structure
+ALTER TABLE shipping_settings 
+ADD COLUMN IF NOT EXISTS lagos_delivery_fee NUMERIC DEFAULT 2000,
+ADD COLUMN IF NOT EXISTS other_states_delivery_fee NUMERIC DEFAULT 5000,
+ADD COLUMN IF NOT EXISTS enable_free_shipping BOOLEAN DEFAULT true;
+
+-- Create RLS policies for order_bumps (admin only)
+ALTER TABLE order_bumps ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Admin can view all order bumps" ON order_bumps;
+DROP POLICY IF EXISTS "Admin can insert order bumps" ON order_bumps;
+DROP POLICY IF EXISTS "Admin can update order bumps" ON order_bumps;
+DROP POLICY IF EXISTS "Admin can delete order bumps" ON order_bumps;
+DROP POLICY IF EXISTS "Public can view active order bumps" ON order_bumps;
+
+-- Create policies for order_bumps
+CREATE POLICY "Admin can manage order bumps" ON order_bumps
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE profiles.id = auth.uid() 
+            AND profiles.role = 'admin'
+        )
+    );
+
+CREATE POLICY "Public can view active order bumps" ON order_bumps
+    FOR SELECT USING (isactive = true);
+
+-- Create RLS policies for shipping_settings (admin only)
+ALTER TABLE shipping_settings ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Admin can manage shipping settings" ON shipping_settings;
+DROP POLICY IF EXISTS "Public can view active shipping settings" ON shipping_settings;
+
+-- Create policies for shipping_settings
+CREATE POLICY "Admin can manage shipping settings" ON shipping_settings
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE profiles.id = auth.uid() 
+            AND profiles.role = 'admin'
+        )
+    );
+
+CREATE POLICY "Public can view active shipping settings" ON shipping_settings
+    FOR SELECT USING (is_active = true);
+
+-- Insert default shipping settings if none exist
+INSERT INTO shipping_settings (
+    name, 
+    description, 
+    base_fee, 
+    lagos_delivery_fee, 
+    other_states_delivery_fee, 
+    free_shipping_threshold, 
+    enable_free_shipping,
+    is_active
+) 
+SELECT 
+    'Default Shipping', 
+    'Default shipping configuration', 
+    2500, 
+    2000, 
+    5000, 
+    50000, 
+    true,
+    true
+WHERE NOT EXISTS (SELECT 1 FROM shipping_settings LIMIT 1);

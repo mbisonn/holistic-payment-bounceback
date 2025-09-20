@@ -1,0 +1,31 @@
+-- Ensure no stale variants remain, then recreate with correct column
+DROP FUNCTION IF EXISTS public.assign_user_role();
+DROP FUNCTION IF EXISTS public.assign_user_role(uuid);
+
+CREATE OR REPLACE FUNCTION public.assign_user_role(p_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  desired_role text;
+BEGIN
+  -- Correct column: raw_app_meta_data
+  SELECT COALESCE(u.raw_app_meta_data->>'role', 'viewer')
+    INTO desired_role
+  FROM auth.users u
+  WHERE u.id = p_user_id;
+
+  IF desired_role NOT IN ('admin','manager','editor','viewer') THEN
+    desired_role := 'viewer';
+  END IF;
+
+  UPDATE public.user_roles
+     SET role = desired_role::public.app_role
+   WHERE user_id = p_user_id;
+
+  IF NOT FOUND THEN
+    INSERT INTO public.user_roles (user_id, role)
+    VALUES (p_user_id, desired_role::public.app_role);
+  END IF;
+END;
+$$;

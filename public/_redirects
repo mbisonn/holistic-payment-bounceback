@@ -1,0 +1,9 @@
+
+# Redirect all routes to index.html for client-side routing
+/*    /index.html   200
+
+# External redirect for order payment page
+/order-payment    https://www.teneraholisticandwellness.com/order-payment    301
+
+# Uncomment if you want specific redirect rules
+# /old-page    /new-page    301

@@ -1,0 +1,85 @@
+
+-- Fix function security by adding search_path to prevent SQL injection
+CREATE OR REPLACE FUNCTION public.get_function_definition(function_name text)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN pg_get_functiondef(to_regprocedure(function_name));
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.has_role(role_name text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 
+    FROM public.user_roles
+    WHERE role = role_name::app_role
+      AND user_id = auth.uid()
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.has_role()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN (SELECT EXISTS (
+    SELECT 1 
+    FROM auth.users
+    WHERE id = auth.uid()
+  ));
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.has_role(user_id uuid, role_name text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN (SELECT EXISTS (
+    SELECT 1 
+    FROM public.user_roles
+    WHERE user_id = has_role.user_id
+      AND role = role_name::app_role
+  ));
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.set_invoice_number(invoice_id bigint, new_number text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.invoices
+  SET invoice_number = new_number
+  WHERE id = invoice_id::uuid;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.set_invoice_number(invoice_id uuid, new_number text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.invoices
+  SET invoice_number = new_number
+  WHERE id = invoice_id;
+END;
+$$;

@@ -1,0 +1,15 @@
+-- Ensure admin users have raw_app_meta_data.role = 'admin' so JWT app_metadata includes it
+
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT id FROM auth.users WHERE email IN ('ebuchenna1@gmail.com','info@bouncebacktolifeconsult.pro')
+  LOOP
+    -- Merge existing raw_app_meta_data and set role
+    UPDATE auth.users
+       SET raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || jsonb_build_object('role','admin')
+     WHERE id = r.id;
+  END LOOP;
+END $$;

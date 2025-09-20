@@ -1,0 +1,34 @@
+
+-- Create preset order bumps
+INSERT INTO public.order_bumps (id, title, description, price, product_id, isactive, conditions, image)
+VALUES
+  (
+    'bump-001', 
+    'Boost Your Immunity Alongside Your Stem Cell Support!', 
+    'Add our powerful Immune Defender Formula—packed with Vitamin C, Zinc, and Tumeric—to fortify your body''s natural defense system while your stem cell supplement does its job.\nProtect. Recover. Thrive.\n👉 Just ₦20,000 extra — one-time only!', 
+    20000, 
+    'immuno-guard-plus', 
+    true,
+    '{"requiredProducts": [], "excludeProducts": ["immuno-guard-plus"]}',
+    'https://d1yei2z3i6k35z.cloudfront.net/8917555/679e56bf61a00_14.png'
+  ),
+  (
+    'bump-002', 
+    'Cleanse Your System for Better Results with Liver Tea!', 
+    'Did you know toxins can block nutrient absorption? Support your liver and kidneys with our Gentle Herbal Detox Blend and allow your stem cell supplement to work more effectively.\nFeel lighter, cleaner, and more energized—naturally.\n👉 Add it now for only ₦20,000!', 
+    20000, 
+    'liver-tea', 
+    true,
+    '{"requiredProducts": [], "excludeProducts": ["liver-tea"]}',
+    'https://d1yei2z3i6k35z.cloudfront.net/8917555/679e57a19604c_22.png'
+  ),
+  (
+    'bump-003', 
+    'Power Up Your Heart for Total Wellness!', 
+    'Did you know a strong heart is the foundation of lasting vitality? Support your cardiovascular system with Gentle Herbal Cardio Tincture—featuring Capsicum Annuum and Ginger—to amplify the benefits of your daily wellness routine.\n\nWhy Add Cardio Tincture?\n\nRegulates Blood Pressure: Promotes healthy circulation and balanced levels.\n\nStrengthens Heart Function: Enhances cardiovascular resilience naturally.\n\nReduces Stress & Boosts Energy: Combats inflammation and supports calm, steady energy.\n\nFeel stronger, more balanced, and ready to thrive—naturally.\n👉 Add it now for only ₦5,000!', 
+    5000, 
+    'cardio-tincture', 
+    true,
+    '{"requiredProducts": ["cardio-sure", "vein-thrombus"], "excludeProducts": ["cardio-tincture"]}',
+    'https://d1yei2z3i6k35z.cloudfront.net/8917555/679e574fc28d2_18.png'
+  );

@@ -1,0 +1,175 @@
+-- Address linter findings: security_invoker on view, function search_path, policy consolidation, duplicate indexes
+
+-- 1) Make products_public run with invoker's rights (respect caller perms/RLS)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.views WHERE table_schema='public' AND table_name='products_public'
+  ) THEN
+    EXECUTE 'ALTER VIEW public.products_public SET (security_invoker = on)';
+  END IF;
+END $$;
+
+-- 2) Set fixed search_path for functions flagged by linter (manage_user_role, _grant_admin)
+DO $$
+DECLARE f record;
+BEGIN
+  FOR f IN
+    SELECT p.proname,
+           n.nspname AS schema,
+           pg_get_function_identity_arguments(p.oid) AS args
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname='public' AND p.proname IN ('manage_user_role','_grant_admin')
+  LOOP
+    EXECUTE format('ALTER FUNCTION %I.%I(%s) SET search_path = public, pg_temp', f.schema, f.proname, f.args);
+  END LOOP;
+END $$;
+
+-- 3) Consolidate RLS policies: keep only ONE permissive SELECT per table; split writes into INSERT/UPDATE/DELETE admin-only
+DO $$
+DECLARE t record;
+DECLARE pol record;
+BEGIN
+  FOR t IN
+    SELECT schemaname AS table_schema, tablename AS table_name
+    FROM pg_tables
+    WHERE schemaname='public'
+  LOOP
+    -- Ensure RLS enabled
+    EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', t.table_schema, t.table_name);
+
+    -- For products we handle separately below
+    IF t.table_name <> 'products' THEN
+      -- Drop catch-all admin_all policy if present (causes duplicate permissive SELECT)
+      FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname=t.table_schema AND tablename=t.table_name AND policyname = t.table_name || '_admin_all' LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', pol.policyname, t.table_schema, t.table_name);
+      END LOOP;
+
+      -- Ensure a single SELECT policy exists for admins
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname=t.table_schema AND tablename=t.table_name AND policyname = t.table_name || '_admin_select'
+      ) THEN
+        EXECUTE format(
+          'CREATE POLICY %I ON %I.%I FOR SELECT TO authenticated USING (public.current_user_is_admin())',
+          t.table_name || '_admin_select', t.table_schema, t.table_name
+        );
+      END IF;
+
+      -- Create admin-only INSERT/UPDATE/DELETE policies if missing
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname=t.table_schema AND tablename=t.table_name AND policyname = t.table_name || '_admin_insert'
+      ) THEN
+        EXECUTE format(
+          'CREATE POLICY %I ON %I.%I FOR INSERT TO authenticated WITH CHECK (public.current_user_is_admin())',
+          t.table_name || '_admin_insert', t.table_schema, t.table_name
+        );
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname=t.table_schema AND tablename=t.table_name AND policyname = t.table_name || '_admin_update'
+      ) THEN
+        EXECUTE format(
+          'CREATE POLICY %I ON %I.%I FOR UPDATE TO authenticated USING (public.current_user_is_admin()) WITH CHECK (public.current_user_is_admin())',
+          t.table_name || '_admin_update', t.table_schema, t.table_name
+        );
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname=t.table_schema AND tablename=t.table_name AND policyname = t.table_name || '_admin_delete'
+      ) THEN
+        EXECUTE format(
+          'CREATE POLICY %I ON %I.%I FOR DELETE TO authenticated USING (public.current_user_is_admin())',
+          t.table_name || '_admin_delete', t.table_schema, t.table_name
+        );
+      END IF;
+    END IF;
+  END LOOP;
+END $$;
+
+-- 3b) Special-case products: keep verified-only SELECT; split admin writes
+DO $$
+DECLARE pol record;
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='products'
+  ) THEN
+    -- Drop broad admin_all policy if exists
+    FOR pol IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename='products' AND policyname='products_admin_all' LOOP
+      EXECUTE 'DROP POLICY IF EXISTS products_admin_all ON public.products';
+    END LOOP;
+
+    -- Ensure verified-only SELECT exists
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='products' AND policyname='products_verified_select'
+    ) THEN
+      CREATE POLICY products_verified_select
+        ON public.products
+        FOR SELECT
+        TO authenticated
+        USING (
+          EXISTS (
+            SELECT 1 FROM public.user_roles ur
+            WHERE ur.user_id = (SELECT auth.uid())
+              AND ur.role = 'verified'
+          )
+          OR public.current_user_is_admin()
+        );
+    END IF;
+
+    -- Admin writes split
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='products' AND policyname='products_admin_insert'
+    ) THEN
+      CREATE POLICY products_admin_insert ON public.products FOR INSERT TO authenticated WITH CHECK (public.current_user_is_admin());
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='products' AND policyname='products_admin_update'
+    ) THEN
+      CREATE POLICY products_admin_update ON public.products FOR UPDATE TO authenticated USING (public.current_user_is_admin()) WITH CHECK (public.current_user_is_admin());
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='products' AND policyname='products_admin_delete'
+    ) THEN
+      CREATE POLICY products_admin_delete ON public.products FOR DELETE TO authenticated USING (public.current_user_is_admin());
+    END IF;
+  END IF;
+END $$;
+
+-- 4) Drop duplicate indexes (keep one per pair)
+DO $$
+BEGIN
+  -- customer_tag_assignments
+  IF to_regclass('public.idx_customer_tag_assignments_email') IS NOT NULL THEN
+    EXECUTE 'DROP INDEX IF EXISTS public.idx_customer_tag_assignments_email';
+  END IF;
+  IF to_regclass('public.idx_customer_tag_assignments_tag_id_active') IS NOT NULL THEN
+    EXECUTE 'DROP INDEX IF EXISTS public.idx_customer_tag_assignments_tag_id_active';
+  END IF;
+
+  -- email_campaigns
+  IF to_regclass('public.idx_email_campaigns_status_scheduled_at') IS NOT NULL THEN
+    EXECUTE 'DROP INDEX IF EXISTS public.idx_email_campaigns_status_scheduled_at';
+  END IF;
+  IF to_regclass('public.idx_email_campaigns_tags_gin') IS NOT NULL THEN
+    EXECUTE 'DROP INDEX IF EXISTS public.idx_email_campaigns_tags_gin';
+  END IF;
+
+  -- email_templates
+  IF to_regclass('public.idx_email_templates_body_search') IS NOT NULL THEN
+    EXECUTE 'DROP INDEX IF EXISTS public.idx_email_templates_body_search';
+  END IF;
+
+  -- order_bumps
+  IF to_regclass('public.idx_order_bumps_is_active_price') IS NOT NULL THEN
+    EXECUTE 'DROP INDEX IF EXISTS public.idx_order_bumps_is_active_price';
+  END IF;
+
+  -- orders
+  IF to_regclass('public.idx_orders_status_payment_created') IS NOT NULL THEN
+    EXECUTE 'DROP INDEX IF EXISTS public.idx_orders_status_payment_created';
+  END IF;
+
+  -- products
+  IF to_regclass('public.idx_products_composite_category_price') IS NOT NULL THEN
+    EXECUTE 'DROP INDEX IF EXISTS public.idx_products_composite_category_price';
+  END IF;
+END $$;

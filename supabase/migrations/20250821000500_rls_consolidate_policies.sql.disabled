@@ -1,0 +1,23 @@
+-- Consolidate duplicate permissive policies: drop *_admin_select when *_admin_all exists
+-- Idempotent and safe to re-run
+
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT schemaname, tablename
+    FROM pg_tables
+    WHERE schemaname IN ('public','storage')
+      AND tableowner = current_user
+  LOOP
+    IF EXISTS (
+      SELECT 1 FROM pg_policies p
+      WHERE p.schemaname = r.schemaname
+        AND p.tablename = r.tablename
+        AND p.policyname = r.tablename || '_admin_all'
+    ) THEN
+      -- Drop redundant SELECT-only policy if present
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', r.tablename || '_admin_select', r.schemaname, r.tablename);
+    END IF;
+  END LOOP;
+END $$;

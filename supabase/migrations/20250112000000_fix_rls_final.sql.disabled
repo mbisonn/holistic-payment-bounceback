@@ -1,0 +1,104 @@
+-- Final RLS fix - simplified approach
+-- This migration fixes the RLS policies to allow verified users and admins access
+
+-- 1. Create unified admin checking function
+CREATE OR REPLACE FUNCTION public.current_user_is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 
+    FROM public.user_roles ur
+    WHERE ur.user_id = auth.uid()
+      AND ur.role = 'admin'::app_role
+  );
+$$;
+
+-- 2. Create unified verified user checking function
+CREATE OR REPLACE FUNCTION public.current_user_is_verified()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 
+    FROM public.user_roles ur
+    WHERE ur.user_id = auth.uid()
+      AND ur.role IN ('verified'::app_role, 'admin'::app_role)
+  );
+$$;
+
+-- 3. Grant necessary permissions
+GRANT EXECUTE ON FUNCTION public.current_user_is_admin() TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.current_user_is_verified() TO authenticated, anon;
+
+-- 4. Fix user_roles table policies
+DROP POLICY IF EXISTS "Admins can manage all user roles" ON public.user_roles;
+DROP POLICY IF EXISTS "Users can view their own roles" ON public.user_roles;
+
+CREATE POLICY "Users can view their own roles" ON public.user_roles FOR SELECT TO authenticated 
+USING (
+    user_id = auth.uid() OR 
+    public.current_user_is_admin() OR 
+    public.current_user_is_verified()
+);
+
+CREATE POLICY "Admins can manage user roles" ON public.user_roles FOR ALL TO authenticated 
+USING (public.current_user_is_admin())
+WITH CHECK (public.current_user_is_admin());
+
+-- 5. Fix products table policies
+DROP POLICY IF EXISTS "Anyone can view products" ON public.products;
+DROP POLICY IF EXISTS "Admins can manage products" ON public.products;
+
+CREATE POLICY "Public can view active products" ON public.products FOR SELECT TO anon, authenticated 
+USING (is_active = true);
+
+CREATE POLICY "Verified users can view all products" ON public.products FOR SELECT TO authenticated 
+USING (public.current_user_is_admin() OR public.current_user_is_verified());
+
+CREATE POLICY "Admins can manage products" ON public.products FOR ALL TO authenticated 
+USING (public.current_user_is_admin())
+WITH CHECK (public.current_user_is_admin());
+
+-- 6. Fix orders table policies
+DROP POLICY IF EXISTS "Users can view their own orders" ON public.orders;
+DROP POLICY IF EXISTS "Admins can manage all orders" ON public.orders;
+
+CREATE POLICY "Users can view their own orders" ON public.orders FOR SELECT TO authenticated 
+USING (
+    user_id = auth.uid() OR 
+    public.current_user_is_admin() OR 
+    public.current_user_is_verified()
+);
+
+CREATE POLICY "Admins can manage orders" ON public.orders FOR ALL TO authenticated 
+USING (public.current_user_is_admin())
+WITH CHECK (public.current_user_is_admin());
+
+-- 7. Fix profiles table policies
+DROP POLICY IF EXISTS "Users can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+
+CREATE POLICY "Users can view all profiles" ON public.profiles FOR SELECT TO authenticated 
+USING (true);
+
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE TO authenticated 
+USING (id = auth.uid() OR public.current_user_is_admin())
+WITH CHECK (id = auth.uid() OR public.current_user_is_admin());
+
+-- 8. Ensure all admin users have proper roles
+INSERT INTO public.user_roles (user_id, role)
+SELECT id, 'admin'::app_role
+FROM auth.users
+WHERE email IN (
+    'ebuchenna1@gmail.com',
+    'info@bouncebacktolifeconsult.pro',
+    'bouncebacktolifeconsult@gmail.com'
+)
+ON CONFLICT (user_id, role) DO NOTHING;

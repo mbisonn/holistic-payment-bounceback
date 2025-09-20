@@ -1,0 +1,106 @@
+
+-- Fix the order_bumps table column name issue
+-- The table uses 'isactive' but code is trying to access 'is_active'
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'order_bumps' AND column_name = 'isactive'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'order_bumps' AND column_name = 'is_active'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.order_bumps RENAME COLUMN isactive TO is_active';
+  END IF;
+END $$;
+
+-- Add missing indexes for better performance
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS status TEXT;
+CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON public.orders(customer_email);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON public.orders(payment_status);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_reference ON public.orders(payment_reference);
+
+ALTER TABLE public.upsell_products ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+CREATE INDEX IF NOT EXISTS idx_order_bumps_is_active ON public.order_bumps(is_active);
+CREATE INDEX IF NOT EXISTS idx_products_is_active ON public.products(is_active);
+CREATE INDEX IF NOT EXISTS idx_upsell_products_is_active ON public.upsell_products(is_active);
+
+CREATE INDEX IF NOT EXISTS idx_discount_codes_code ON public.discount_codes(code);
+CREATE INDEX IF NOT EXISTS idx_discount_codes_is_active ON public.discount_codes(is_active);
+CREATE INDEX IF NOT EXISTS idx_discount_codes_expires_at ON public.discount_codes(expires_at);
+
+CREATE INDEX IF NOT EXISTS idx_invoices_customer_email ON public.invoices(customer_email);
+CREATE INDEX IF NOT EXISTS idx_invoices_status ON public.invoices(status);
+CREATE INDEX IF NOT EXISTS idx_invoices_created_at ON public.invoices(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON public.user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_role ON public.user_roles(role);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON public.profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles(email);
+
+CREATE INDEX IF NOT EXISTS idx_email_logs_recipient_email ON public.email_logs(recipient_email);
+CREATE INDEX IF NOT EXISTS idx_email_logs_status ON public.email_logs(status);
+CREATE INDEX IF NOT EXISTS idx_email_logs_created_at ON public.email_logs(created_at);
+
+-- Add composite indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_orders_status_created_at ON public.orders(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_customer_payment_status ON public.orders(customer_email, payment_status);
+
+-- Update table statistics for better query planning
+ANALYZE public.orders;
+ANALYZE public.order_bumps;
+ANALYZE public.products;
+ANALYZE public.upsell_products;
+ANALYZE public.discount_codes;
+ANALYZE public.invoices;
+ANALYZE public.user_roles;
+ANALYZE public.profiles;
+ANALYZE public.email_logs;
+
+-- Add missing constraints for data integrity
+ALTER TABLE public.orders ADD CONSTRAINT chk_orders_total_amount_positive 
+  CHECK (total_amount >= 0);
+
+ALTER TABLE public.products ADD CONSTRAINT chk_products_price_positive 
+  CHECK (price >= 0);
+
+ALTER TABLE public.upsell_products ADD CONSTRAINT chk_upsell_products_price_positive 
+  CHECK (price >= 0);
+
+ALTER TABLE public.order_bumps ADD CONSTRAINT chk_order_bumps_price_positive 
+  CHECK (price >= 0);
+
+-- Optimize RLS policies by adding more specific conditions
+DROP POLICY IF EXISTS "Admins can manage orders" ON public.orders;
+CREATE POLICY "Admins can manage orders" ON public.orders 
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.user_roles 
+    WHERE user_id = auth.uid() AND role = 'admin'
+  )
+);
+
+-- Drop dependent policies before dropping the function
+DROP POLICY IF EXISTS "Admins can manage abandoned checkouts" ON public.abandoned_checkouts;
+DROP POLICY IF EXISTS "Admins can manage email settings" ON public.email_settings;
+
+DROP FUNCTION IF EXISTS public.get_current_user_role();
+CREATE OR REPLACE FUNCTION public.get_current_user_role()
+RETURNS app_role
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role FROM public.user_roles
+  WHERE user_id = auth.uid()
+  LIMIT 1;
+$$;
+
+-- Recreate dependent policies after recreating the function
+CREATE POLICY "Admins can manage abandoned checkouts" ON public.abandoned_checkouts
+  FOR ALL USING (get_current_user_role() = 'admin');
+CREATE POLICY "Admins can manage email settings" ON public.email_settings
+  FOR ALL USING (get_current_user_role() = 'admin');

@@ -1,0 +1,25 @@
+-- Public-facing minimal products view while keeping base table admin-only
+-- Idempotent and safe to re-run
+
+-- 1) Create or replace a safe view for active products with minimal columns.
+-- Adjust column list to match your schema.
+create or replace view public.products_public as
+  select
+    id,
+    name,
+    description,
+    price,
+    image_url,
+    is_active
+  from public.products
+  where is_active = true;
+
+-- 2) Ensure base table remains protected by RLS (admin-only policies already applied elsewhere).
+alter table if exists public.products enable row level security;
+
+-- 3) Harden privileges on the view: no PUBLIC grants; allow anon to read.
+revoke all on public.products_public from public;
+grant select on public.products_public to anon;
+
+-- 4) Performance helper for backing filter if missing
+create index if not exists idx_products_is_active on public.products(is_active);

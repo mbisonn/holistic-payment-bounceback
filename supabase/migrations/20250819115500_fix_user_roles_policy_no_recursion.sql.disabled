@@ -1,0 +1,37 @@
+-- Fix infinite recursion in user_roles policy by avoiding self-reference
+-- Replace SELECT policy to check admin via JWT claims instead of querying user_roles
+
+DO $$
+DECLARE
+  pol record;
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='user_roles'
+  ) THEN
+    -- Drop existing SELECT policies on user_roles
+    FOR pol IN
+      SELECT policyname FROM pg_policies 
+      WHERE schemaname='public' AND tablename='user_roles' AND cmd='select'
+    LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.user_roles', pol.policyname);
+    END LOOP;
+
+    -- Create non-recursive SELECT policy that checks JWT app_metadata.role
+    CREATE POLICY user_roles_select_no_recursion
+      ON public.user_roles
+      FOR SELECT
+      TO authenticated
+      USING (
+        -- Allow owners to read their own role
+        (user_id = (select auth.uid()))
+        OR
+        -- Allow admins based on JWT claim in app_metadata (no self-select from user_roles)
+        coalesce(
+          (
+            SELECT ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
+          ),
+          false
+        )
+      );
+  END IF;
+END $$;

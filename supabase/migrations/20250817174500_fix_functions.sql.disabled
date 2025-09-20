@@ -1,0 +1,41 @@
+-- Fix function: public.generate_invoice_number (ambiguous column)
+create or replace function public.generate_invoice_number()
+returns text
+language plpgsql
+as $$
+DECLARE
+  next_num integer;
+BEGIN
+  select coalesce(max(cast(substring(i.invoice_number from 'INV-(\d+)') as integer)), 0) + 1
+  into next_num
+  from public.invoices i
+  where i.invoice_number ~ '^INV-\d+$';
+
+  return 'INV-' || next_num::text;
+END;
+$$;
+
+-- Fix function: public.assign_user_role (raw_app_meta_data)
+create or replace function public.assign_user_role(p_user_id uuid)
+returns void
+language plpgsql
+as $$
+DECLARE
+  desired_role text;
+BEGIN
+  select coalesce(
+           (select u.raw_app_meta_data->>'role' from auth.users u where u.id = p_user_id),
+           'viewer'
+         )
+    into desired_role;
+
+  -- Ensure value matches enum app_role; fallback to 'viewer' if not valid
+  IF desired_role NOT IN ('admin','manager','editor','viewer') THEN
+    desired_role := 'viewer';
+  END IF;
+
+  insert into public.user_roles (user_id, role)
+  values (p_user_id, desired_role::public.app_role)
+  on conflict (user_id) do update set role = excluded.role;
+END;
+$$;

@@ -1,0 +1,26 @@
+-- Update product variants with correct pricing
+UPDATE product_variants 
+SET price = 29700 
+WHERE product_id = (SELECT id FROM products WHERE name = 'Dynace Rocenta') 
+AND quantity_multiplier = 4;
+
+UPDATE product_variants 
+SET price = 29000 
+WHERE product_id = (SELECT id FROM products WHERE name = 'Dynace Rocenta') 
+AND quantity_multiplier = 6;
+
+-- Update product variants for 14,000 naira products
+UPDATE product_variants 
+SET price = 13800 
+WHERE product_id IN (SELECT id FROM products WHERE price = 14000) 
+AND quantity_multiplier = 2;
+
+UPDATE product_variants 
+SET price = 13500 
+WHERE product_id IN (SELECT id FROM products WHERE price = 14000) 
+AND quantity_multiplier = 4;
+
+UPDATE product_variants 
+SET price = 12700 
+WHERE product_id IN (SELECT id FROM products WHERE price = 14000) 
+AND quantity_multiplier = 6;

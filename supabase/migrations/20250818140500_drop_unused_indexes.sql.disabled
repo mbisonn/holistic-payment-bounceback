@@ -1,0 +1,50 @@
+-- Drop indexes flagged as unused by the linter. Idempotent.
+-- Note: Avoid CONCURRENTLY in migrations (runs in a transaction).
+
+-- user_roles
+DROP INDEX IF EXISTS public.idx_user_roles_user_id;
+
+-- automation_rules
+DROP INDEX IF EXISTS public.idx_automation_rules_is_active;
+
+-- email_events
+DROP INDEX IF EXISTS public.idx_email_events_message_id;
+DROP INDEX IF EXISTS public.idx_email_events_event_type;
+
+-- orders
+DROP INDEX IF EXISTS public.idx_orders_user_id;
+
+-- security_events
+DROP INDEX IF EXISTS public.idx_security_events_user_id;
+
+-- upsell_transactions
+DROP INDEX IF EXISTS public.idx_upsell_transactions_product_id;
+DROP INDEX IF EXISTS public.idx_upsell_transactions_email;
+
+-- customer_exports
+DROP INDEX IF EXISTS public.idx_customer_exports_exported_by;
+
+-- product_analytics
+DROP INDEX IF EXISTS public.idx_product_analytics_product_date;
+
+-- customer_analytics
+DROP INDEX IF EXISTS public.idx_customer_analytics_email;
+
+-- workflow_steps
+DROP INDEX IF EXISTS public.idx_workflow_steps_workflow;
+
+-- meal_plan_sync
+DROP INDEX IF EXISTS public.idx_meal_plan_sync_email;
+
+-- customer_tag_assignments
+DROP INDEX IF EXISTS public.idx_customer_tag_assignments_tag_id;
+
+-- email_campaigns
+DROP INDEX IF EXISTS public.idx_email_campaigns_template_id;
+
+-- email_logs
+DROP INDEX IF EXISTS public.idx_email_logs_campaign_id;
+DROP INDEX IF EXISTS public.idx_email_logs_template_id;
+
+-- email_outbox
+DROP INDEX IF EXISTS public.email_outbox_to_email_idx;

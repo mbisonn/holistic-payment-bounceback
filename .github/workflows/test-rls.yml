@@ -1,0 +1,38 @@
+name: Test RLS Policies
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/test-rls-policies.js'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/test-rls-policies.js'
+
+jobs:
+  test-rls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+          
+      - name: Install dependencies
+        run: npm install @supabase/supabase-js dotenv
+        
+      - name: Test RLS Policies
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -f scripts/test-rls-policies.js ]; then
+            node scripts/test-rls-policies.js
+          else
+            echo "Test script not found, skipping RLS tests"
+          fi

@@ -1,0 +1,14 @@
+-- Fix remote migration history name for version 20250821 to align with local file name
+-- Idempotent update: only updates when name is null/empty or different
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM supabase_migrations.schema_migrations
+    WHERE version = '20250821'
+  ) THEN
+    UPDATE supabase_migrations.schema_migrations AS sm
+    SET name = 'add_verified_role_policies'
+    WHERE sm.version = '20250821'
+      AND COALESCE(sm.name, '') <> 'add_verified_role_policies';
+  END IF;
+END $$;

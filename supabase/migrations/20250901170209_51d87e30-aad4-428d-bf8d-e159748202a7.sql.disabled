@@ -1,0 +1,112 @@
+-- Fix RLS policies for security issues
+-- Remove public select policies that expose sensitive data
+
+-- Drop existing public select policies that expose sensitive data
+DROP POLICY IF EXISTS "profiles_public_select" ON public.profiles;
+DROP POLICY IF EXISTS "customer_tag_assignments_public_select" ON public.customer_tag_assignments;
+DROP POLICY IF EXISTS "upsell_transactions_public_select" ON public.upsell_transactions;
+DROP POLICY IF EXISTS "email_outbox_public_select" ON public.email_outbox;
+DROP POLICY IF EXISTS "automation_rules_public_select" ON public.automation_rules;
+DROP POLICY IF EXISTS "security_events_public_select" ON public.security_events;
+DROP POLICY IF EXISTS "email_analytics_public_select" ON public.email_analytics;
+DROP POLICY IF EXISTS "email_events_public_select" ON public.email_events;
+DROP POLICY IF EXISTS "email_logs_public_select" ON public.email_logs;
+DROP POLICY IF EXISTS "customer_analytics_public_select" ON public.customer_analytics;
+DROP POLICY IF EXISTS "customer_exports_public_select" ON public.customer_exports;
+DROP POLICY IF EXISTS "customer_tags_public_select" ON public.customer_tags;
+DROP POLICY IF EXISTS "discount_codes_public_select" ON public.discount_codes;
+DROP POLICY IF EXISTS "email_campaigns_public_select" ON public.email_campaigns;
+DROP POLICY IF EXISTS "email_settings_public_select" ON public.email_settings;
+DROP POLICY IF EXISTS "email_templates_public_select" ON public.email_templates;
+DROP POLICY IF EXISTS "facebook_conversion_settings_public_select" ON public.facebook_conversion_settings;
+DROP POLICY IF EXISTS "invoices_public_select" ON public.invoices;
+DROP POLICY IF EXISTS "meal_plan_sync_public_select" ON public.meal_plan_sync;
+DROP POLICY IF EXISTS "order_bumps_public_select" ON public.order_bumps;
+DROP POLICY IF EXISTS "orders_public_select" ON public.orders;
+DROP POLICY IF EXISTS "product_analytics_public_select" ON public.product_analytics;
+DROP POLICY IF EXISTS "product_categories_public_select" ON public.product_categories;
+DROP POLICY IF EXISTS "product_reviews_public_select" ON public.product_reviews;
+DROP POLICY IF EXISTS "products_public_select" ON public.products;
+DROP POLICY IF EXISTS "role_types_public_select" ON public.role_types;
+DROP POLICY IF EXISTS "shipping_settings_public_select" ON public.shipping_settings;
+DROP POLICY IF EXISTS "upsell_products_public_select" ON public.upsell_products;
+DROP POLICY IF EXISTS "abandoned_checkouts_public_select" ON public.abandoned_checkouts;
+DROP POLICY IF EXISTS "analytics_metrics_public_select" ON public.analytics_metrics;
+
+-- Keep only necessary public access
+-- Products should be publicly viewable for the storefront
+CREATE POLICY "Anyone can view active products" ON public.products
+  FOR SELECT
+  USING (is_active = true);
+
+-- Product categories should be publicly viewable
+CREATE POLICY "Anyone can view product categories" ON public.product_categories
+  FOR SELECT
+  USING (true);
+
+-- Upsell products should be publicly viewable
+CREATE POLICY "Anyone can view active upsell products" ON public.upsell_products
+  FOR SELECT
+  USING (is_active = true);
+
+-- Order bumps should be publicly viewable
+CREATE POLICY "Anyone can view active order bumps" ON public.order_bumps
+  FOR SELECT
+  USING (is_active = true);
+
+-- Shipping settings should be publicly viewable for checkout
+CREATE POLICY "Anyone can view active shipping settings" ON public.shipping_settings
+  FOR SELECT
+  USING (is_active = true);
+
+-- Discount codes should be publicly viewable for validation
+CREATE POLICY "Anyone can view active discount codes" ON public.discount_codes
+  FOR SELECT
+  USING (is_active = true);
+
+-- Product reviews should be publicly viewable if approved
+CREATE POLICY "Anyone can view approved product reviews" ON public.product_reviews
+  FOR SELECT
+  USING (is_approved = true);
+
+-- Users can view their own profiles
+CREATE POLICY "Users can view their own profile" ON public.profiles
+  FOR SELECT
+  USING (id = current_user_id());
+
+-- Users can view their own orders
+CREATE POLICY "Users can view their own orders" ON public.orders
+  FOR SELECT
+  USING (user_id = current_user_id());
+
+-- Add RLS policies for product_variants table (create if not exists)
+CREATE TABLE IF NOT EXISTS public.product_variants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  price NUMERIC NOT NULL DEFAULT 0,
+  quantity_multiplier INTEGER NOT NULL DEFAULT 1,
+  is_bumper_offer BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS on product_variants
+ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can view active product variants
+CREATE POLICY "Anyone can view product variants" ON public.product_variants
+  FOR SELECT
+  USING (true);
+
+-- Only admins can manage product variants
+CREATE POLICY "Admins can manage product variants" ON public.product_variants
+  FOR ALL
+  USING (is_admin(current_user_id()));
+
+-- Create update trigger for product_variants
+CREATE TRIGGER update_product_variants_updated_at
+  BEFORE UPDATE ON public.product_variants
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();

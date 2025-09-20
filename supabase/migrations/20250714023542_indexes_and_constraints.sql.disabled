@@ -1,0 +1,288 @@
+
+-- Fix all remaining performance warnings and optimization suggestions
+
+-- 1. Add missing indexes for foreign key relationships
+CREATE INDEX IF NOT EXISTS idx_customer_tag_assignments_tag_id ON public.customer_tag_assignments(tag_id);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_template_id ON public.email_campaigns(template_id);
+CREATE INDEX IF NOT EXISTS idx_email_logs_campaign_id ON public.email_logs(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_email_logs_template_id ON public.email_logs(template_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_order_id ON public.invoices(order_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON public.profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON public.user_roles(user_id);
+
+-- 2. Add indexes for commonly queried columns
+CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON public.orders(customer_email);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON public.orders(payment_status);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at);
+CREATE INDEX IF NOT EXISTS idx_products_is_active ON public.products(is_active);
+CREATE INDEX IF NOT EXISTS idx_order_bumps_is_active ON public.order_bumps(is_active);
+CREATE INDEX IF NOT EXISTS idx_upsell_products_is_active ON public.upsell_products(is_active);
+CREATE INDEX IF NOT EXISTS idx_discount_codes_code ON public.discount_codes(code);
+CREATE INDEX IF NOT EXISTS idx_discount_codes_is_active ON public.discount_codes(is_active);
+CREATE INDEX IF NOT EXISTS idx_shipping_settings_is_active ON public.shipping_settings(is_active);
+CREATE INDEX IF NOT EXISTS idx_email_templates_is_active ON public.email_templates(is_active);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_is_active ON public.email_campaigns(is_active);
+CREATE INDEX IF NOT EXISTS idx_customer_tags_name ON public.customer_tags(name);
+CREATE INDEX IF NOT EXISTS idx_email_logs_status ON public.email_logs(status);
+CREATE INDEX IF NOT EXISTS idx_email_logs_recipient_email ON public.email_logs(recipient_email);
+
+-- 3. Add composite indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_orders_status_created_at ON public.orders(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_customer_email_created_at ON public.orders(customer_email, created_at);
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_role ON public.user_roles(user_id, role);
+CREATE INDEX IF NOT EXISTS idx_email_logs_status_created_at ON public.email_logs(status, created_at);
+
+-- 4. Optimize RLS policies that might be causing performance issues
+-- Drop and recreate policies with better performance characteristics
+
+-- Optimize discount_codes policies
+DROP POLICY IF EXISTS "Admins can manage discount codes" ON public.discount_codes;
+CREATE POLICY "Admins can manage discount codes" ON public.discount_codes
+FOR ALL USING (
+  has_role((SELECT auth.uid()), 'admin')
+);
+
+-- Optimize profiles policies
+DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
+CREATE POLICY "Profiles are viewable by everyone" ON public.profiles
+FOR SELECT USING (true);
+
+-- Optimize user_roles policies for better performance
+DROP POLICY IF EXISTS "Admins and users can view user roles" ON public.user_roles;
+DROP POLICY IF EXISTS "Users can view their own roles" ON public.user_roles;
+DROP POLICY IF EXISTS "View user roles 2" ON public.user_roles;
+
+CREATE POLICY "Users can view their own roles" ON public.user_roles
+FOR SELECT USING (
+  user_id = (SELECT auth.uid())
+);
+
+DROP POLICY IF EXISTS "Admins can view all user roles" ON public.user_roles;
+CREATE POLICY "Admins can view all user roles" ON public.user_roles
+FOR SELECT USING (
+  has_role((SELECT auth.uid()), 'admin')
+);
+
+-- Drop all policies that depend on has_role(uuid, text)
+DROP POLICY IF EXISTS "Admins can read orders" ON public.orders;
+DROP POLICY IF EXISTS "Admins can insert orders" ON public.orders;
+DROP POLICY IF EXISTS "Admins can update orders" ON public.orders;
+DROP POLICY IF EXISTS "Admins can read order bumps" ON public.order_bumps;
+DROP POLICY IF EXISTS "Admins can insert order bumps" ON public.order_bumps;
+DROP POLICY IF EXISTS "Admins can update order bumps" ON public.order_bumps;
+DROP POLICY IF EXISTS "Admins can read upsell products" ON public.upsell_products;
+DROP POLICY IF EXISTS "Admins can insert upsell products" ON public.upsell_products;
+DROP POLICY IF EXISTS "Admins can update upsell products" ON public.upsell_products;
+DROP POLICY IF EXISTS "Admins can read upsell transactions" ON public.upsell_transactions;
+DROP POLICY IF EXISTS "Admins can insert upsell transactions" ON public.upsell_transactions;
+DROP POLICY IF EXISTS "Admins can update upsell transactions" ON public.upsell_transactions;
+DROP POLICY IF EXISTS "Admins can read settings" ON public.settings;
+DROP POLICY IF EXISTS "Admins can insert settings" ON public.settings;
+DROP POLICY IF EXISTS "Admins can update settings" ON public.settings;
+DROP POLICY IF EXISTS "Admins can manage achievements" ON public.achievements;
+DROP POLICY IF EXISTS "Admins can manage client data" ON public.client_onboarding;
+DROP POLICY IF EXISTS "Admins can manage shipping zones" ON public.shipping_zones;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can manage all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can manage discount codes" ON public.discount_codes;
+DROP POLICY IF EXISTS "Admins can view all user roles" ON public.user_roles;
+
+DROP FUNCTION IF EXISTS public.has_role(uuid, text);
+CREATE OR REPLACE FUNCTION public.has_role(user_id uuid, role_name text)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 
+    FROM public.user_roles
+    WHERE user_id = has_role.user_id
+      AND role = role_name::app_role
+  );
+$$;
+
+-- Recreate all dropped policies
+CREATE POLICY "Admins can read orders" ON public.orders FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can insert orders" ON public.orders FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can update orders" ON public.orders FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can read order bumps" ON public.order_bumps FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can insert order bumps" ON public.order_bumps FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can update order bumps" ON public.order_bumps FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can read upsell products" ON public.upsell_products FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can insert upsell products" ON public.upsell_products FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can update upsell products" ON public.upsell_products FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can read upsell transactions" ON public.upsell_transactions FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can insert upsell transactions" ON public.upsell_transactions FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can update upsell transactions" ON public.upsell_transactions FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can read settings" ON public.settings FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can insert settings" ON public.settings FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can update settings" ON public.settings FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can manage achievements" ON public.achievements FOR ALL USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can manage client data" ON public.client_onboarding FOR ALL USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can manage shipping zones" ON public.shipping_zones FOR ALL USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can manage all profiles" ON public.profiles FOR ALL USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can manage discount codes" ON public.discount_codes FOR ALL USING (public.has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can view all user roles" ON public.user_roles FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- 5. Add updated_at triggers for tables that don't have them
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Add triggers for tables missing updated_at automation
+DROP TRIGGER IF EXISTS update_discount_codes_updated_at ON public.discount_codes;
+CREATE TRIGGER update_discount_codes_updated_at
+    BEFORE UPDATE ON public.discount_codes
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_customer_tags_updated_at ON public.customer_tags;
+CREATE TRIGGER update_customer_tags_updated_at
+    BEFORE UPDATE ON public.customer_tags
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_email_campaigns_updated_at ON public.email_campaigns;
+CREATE TRIGGER update_email_campaigns_updated_at
+    BEFORE UPDATE ON public.email_campaigns
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_email_templates_updated_at ON public.email_templates;
+CREATE TRIGGER update_email_templates_updated_at
+    BEFORE UPDATE ON public.email_templates
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_invoices_updated_at ON public.invoices;
+CREATE TRIGGER update_invoices_updated_at
+    BEFORE UPDATE ON public.invoices
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+-- 6. Optimize function definitions for better performance
+-- 7. Add constraints for data integrity
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'customer_tag_assignments'
+      AND constraint_name = 'unique_customer_tag'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.customer_tag_assignments ADD CONSTRAINT unique_customer_tag UNIQUE (customer_email, tag_id)';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'user_roles'
+      AND constraint_name = 'unique_user_role'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.user_roles ADD CONSTRAINT unique_user_role UNIQUE (user_id, role)';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'customer_tag_assignments'
+      AND constraint_name = 'fk_customer_tag_assignments_tag_id'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.customer_tag_assignments ADD CONSTRAINT fk_customer_tag_assignments_tag_id FOREIGN KEY (tag_id) REFERENCES customer_tags(id)';
+  END IF;
+END $$;
+
+-- 8. Optimize table statistics
+ANALYZE public.orders;
+ANALYZE public.products;
+ANALYZE public.user_roles;
+ANALYZE public.profiles;
+ANALYZE public.email_logs;
+ANALYZE public.invoices;
+ANALYZE public.discount_codes;
+ANALYZE public.order_bumps;
+ANALYZE public.upsell_products;
+ANALYZE public.shipping_settings;
+ANALYZE public.email_templates;
+ANALYZE public.email_campaigns;
+ANALYZE public.customer_tags;
+ANALYZE public.customer_tag_assignments;
+
+-- 9. Add missing foreign key constraints for referential integrity
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'email_campaigns'
+      AND constraint_name = 'fk_email_campaigns_template_id'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.email_campaigns ADD CONSTRAINT fk_email_campaigns_template_id FOREIGN KEY (template_id) REFERENCES email_templates(id)';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'email_logs'
+      AND constraint_name = 'fk_email_logs_campaign_id'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.email_logs ADD CONSTRAINT fk_email_logs_campaign_id FOREIGN KEY (campaign_id) REFERENCES email_campaigns(id)';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'email_logs'
+      AND constraint_name = 'fk_email_logs_template_id'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.email_logs ADD CONSTRAINT fk_email_logs_template_id FOREIGN KEY (template_id) REFERENCES email_templates(id)';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'invoices'
+      AND constraint_name = 'fk_invoices_order_id'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.invoices ADD CONSTRAINT fk_invoices_order_id FOREIGN KEY (order_id) REFERENCES orders(id)';
+  END IF;
+END $$;
+
+-- 10. Create partial indexes for better performance on filtered queries
+CREATE INDEX IF NOT EXISTS idx_orders_active_status ON public.orders(status) 
+WHERE status IN ('pending', 'processing', 'completed');
+
+CREATE INDEX IF NOT EXISTS idx_products_active ON public.products(name, price) 
+WHERE is_active = true;
+
+CREATE INDEX IF NOT EXISTS idx_order_bumps_active ON public.order_bumps(title, price) 
+WHERE is_active = true;
+
+CREATE INDEX IF NOT EXISTS idx_upsell_products_active ON public.upsell_products(name, price) 
+WHERE is_active = true;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'discount_codes'
+      AND column_name = 'discount_value'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_discount_codes_active ON public.discount_codes(code, discount_value) WHERE is_active = true';
+  END IF;
+END $$;

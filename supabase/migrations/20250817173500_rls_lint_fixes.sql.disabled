@@ -1,0 +1,50 @@
+-- Fix RLS lints: wrap auth.* calls in SELECT and remove duplicate permissive policies
+
+-- Orders policies: use (select auth.uid()) to avoid per-row re-evaluation initplans
+alter policy "Users can view their orders"
+  on public.orders
+  using (
+    user_id = (select auth.uid())
+    or public.has_role((select auth.uid()), 'admin')
+  );
+
+alter policy "Admins can manage orders"
+  on public.orders
+  using (public.has_role((select auth.uid()), 'admin'));
+
+-- Remove legacy/duplicate permissive policies on orders if present
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'orders' AND policyname = 'orders_access'
+  ) THEN
+    EXECUTE 'DROP POLICY orders_access ON public.orders';
+  END IF;
+END $$;
+
+-- Email outbox: admin policy function call via SELECT
+alter policy "Admins manage outbox"
+  on public.email_outbox
+  using (public.has_role((select auth.uid()), 'admin'))
+  with check (public.has_role((select auth.uid()), 'admin'));
+
+-- user_roles: wrap auth.uid() and drop legacy duplicate if present
+alter policy "Users can view their own roles"
+  on public.user_roles
+  using (user_id = (select auth.uid()));
+
+alter policy "Admins can manage all user roles"
+  on public.user_roles
+  using (public.has_role((select auth.uid()), 'admin'))
+  with check (public.has_role((select auth.uid()), 'admin'));
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'user_roles' AND policyname = 'user_roles_admin_only'
+  ) THEN
+    EXECUTE 'DROP POLICY user_roles_admin_only ON public.user_roles';
+  END IF;
+END $$;

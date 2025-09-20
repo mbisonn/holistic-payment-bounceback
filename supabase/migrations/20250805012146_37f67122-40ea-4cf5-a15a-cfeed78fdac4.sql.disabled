@@ -1,0 +1,27 @@
+-- Create Facebook Conversion API settings table
+CREATE TABLE public.facebook_conversion_settings (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  pixel_id TEXT NOT NULL,
+  access_token TEXT NOT NULL,
+  test_event_code TEXT,
+  is_enabled BOOLEAN NOT NULL DEFAULT false,
+  domain_verification TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Enable Row Level Security
+ALTER TABLE public.facebook_conversion_settings ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for admin access only
+CREATE POLICY "Admin only access to Facebook conversion settings" 
+ON public.facebook_conversion_settings 
+FOR ALL 
+USING (current_user_is_admin())
+WITH CHECK (current_user_is_admin());
+
+-- Create trigger for updated_at
+CREATE TRIGGER update_facebook_conversion_settings_updated_at
+BEFORE UPDATE ON public.facebook_conversion_settings
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();

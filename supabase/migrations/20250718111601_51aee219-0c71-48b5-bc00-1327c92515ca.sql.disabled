@@ -1,0 +1,118 @@
+
+-- Fix RLS performance issues by optimizing policies and removing duplicates
+
+-- 1. Drop all duplicate and problematic policies first
+DROP POLICY IF EXISTS "orders_own_data" ON public.orders;
+DROP POLICY IF EXISTS "invoices_own_data" ON public.invoices;
+DROP POLICY IF EXISTS "product_reviews_own_data" ON public.product_reviews;
+DROP POLICY IF EXISTS "user_roles_own_data" ON public.user_roles;
+DROP POLICY IF EXISTS "manage_abandoned_checkouts" ON public.abandoned_checkouts;
+DROP POLICY IF EXISTS "manage_orders" ON public.orders;
+DROP POLICY IF EXISTS "manage_invoices" ON public.invoices;
+DROP POLICY IF EXISTS "manage_products" ON public.products;
+DROP POLICY IF EXISTS "manage_reviews" ON public.product_reviews;
+
+-- 2. Drop problematic product_categories policies
+DROP POLICY IF EXISTS "Allow authenticated users to create new product categories" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to update any product category" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to delete any product category" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to view all product categories" ON public.product_categories;
+
+-- 3. Drop user table policies that cause issues
+DROP POLICY IF EXISTS "User_Select_OwnProfile_20240101" ON public.users;
+DROP POLICY IF EXISTS "User_Insert_OwnProfile_20240101" ON public.users;
+DROP POLICY IF EXISTS "User_Update_OwnProfile_20240101" ON public.users;
+DROP POLICY IF EXISTS "User_Delete_OwnProfile_20240101" ON public.users;
+DROP POLICY IF EXISTS "Deny all operations by default" ON public.users;
+
+-- 4. Drop problematic user_roles and profiles policies
+DROP POLICY IF EXISTS "Admins can exclusively manage user roles" ON public.user_roles;
+DROP POLICY IF EXISTS "manage_profiles" ON public.profiles;
+
+-- 5. Create optimized policies with SELECT subqueries to prevent re-evaluation
+
+-- Analytics metrics - admin only
+CREATE POLICY "admin_analytics_access" ON public.analytics_metrics
+  FOR ALL USING (
+    (SELECT auth.uid()) IS NOT NULL AND 
+    current_user_is_admin()
+  );
+
+-- Abandoned checkouts - optimized single policy
+CREATE POLICY "abandoned_checkouts_access" ON public.abandoned_checkouts
+  FOR ALL USING (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  )
+  WITH CHECK (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  );
+
+-- Orders - optimized single policy  
+CREATE POLICY "orders_access" ON public.orders
+  FOR ALL USING (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  )
+  WITH CHECK (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  );
+
+-- Invoices - optimized single policy
+CREATE POLICY "invoices_access" ON public.invoices
+  FOR ALL USING (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  )
+  WITH CHECK (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  );
+
+-- Products - optimized policy
+CREATE POLICY "products_access" ON public.products
+  FOR ALL USING (
+    is_active = true OR current_user_is_admin()
+  )
+  WITH CHECK (current_user_is_admin());
+
+-- Product reviews - optimized single policy
+CREATE POLICY "reviews_access" ON public.product_reviews
+  FOR ALL USING (
+    is_approved = true OR 
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  )
+  WITH CHECK (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  );
+
+-- Product categories - simple public read, admin write
+CREATE POLICY "product_categories_read" ON public.product_categories
+  FOR SELECT USING (true);
+
+CREATE POLICY "product_categories_write" ON public.product_categories
+  FOR ALL USING (current_user_is_admin())
+  WITH CHECK (current_user_is_admin());
+
+-- User roles - admin only access
+CREATE POLICY "user_roles_admin_only" ON public.user_roles
+  FOR ALL USING (current_user_is_admin())
+  WITH CHECK (current_user_is_admin());
+
+-- Profiles - users can manage their own, admins can manage all
+CREATE POLICY "profiles_access" ON public.profiles
+  FOR ALL USING (
+    id = (SELECT auth.uid()) OR current_user_is_admin()
+  )
+  WITH CHECK (
+    id = (SELECT auth.uid()) OR current_user_is_admin()
+  );
+
+-- Users table - users can manage their own data only
+CREATE POLICY "users_own_data" ON public.users
+  FOR ALL USING (user_id = (SELECT auth.uid()))
+  WITH CHECK (user_id = (SELECT auth.uid()));

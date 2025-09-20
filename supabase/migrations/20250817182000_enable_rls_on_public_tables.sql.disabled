@@ -1,0 +1,12 @@
+-- Enable RLS on public tables that have policies defined
+
+-- Safe idempotent enables
+alter table if exists public.discount_codes enable row level security;
+alter table if exists public.email_settings enable row level security;
+alter table if exists public.order_bumps enable row level security;
+alter table if exists public.upsell_products enable row level security;
+alter table if exists public.user_roles enable row level security;
+alter table if exists public.email_templates enable row level security;
+alter table if exists public.email_campaigns enable row level security;
+alter table if exists public.customer_tags enable row level security;
+alter table if exists public.automation_rules enable row level security;

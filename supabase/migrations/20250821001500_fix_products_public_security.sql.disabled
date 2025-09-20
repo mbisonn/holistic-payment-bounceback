@@ -1,0 +1,26 @@
+-- Fix SECURITY DEFINER on public.products_public by ensuring SECURITY INVOKER
+-- Idempotent and safe to re-run
+
+-- Recreate the view explicitly with SECURITY INVOKER so it respects caller's RLS
+create or replace view public.products_public
+with (security_invoker=true)
+as
+select
+  id,
+  name,
+  description,
+  price,
+  image_url,
+  is_active
+from public.products
+where is_active = true;
+
+-- Ensure base table remains protected by RLS (should already be enabled elsewhere)
+alter table if exists public.products enable row level security;
+
+-- Revoke broad grants and grant only SELECT to anon (public site access)
+revoke all on public.products_public from public;
+grant select on public.products_public to anon;
+
+-- Helpful index for filter on backing table
+create index if not exists idx_products_is_active on public.products(is_active);

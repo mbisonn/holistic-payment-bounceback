@@ -1,0 +1,78 @@
+
+-- Final cleanup of all remaining RLS performance issues
+
+-- 1. Drop all remaining old policies that are causing multiple permissive policy issues
+DROP POLICY IF EXISTS "view_own_abandoned_checkouts" ON public.abandoned_checkouts;
+DROP POLICY IF EXISTS "view_own_orders" ON public.orders;
+DROP POLICY IF EXISTS "view_own_invoices" ON public.invoices;
+DROP POLICY IF EXISTS "create_own_reviews" ON public.product_reviews;
+DROP POLICY IF EXISTS "Admins can manage abandoned checkouts" ON public.abandoned_checkouts;
+DROP POLICY IF EXISTS "Admins can manage analytics metrics" ON public.analytics_metrics;
+DROP POLICY IF EXISTS "Admins can manage invoices" ON public.invoices;
+
+-- 2. Fix remaining auth function calls that aren't using SELECT subqueries
+-- Update the admin_analytics_access policy to ensure it doesn't conflict
+DROP POLICY IF EXISTS "admin_analytics_access" ON public.analytics_metrics;
+CREATE POLICY "admin_analytics_access" ON public.analytics_metrics
+  FOR ALL USING (current_user_is_admin());
+
+-- 3. Ensure all policies use optimized auth function calls
+-- Update abandoned_checkouts_access to be the only policy
+DROP POLICY IF EXISTS "abandoned_checkouts_access" ON public.abandoned_checkouts;
+CREATE POLICY "abandoned_checkouts_access" ON public.abandoned_checkouts
+  FOR ALL USING (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  )
+  WITH CHECK (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  );
+
+-- 4. Update orders_access to be the only policy
+DROP POLICY IF EXISTS "orders_access" ON public.orders;
+CREATE POLICY "orders_access" ON public.orders
+  FOR ALL USING (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  )
+  WITH CHECK (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  );
+
+-- 5. Update invoices_access to be the only policy
+DROP POLICY IF EXISTS "invoices_access" ON public.invoices;
+CREATE POLICY "invoices_access" ON public.invoices
+  FOR ALL USING (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  )
+  WITH CHECK (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  );
+
+-- 6. Update reviews_access to be the only policy and fix auth calls
+DROP POLICY IF EXISTS "reviews_access" ON public.product_reviews;
+CREATE POLICY "reviews_access" ON public.product_reviews
+  FOR ALL USING (
+    is_approved = true OR 
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  )
+  WITH CHECK (
+    current_user_is_admin() OR 
+    customer_email = (SELECT auth.email())
+  );
+
+-- 7. Add missing indexes for foreign keys to improve performance
+CREATE INDEX IF NOT EXISTS idx_customer_tag_assignments_tag_id ON public.customer_tag_assignments(tag_id);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_template_id ON public.email_campaigns(template_id);
+CREATE INDEX IF NOT EXISTS idx_email_logs_campaign_id ON public.email_logs(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_email_logs_template_id ON public.email_logs(template_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_order_id ON public.invoices(order_id);
+
+-- 8. Remove the unused index and replace with a more useful one
+DROP INDEX IF EXISTS public.idx_product_reviews_product_id;
+CREATE INDEX IF NOT EXISTS idx_product_reviews_product_approved ON public.product_reviews(product_id, is_approved) WHERE is_approved = true;

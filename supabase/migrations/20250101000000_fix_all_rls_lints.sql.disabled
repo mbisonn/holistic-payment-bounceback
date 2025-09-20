@@ -1,0 +1,502 @@
+-- Fix all RLS linting issues
+-- This migration addresses:
+-- 1. Auth RLS Initialization Plan - Fix auth.<function>() calls
+-- 2. Multiple Permissive Policies - Consolidate overlapping policies
+-- 3. Duplicate Index - Remove duplicate index on shipping_settings
+
+-- First, let's fix the duplicate index issue
+DROP INDEX IF EXISTS idx_shipping_settings_is_active_threshold;
+
+-- Now let's fix all the RLS policies systematically
+-- We'll drop all existing policies and recreate them properly
+
+-- 1. Fix orders table policies (only if table exists)
+DO $$
+BEGIN
+  -- Check if orders table exists before trying to modify policies
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'orders') THEN
+    -- Drop all existing policies on orders
+    EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can view orders" ON public.orders';
+    EXECUTE 'DROP POLICY IF EXISTS "Users can view their own orders" ON public.orders';
+    EXECUTE 'DROP POLICY IF EXISTS "Admins can manage all orders" ON public.orders';
+    EXECUTE 'DROP POLICY IF EXISTS "Admins can manage orders" ON public.orders';
+    EXECUTE 'DROP POLICY IF EXISTS orders_admin_select ON public.orders';
+    EXECUTE 'DROP POLICY IF EXISTS orders_admin_insert ON public.orders';
+    EXECUTE 'DROP POLICY IF EXISTS orders_admin_update ON public.orders';
+    EXECUTE 'DROP POLICY IF EXISTS orders_admin_delete ON public.orders';
+  
+    -- Create consolidated policies
+    -- SELECT: Users can view their own orders, admins can view all
+    EXECUTE 'CREATE POLICY orders_select_consolidated ON public.orders FOR SELECT TO authenticated USING (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+    )';
+    
+    -- INSERT: Users can create orders, admins can create any
+    EXECUTE 'CREATE POLICY orders_insert_consolidated ON public.orders FOR INSERT TO authenticated WITH CHECK (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+    )';
+    
+    -- UPDATE: Users can update their own orders, admins can update any
+    EXECUTE 'CREATE POLICY orders_update_consolidated ON public.orders FOR UPDATE TO authenticated USING (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+    ) WITH CHECK (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+    )';
+    
+    -- DELETE: Users can delete their own orders, admins can delete any
+    EXECUTE 'CREATE POLICY orders_delete_consolidated ON public.orders FOR DELETE TO authenticated USING (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+    )';
+    -- Public/anonymous access for orders (if needed)
+    EXECUTE 'CREATE POLICY orders_public_select ON public.orders FOR SELECT TO anon, authenticator, dashboard_user USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+    )';
+  END IF;
+END $$;
+
+-- 2. Fix user_roles table policies (only if table exists)
+DO $$
+BEGIN
+  -- Check if user_roles table exists before trying to modify policies
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_roles') THEN
+    -- Drop all existing policies on user_roles
+    EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can view user roles" ON public.user_roles';
+    EXECUTE 'DROP POLICY IF EXISTS "Users can view their own roles" ON public.user_roles';
+    EXECUTE 'DROP POLICY IF EXISTS "Admins can manage all user roles" ON public.user_roles';
+    EXECUTE 'DROP POLICY IF EXISTS user_roles_admin_select ON public.user_roles';
+    EXECUTE 'DROP POLICY IF EXISTS user_roles_admin_insert ON public.user_roles';
+    EXECUTE 'DROP POLICY IF EXISTS user_roles_admin_update ON public.user_roles';
+    EXECUTE 'DROP POLICY IF EXISTS user_roles_admin_delete ON public.user_roles';
+    EXECUTE 'DROP POLICY IF EXISTS user_roles_public_select ON public.user_roles';
+    
+    -- Create consolidated policies
+    -- SELECT: Users can view their own roles, admins can view all
+    EXECUTE 'CREATE POLICY user_roles_select_consolidated ON public.user_roles FOR SELECT TO authenticated USING (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+    )';
+    
+    -- Public/anonymous access for user_roles
+    EXECUTE 'CREATE POLICY user_roles_public_select ON public.user_roles FOR SELECT TO anon, authenticator, dashboard_user USING (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+    )';
+    
+    -- Admin-only mutations
+    EXECUTE 'CREATE POLICY user_roles_admin_mutations ON public.user_roles FOR ALL TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+    ) WITH CHECK (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+    )';
+  END IF;
+END $$;
+
+-- 3. Fix abandoned_checkouts table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Admins can manage abandoned checkouts" ON public.abandoned_checkouts';
+  EXECUTE 'DROP POLICY IF EXISTS abandoned_checkouts_admin_select ON public.abandoned_checkouts';
+  EXECUTE 'DROP POLICY IF EXISTS abandoned_checkouts_admin_insert ON public.abandoned_checkouts';
+  EXECUTE 'DROP POLICY IF EXISTS abandoned_checkouts_admin_update ON public.abandoned_checkouts';
+  EXECUTE 'DROP POLICY IF EXISTS abandoned_checkouts_admin_delete ON public.abandoned_checkouts';
+  
+  -- Create single consolidated policy for all operations
+  EXECUTE 'CREATE POLICY abandoned_checkouts_admin_only ON public.abandoned_checkouts FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 4. Fix customer_analytics table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Admins can view customer analytics" ON public.customer_analytics';
+  EXECUTE 'DROP POLICY IF EXISTS customer_analytics_admin_select ON public.customer_analytics';
+  EXECUTE 'DROP POLICY IF EXISTS customer_analytics_admin_insert ON public.customer_analytics';
+  EXECUTE 'DROP POLICY IF EXISTS customer_analytics_admin_update ON public.customer_analytics';
+  EXECUTE 'DROP POLICY IF EXISTS customer_analytics_admin_delete ON public.customer_analytics';
+  
+  -- Create single consolidated policy
+  EXECUTE 'CREATE POLICY customer_analytics_admin_only ON public.customer_analytics FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 5. Fix customer_tag_assignments table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Admins can manage customer tag assignments" ON public.customer_tag_assignments';
+  EXECUTE 'DROP POLICY IF EXISTS customer_tag_assignments_admin_select ON public.customer_tag_assignments';
+  EXECUTE 'DROP POLICY IF EXISTS customer_tag_assignments_admin_insert ON public.customer_tag_assignments';
+  EXECUTE 'DROP POLICY IF EXISTS customer_tag_assignments_admin_update ON public.customer_tag_assignments';
+  EXECUTE 'DROP POLICY IF EXISTS customer_tag_assignments_admin_delete ON public.customer_tag_assignments';
+  
+  -- Create single consolidated policy
+  EXECUTE 'CREATE POLICY customer_tag_assignments_admin_only ON public.customer_tag_assignments FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 6. Fix discount_codes table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Users can validate discount codes" ON public.discount_codes';
+  EXECUTE 'DROP POLICY IF EXISTS discount_codes_admin_select ON public.discount_codes';
+  
+  -- Create consolidated policies
+  -- Public can view active discount codes
+  EXECUTE 'CREATE POLICY discount_codes_public_select ON public.discount_codes FOR SELECT TO anon, authenticated USING (is_active = true)';
+  
+  -- Admins can manage all discount codes
+  EXECUTE 'CREATE POLICY discount_codes_admin_manage ON public.discount_codes FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 7. Fix email_campaigns table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Admins can manage email campaigns" ON public.email_campaigns';
+  EXECUTE 'DROP POLICY IF EXISTS email_campaigns_admin_select ON public.email_campaigns';
+  EXECUTE 'DROP POLICY IF EXISTS email_campaigns_admin_insert ON public.email_campaigns';
+  EXECUTE 'DROP POLICY IF EXISTS email_campaigns_admin_update ON public.email_campaigns';
+  EXECUTE 'DROP POLICY IF EXISTS email_campaigns_admin_delete ON public.email_campaigns';
+  
+  -- Create single consolidated policy
+  EXECUTE 'CREATE POLICY email_campaigns_admin_only ON public.email_campaigns FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 8. Fix email_settings table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Admins can manage email settings" ON public.email_settings';
+  EXECUTE 'DROP POLICY IF EXISTS email_settings_admin_select ON public.email_settings';
+  EXECUTE 'DROP POLICY IF EXISTS email_settings_admin_insert ON public.email_settings';
+  EXECUTE 'DROP POLICY IF EXISTS email_settings_admin_update ON public.email_settings';
+  EXECUTE 'DROP POLICY IF EXISTS email_settings_admin_delete ON public.email_settings';
+  
+  -- Create single consolidated policy
+  EXECUTE 'CREATE POLICY email_settings_admin_only ON public.email_settings FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 9. Fix email_templates table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Admins can manage email templates" ON public.email_templates';
+  EXECUTE 'DROP POLICY IF EXISTS email_templates_admin_select ON public.email_templates';
+  EXECUTE 'DROP POLICY IF EXISTS email_templates_admin_insert ON public.email_templates';
+  EXECUTE 'DROP POLICY IF EXISTS email_templates_admin_update ON public.email_templates';
+  EXECUTE 'DROP POLICY IF EXISTS email_templates_admin_delete ON public.email_templates';
+  
+  -- Create single consolidated policy
+  EXECUTE 'CREATE POLICY email_templates_admin_only ON public.email_templates FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 10. Fix invoices table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Admins can manage invoices" ON public.invoices';
+  EXECUTE 'DROP POLICY IF EXISTS invoices_admin_select ON public.invoices';
+  EXECUTE 'DROP POLICY IF EXISTS invoices_admin_insert ON public.invoices';
+  EXECUTE 'DROP POLICY IF EXISTS invoices_admin_update ON public.invoices';
+  EXECUTE 'DROP POLICY IF EXISTS invoices_admin_delete ON public.invoices';
+  
+  -- Create single consolidated policy
+  EXECUTE 'CREATE POLICY invoices_admin_only ON public.invoices FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 11. Fix meal_plan_sync table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Admins can manage meal plan sync" ON public.meal_plan_sync';
+  EXECUTE 'DROP POLICY IF EXISTS meal_plan_sync_admin_select ON public.meal_plan_sync';
+  EXECUTE 'DROP POLICY IF EXISTS meal_plan_sync_admin_insert ON public.meal_plan_sync';
+  EXECUTE 'DROP POLICY IF EXISTS meal_plan_sync_admin_update ON public.meal_plan_sync';
+  EXECUTE 'DROP POLICY IF EXISTS meal_plan_sync_admin_delete ON public.meal_plan_sync';
+  
+  -- Create single consolidated policy
+  EXECUTE 'CREATE POLICY meal_plan_sync_admin_only ON public.meal_plan_sync FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 12. Fix order_bumps table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Anyone can view active order bumps" ON public.order_bumps';
+  EXECUTE 'DROP POLICY IF EXISTS order_bumps_admin_select ON public.order_bumps';
+  
+  -- Create consolidated policies
+  -- Public can view active order bumps
+  EXECUTE 'CREATE POLICY order_bumps_public_select ON public.order_bumps FOR SELECT TO anon, authenticated USING (is_active = true)';
+  
+  -- Admins can manage all order bumps
+  EXECUTE 'CREATE POLICY order_bumps_admin_manage ON public.order_bumps FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 13. Fix product_categories table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Anyone can view product categories" ON public.product_categories';
+  EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can view product categories" ON public.product_categories';
+  EXECUTE 'DROP POLICY IF EXISTS product_categories_admin_select ON public.product_categories';
+  
+  -- Create consolidated policies
+  -- Public can view product categories
+  EXECUTE 'CREATE POLICY product_categories_public_select ON public.product_categories FOR SELECT TO anon, authenticated USING (true)';
+  
+  -- Admins can manage product categories
+  EXECUTE 'CREATE POLICY product_categories_admin_manage ON public.product_categories FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 14. Fix product_reviews table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Anyone can view approved product reviews" ON public.product_reviews';
+  EXECUTE 'DROP POLICY IF EXISTS product_reviews_admin_select ON public.product_reviews';
+  
+  -- Create consolidated policies
+  -- Public can view approved reviews
+  EXECUTE 'CREATE POLICY product_reviews_public_select ON public.product_reviews FOR SELECT TO anon, authenticated USING (is_approved = true)';
+  
+  -- Admins can manage all reviews
+  EXECUTE 'CREATE POLICY product_reviews_admin_manage ON public.product_reviews FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 15. Fix product_variants table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Admins can manage product variants" ON public.product_variants';
+  EXECUTE 'DROP POLICY IF EXISTS "Anyone can view product variants" ON public.product_variants';
+  
+  -- Create consolidated policies
+  -- Public can view product variants
+  EXECUTE 'CREATE POLICY product_variants_public_select ON public.product_variants FOR SELECT TO anon, authenticated, authenticator, dashboard_user USING (true)';
+  
+  -- Admins can manage product variants
+  EXECUTE 'CREATE POLICY product_variants_admin_manage ON public.product_variants FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 16. Fix products table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Admins can manage products" ON public.products';
+  EXECUTE 'DROP POLICY IF EXISTS "Anyone can view products" ON public.products';
+  EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can view products" ON public.products';
+  EXECUTE 'DROP POLICY IF EXISTS products_public_select ON public.products';
+  EXECUTE 'DROP POLICY IF EXISTS products_verified_select ON public.products';
+  EXECUTE 'DROP POLICY IF EXISTS products_admin_delete ON public.products';
+  EXECUTE 'DROP POLICY IF EXISTS products_admin_insert ON public.products';
+  EXECUTE 'DROP POLICY IF EXISTS products_admin_update ON public.products';
+  EXECUTE 'DROP POLICY IF EXISTS products_admin_select ON public.products';
+  
+  -- Create consolidated policies
+  -- Public can view products
+  EXECUTE 'CREATE POLICY products_public_select ON public.products FOR SELECT TO anon, authenticated, authenticator, dashboard_user USING (true)';
+  
+  -- Admins can manage products
+  EXECUTE 'CREATE POLICY products_admin_manage ON public.products FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 17. Fix profiles table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Users can view all profiles" ON public.profiles';
+  EXECUTE 'DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles';
+  EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can view profiles" ON public.profiles';
+  EXECUTE 'DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles';
+  EXECUTE 'DROP POLICY IF EXISTS profiles_admin_select ON public.profiles';
+  EXECUTE 'DROP POLICY IF EXISTS profiles_admin_update ON public.profiles';
+  
+  -- Create consolidated policies
+  -- Public can view profiles
+  EXECUTE 'CREATE POLICY profiles_public_select ON public.profiles FOR SELECT TO anon, authenticated, authenticator, dashboard_user USING (true)';
+  
+  -- Users can update their own profile, admins can update any
+  EXECUTE 'CREATE POLICY profiles_update_consolidated ON public.profiles FOR UPDATE TO authenticated USING (
+    id = (SELECT auth.uid()) OR 
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    id = (SELECT auth.uid()) OR 
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 18. Fix role_types table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can view role types" ON public.role_types';
+  EXECUTE 'DROP POLICY IF EXISTS role_types_admin_select ON public.role_types';
+  
+  -- Create consolidated policies
+  -- Authenticated users can view role types
+  EXECUTE 'CREATE POLICY role_types_authenticated_select ON public.role_types FOR SELECT TO authenticated USING (true)';
+  
+  -- Admins can manage role types
+  EXECUTE 'CREATE POLICY role_types_admin_manage ON public.role_types FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 19. Fix shipping_settings table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Anyone can view active shipping settings" ON public.shipping_settings';
+  EXECUTE 'DROP POLICY IF EXISTS "Authenticated users can view shipping settings" ON public.shipping_settings';
+  EXECUTE 'DROP POLICY IF EXISTS shipping_settings_admin_select ON public.shipping_settings';
+  
+  -- Create consolidated policies
+  -- Public can view active shipping settings
+  EXECUTE 'CREATE POLICY shipping_settings_public_select ON public.shipping_settings FOR SELECT TO anon, authenticated USING (is_active = true)';
+  
+  -- Admins can manage shipping settings
+  EXECUTE 'CREATE POLICY shipping_settings_admin_manage ON public.shipping_settings FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 20. Fix upsell_products table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS "Anyone can view active upsell products" ON public.upsell_products';
+  EXECUTE 'DROP POLICY IF EXISTS upsell_products_admin_select ON public.upsell_products';
+  
+  -- Create consolidated policies
+  -- Public can view active upsell products
+  EXECUTE 'CREATE POLICY upsell_products_public_select ON public.upsell_products FOR SELECT TO anon, authenticated USING (is_active = true)';
+  
+  -- Admins can manage upsell products
+  EXECUTE 'CREATE POLICY upsell_products_admin_manage ON public.upsell_products FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 21. Fix users table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS users_admin_select ON public.users';
+  EXECUTE 'DROP POLICY IF EXISTS users_public_select ON public.users';
+  
+  -- Create consolidated policies
+  -- Public can view users
+  EXECUTE 'CREATE POLICY users_public_select ON public.users FOR SELECT TO anon, authenticated USING (true)';
+  
+  -- Admins can manage users
+  EXECUTE 'CREATE POLICY users_admin_manage ON public.users FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- 22. Fix workflow_steps table policies
+DO $$
+BEGIN
+  -- Drop existing policies
+  EXECUTE 'DROP POLICY IF EXISTS workflow_steps_admin_select ON public.workflow_steps';
+  EXECUTE 'DROP POLICY IF EXISTS workflow_steps_public_select ON public.workflow_steps';
+  
+  -- Create consolidated policies
+  -- Public can view workflow steps
+  EXECUTE 'CREATE POLICY workflow_steps_public_select ON public.workflow_steps FOR SELECT TO anon, authenticated USING (true)';
+  
+  -- Admins can manage workflow steps
+  EXECUTE 'CREATE POLICY workflow_steps_admin_manage ON public.workflow_steps FOR ALL TO authenticated USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = ''admin''::app_role)
+  )';
+END $$;
+
+-- Create a helper function to check if user is admin (optimized version)
+CREATE OR REPLACE FUNCTION public.current_user_is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_roles.user_id = (SELECT auth.uid())
+    AND user_roles.role = 'admin'::app_role
+  );
+$$;
+
+-- Grant necessary permissions
+GRANT EXECUTE ON FUNCTION public.current_user_is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.current_user_is_admin() TO anon;

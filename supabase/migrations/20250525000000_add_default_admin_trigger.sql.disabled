@@ -1,0 +1,61 @@
+
+-- Ensure the has_role function works properly
+CREATE OR REPLACE FUNCTION public.has_role(p_user_id uuid, p_role text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = p_user_id AND role = p_role
+  );
+END;
+$$;
+
+-- Add a function to automatically assign admin role to the default admin user
+CREATE OR REPLACE FUNCTION public.assign_admin_role_to_default()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+  -- Check if the user is the default admin
+  IF NEW.email = 'ebuchenna1@gmail.com' THEN
+    -- Insert admin role if not exists
+    INSERT INTO public.user_roles (user_id, role)
+    VALUES (NEW.id, 'admin')
+    ON CONFLICT (user_id, role) DO NOTHING;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$;
+
+-- Create a trigger to automatically assign admin role when the default admin signs up
+DROP TRIGGER IF EXISTS assign_admin_role_to_default_trigger ON auth.users;
+CREATE TRIGGER assign_admin_role_to_default_trigger
+AFTER INSERT ON auth.users
+FOR EACH ROW
+EXECUTE FUNCTION public.assign_admin_role_to_default();
+
+-- Ensure the default admin account has an admin role now
+DO $$
+DECLARE
+  admin_user_id uuid;
+BEGIN
+  -- Try to find the default admin user
+  SELECT id INTO admin_user_id 
+  FROM auth.users 
+  WHERE email = 'ebuchenna1@gmail.com';
+  
+  -- If the user exists, ensure they have the admin role
+  IF admin_user_id IS NOT NULL THEN
+    INSERT INTO public.user_roles (user_id, role)
+    VALUES (admin_user_id, 'admin')
+    ON CONFLICT (user_id, role) DO NOTHING;
+  END IF;
+END;
+$$;

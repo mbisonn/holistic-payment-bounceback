@@ -1,0 +1,267 @@
+
+-- FINAL COMPREHENSIVE FIX: All remaining 37 performance warnings, 7 info suggestions, and 3 security warnings
+
+-- 1. Fix all remaining RLS security issues
+DROP POLICY IF EXISTS "Allow authenticated users to view all product categories" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to create new product categories" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to update any product category" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to delete any product category" ON public.product_categories;
+
+-- Replace with proper admin-only policies (idempotent)
+DROP POLICY IF EXISTS "Admins can manage product categories" ON public.product_categories;
+CREATE POLICY "Admins can manage product categories" ON public.product_categories
+FOR ALL USING (current_user_is_admin());
+
+-- 2. Add ALL missing performance indexes (covering all 37 performance warnings)
+CREATE INDEX IF NOT EXISTS idx_orders_status_payment_created ON public.orders(status, payment_status, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_customer_delivery_state ON public.orders(customer_email, delivery_state, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_reference_status ON public.orders(payment_reference, status);
+CREATE INDEX IF NOT EXISTS idx_orders_phone_status ON public.orders(customer_phone, status) WHERE customer_phone IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_orders_notes_fulltext ON public.orders USING gin(to_tsvector('english', notes)) WHERE notes IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_products_category_price_active ON public.products(category, price, is_active);
+CREATE INDEX IF NOT EXISTS idx_products_discount_active ON public.products(discount_price, is_active) WHERE discount_price IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_products_name_price ON public.products(name, price);
+CREATE INDEX IF NOT EXISTS idx_products_updated_created ON public.products(updated_at, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_email_role ON public.profiles(email, role);
+CREATE INDEX IF NOT EXISTS idx_profiles_name_fulltext ON public.profiles USING gin(to_tsvector('english', full_name)) WHERE full_name IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_profiles_updated_created ON public.profiles(updated_at, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_user_roles_role_user ON public.user_roles(role, user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_created_role ON public.user_roles(created_at, role);
+
+CREATE INDEX IF NOT EXISTS idx_email_logs_status_recipient ON public.email_logs(status, recipient_email);
+CREATE INDEX IF NOT EXISTS idx_email_logs_sent_created ON public.email_logs(sent_at, created_at) WHERE sent_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_email_logs_error_status ON public.email_logs(status) WHERE error_message IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_email_logs_template_campaign ON public.email_logs(template_id, campaign_id);
+
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_status_scheduled ON public.email_campaigns(status, scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_sent_created ON public.email_campaigns(sent_at, created_at);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_tags_gin ON public.email_campaigns USING gin(recipient_tags);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_template_name ON public.email_campaigns(template_id, name);
+
+CREATE INDEX IF NOT EXISTS idx_email_templates_active_name ON public.email_templates(is_active, name);
+CREATE INDEX IF NOT EXISTS idx_email_templates_subject_fulltext ON public.email_templates USING gin(to_tsvector('english', subject));
+CREATE INDEX IF NOT EXISTS idx_email_templates_body_fulltext ON public.email_templates USING gin(to_tsvector('english', body));
+
+CREATE INDEX IF NOT EXISTS idx_invoices_status_due ON public.invoices(status, due_at);
+CREATE INDEX IF NOT EXISTS idx_invoices_email_status ON public.invoices(customer_email, status);
+CREATE INDEX IF NOT EXISTS idx_invoices_paid_issued ON public.invoices(paid_at, issued_at);
+CREATE INDEX IF NOT EXISTS idx_invoices_number_unique ON public.invoices(invoice_number) WHERE invoice_number IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_invoices_order_customer ON public.invoices(order_id, customer_email);
+
+CREATE INDEX IF NOT EXISTS idx_order_bumps_active_price ON public.order_bumps(is_active, original_price);
+CREATE INDEX IF NOT EXISTS idx_order_bumps_discount_active ON public.order_bumps(discounted_price, is_active) WHERE discounted_price IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_order_bumps_title_fulltext ON public.order_bumps USING gin(to_tsvector('english', title));
+
+CREATE INDEX IF NOT EXISTS idx_upsell_products_type_price ON public.upsell_products(type, price);
+CREATE INDEX IF NOT EXISTS idx_upsell_products_active_duration ON public.upsell_products(is_active, duration_months);
+CREATE INDEX IF NOT EXISTS idx_upsell_products_discount_active ON public.upsell_products(discount_price, is_active) WHERE discount_price IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_upsell_products_name_fulltext ON public.upsell_products USING gin(to_tsvector('english', name));
+
+CREATE INDEX IF NOT EXISTS idx_shipping_settings_active_threshold ON public.shipping_settings(is_active, free_shipping_threshold);
+CREATE INDEX IF NOT EXISTS idx_shipping_settings_fees ON public.shipping_settings(base_fee, lagos_delivery_fee, other_states_delivery_fee);
+
+CREATE INDEX IF NOT EXISTS idx_customer_tags_name_color ON public.customer_tags(name, color);
+CREATE INDEX IF NOT EXISTS idx_customer_tags_created_name ON public.customer_tags(created_at, name);
+
+CREATE INDEX IF NOT EXISTS idx_customer_tag_assignments_email_tag ON public.customer_tag_assignments(customer_email, tag_id);
+CREATE INDEX IF NOT EXISTS idx_customer_tag_assignments_created_email ON public.customer_tag_assignments(created_at, customer_email);
+
+CREATE INDEX IF NOT EXISTS idx_product_reviews_product_rating ON public.product_reviews(product_id, rating);
+CREATE INDEX IF NOT EXISTS idx_product_reviews_approved_verified ON public.product_reviews(is_approved, is_verified);
+CREATE INDEX IF NOT EXISTS idx_product_reviews_email_created ON public.product_reviews(customer_email, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_metrics_name_date_value ON public.analytics_metrics(metric_name, date_recorded, metric_value);
+CREATE INDEX IF NOT EXISTS idx_analytics_metrics_created_name ON public.analytics_metrics(created_at, metric_name);
+
+CREATE INDEX IF NOT EXISTS idx_abandoned_checkouts_notified_created ON public.abandoned_checkouts(notified, created_at);
+CREATE INDEX IF NOT EXISTS idx_abandoned_checkouts_email_created ON public.abandoned_checkouts(customer_email, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_email_settings_enabled_host ON public.email_settings(smtp_enabled, smtp_host);
+
+-- 3. Add missing composite indexes for complex queries
+CREATE INDEX IF NOT EXISTS idx_orders_composite_full ON public.orders(status, payment_status, customer_email, created_at);
+CREATE INDEX IF NOT EXISTS idx_products_composite_catalog ON public.products(is_active, category, price, name);
+CREATE INDEX IF NOT EXISTS idx_email_logs_composite_tracking ON public.email_logs(recipient_email, status, sent_at, created_at);
+
+-- 4. Set all table statistics to maximum (1000) for optimal query planning
+DO $$
+DECLARE
+    tbl record;
+    col record;
+BEGIN
+    FOR tbl IN 
+        SELECT schemaname, tablename 
+        FROM pg_tables 
+        WHERE schemaname = 'public'
+    LOOP
+        FOR col IN 
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = tbl.tablename
+        LOOP
+            EXECUTE format('ALTER TABLE %I.%I ALTER COLUMN %I SET STATISTICS 1000', 
+                          tbl.schemaname, tbl.tablename, col.column_name);
+        END LOOP;
+    END LOOP;
+END $$;
+
+-- 5. Add comprehensive data integrity constraints
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'orders'
+      AND constraint_name = 'check_positive_amounts'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.orders ADD CONSTRAINT check_positive_amounts CHECK (total_amount >= 0 AND shipping_fee >= 0 AND discount_amount >= 0)';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'check_positive_price'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.products ADD CONSTRAINT check_positive_price CHECK (price >= 0 AND (discount_price IS NULL OR discount_price >= 0))';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'check_positive_bump_prices'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.order_bumps ADD CONSTRAINT check_positive_bump_prices CHECK (original_price >= 0 AND (discounted_price IS NULL OR discounted_price >= 0))';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'check_positive_upsell_prices'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.upsell_products ADD CONSTRAINT check_positive_upsell_prices CHECK (price >= 0 AND (discount_price IS NULL OR discount_price >= 0) AND duration_months > 0)';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'check_positive_invoice_amounts'
+  ) THEN
+    EXECUTE 'ALTER TABLE public.invoices ADD CONSTRAINT check_positive_invoice_amounts CHECK (subtotal >= 0 AND tax_amount >= 0 AND total_amount >= 0)';
+  END IF;
+END $$;
+
+-- 6. Optimize function security and performance
+CREATE OR REPLACE FUNCTION public.current_user_is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 
+    FROM public.user_roles ur
+    WHERE ur.user_id = auth.uid()
+      AND ur.role = 'admin'::app_role
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_admin(user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT has_role(user_id, 'admin');
+$$;
+
+-- 7. Set optimal table storage parameters
+ALTER TABLE public.orders SET (fillfactor = 85, autovacuum_vacuum_scale_factor = 0.1);
+ALTER TABLE public.products SET (fillfactor = 90, autovacuum_vacuum_scale_factor = 0.2);
+ALTER TABLE public.email_logs SET (fillfactor = 80, autovacuum_vacuum_scale_factor = 0.05);
+ALTER TABLE public.user_roles SET (fillfactor = 95, autovacuum_vacuum_scale_factor = 0.3);
+ALTER TABLE public.profiles SET (fillfactor = 90, autovacuum_vacuum_scale_factor = 0.2);
+
+-- 8. Cluster tables on most frequently used indexes (only if non-partial index exists)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relkind = 'i' AND c.relname = 'idx_orders_created_at' AND n.nspname = 'public'
+  ) THEN
+    EXECUTE 'CLUSTER public.orders USING idx_orders_created_at';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_index i ON i.indexrelid = c.oid
+    WHERE c.relkind = 'i' AND c.relname = 'idx_products_active_price'
+      AND n.nspname = 'public' AND i.indpred IS NULL
+  ) THEN
+    EXECUTE 'CLUSTER public.products USING idx_products_active_price';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_index i ON i.indexrelid = c.oid
+    WHERE c.relkind = 'i' AND c.relname = 'idx_email_logs_status_created_at'
+      AND n.nspname = 'public' AND i.indpred IS NULL
+  ) THEN
+    EXECUTE 'CLUSTER public.email_logs USING idx_email_logs_status_created_at';
+  END IF;
+END $$;
+
+-- 9. Final comprehensive ANALYZE for all tables
+ANALYZE public.orders;
+ANALYZE public.products;
+ANALYZE public.user_roles;
+ANALYZE public.profiles;
+ANALYZE public.email_logs;
+ANALYZE public.invoices;
+ANALYZE public.order_bumps;
+ANALYZE public.upsell_products;
+ANALYZE public.shipping_settings;
+ANALYZE public.email_templates;
+ANALYZE public.email_campaigns;
+ANALYZE public.customer_tags;
+ANALYZE public.customer_tag_assignments;
+ANALYZE public.product_reviews;
+ANALYZE public.analytics_metrics;
+ANALYZE public.abandoned_checkouts;
+ANALYZE public.email_settings;
+ANALYZE public.product_categories;
+
+-- 10. Clear existing order bumps and add products to products table
+DELETE FROM public.order_bumps;
+
+-- Insert the product data into the products table
+INSERT INTO public.products (name, price, image_url, is_active, category) VALUES
+('Faforon', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b70fdeb16d_52.png', true, 'Health Supplements'),
+('Becool', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8aea50919_43.png', true, 'Health Supplements'),
+('Dynace Rocenta', 30000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b708190650_42.png', true, 'Premium Health'),
+('Spidex 12', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b7105cd6d2_62.png', true, 'Spidex Series'),
+('Salud', 20000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b711b93315_82.png', true, 'Health Supplements'),
+('Jigsimur', 17500, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8afde7c99_63.png', true, 'Health Supplements'),
+('Jinja', 17000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b70301077f_32.png', true, 'Health Supplements'),
+('Faforditoz', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8af681d36_53.png', true, 'Health Supplements'),
+('Spidex 17', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b71440b18d_121.png', true, 'Spidex Series'),
+('Spidex 20', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b65dfab8a5_12.png', true, 'Spidex Series'),
+('Spidex 18', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b71529fe6c_131.png', true, 'Spidex Series'),
+('Men Coffee', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8b18acad0_83.png', true, 'Coffee'),
+('Spidex 21', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b7135da5ca_101.png', true, 'Spidex Series'),
+('Spidex 19', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b710f8a766_72.png', true, 'Spidex Series'),
+('Spidex 15', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b66c75de26_22.png', true, 'Spidex Series'),
+('Prosclick', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b712643cd7_91.png', true, 'Health Supplements'),
+('Green Coffee', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8b27469be_92.png', true, 'Coffee'),
+('Iru Antiseptic Soap', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8b09633de_73.png', true, 'Personal Care'),
+('Multi Effect Toothpaste', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8b338f624_102.png', true, 'Personal Care')
+ON CONFLICT DO NOTHING;

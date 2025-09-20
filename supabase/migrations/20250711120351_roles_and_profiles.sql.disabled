@@ -1,0 +1,318 @@
+-- Create user roles enum
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'app_role') THEN
+    CREATE TYPE public.app_role AS ENUM ('admin', 'moderator', 'user');
+  END IF;
+END $$;
+
+-- Drop policies before altering column type
+DROP POLICY IF EXISTS "Admins can manage all user roles" ON public.user_roles;
+DROP POLICY IF EXISTS "Users can view their own roles" ON public.user_roles;
+DROP POLICY IF EXISTS "Admins can manage orders" ON public.orders;
+DROP POLICY IF EXISTS "Admins can manage order bumps" ON public.order_bumps;
+
+-- Ensure user_roles.role is of type app_role
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user_roles' AND column_name = 'role' AND udt_name = 'text'
+  ) THEN
+    -- Drop default
+    EXECUTE 'ALTER TABLE public.user_roles ALTER COLUMN role DROP DEFAULT';
+    -- Change type
+    EXECUTE 'ALTER TABLE public.user_roles ALTER COLUMN role TYPE app_role USING role::app_role';
+    -- Set default as enum
+    EXECUTE 'ALTER TABLE public.user_roles ALTER COLUMN role SET DEFAULT ''user''::app_role';
+  END IF;
+END $$;
+
+-- Recreate policies after type change
+CREATE POLICY "Admins can manage all user roles" ON public.user_roles
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.user_roles ur 
+      WHERE ur.user_id = auth.uid() AND ur.role = 'admin'::app_role
+    )
+  );
+
+CREATE POLICY "Users can view their own roles" ON public.user_roles
+  FOR SELECT USING (user_id = auth.uid());
+
+-- Create profiles table for additional user information
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name TEXT,
+  avatar_url TEXT,
+  bio TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Create user_roles table
+CREATE TABLE IF NOT EXISTS public.user_roles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  role app_role NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE (user_id, role)
+);
+
+-- Create products table
+CREATE TABLE public.products (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  image_url TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  stock_quantity INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Create orders table
+CREATE TABLE IF NOT EXISTS public.orders (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  order_number TEXT UNIQUE,
+  customer_name TEXT NOT NULL,
+  customer_email TEXT NOT NULL,
+  customer_phone TEXT,
+  delivery_address TEXT,
+  delivery_city TEXT,
+  delivery_state TEXT,
+  total_amount DECIMAL(10,2) NOT NULL,
+  status TEXT DEFAULT 'pending',
+  payment_status TEXT DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Create order_bumps table
+CREATE TABLE IF NOT EXISTS public.order_bumps (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  image_url TEXT,
+  isactive BOOLEAN NOT NULL DEFAULT true,
+  order_position INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Create upsell_products table
+CREATE TABLE IF NOT EXISTS public.upsell_products (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  image_url TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Create discount_codes table
+CREATE TABLE IF NOT EXISTS public.discount_codes (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  discount_type TEXT NOT NULL, -- 'percentage' or 'fixed'
+  discount_value DECIMAL(10,2) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  usage_limit INTEGER,
+  usage_count INTEGER DEFAULT 0,
+  expires_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Enable Row Level Security
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.order_bumps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.upsell_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.discount_codes ENABLE ROW LEVEL SECURITY;
+
+-- Ensure user_id column exists for policies
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS user_id UUID;
+
+-- Create security definer function for role checking
+CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_roles
+    WHERE user_id = _user_id
+      AND role = _role
+  )
+$$;
+
+-- Create profiles policies
+CREATE POLICY "Profiles are viewable by everyone" 
+ON public.profiles 
+FOR SELECT 
+USING (true);
+
+CREATE POLICY "Users can update their own profile" 
+ON public.profiles 
+FOR UPDATE 
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own profile" 
+ON public.profiles 
+FOR INSERT 
+WITH CHECK (auth.uid() = user_id);
+
+-- Create user_roles policies
+CREATE POLICY "Admins can view all user roles"
+ON public.user_roles
+FOR SELECT
+TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can manage user roles"
+ON public.user_roles
+FOR ALL
+TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- Create products policies
+CREATE POLICY "Products are viewable by everyone"
+ON public.products
+FOR SELECT
+USING (true);
+
+CREATE POLICY "Admins can manage products"
+ON public.products
+FOR ALL
+TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- Create orders policies
+CREATE POLICY "Admins can view all orders"
+ON public.orders
+FOR SELECT
+TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can manage orders"
+ON public.orders
+FOR ALL
+TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- Create order_bumps policies
+CREATE POLICY "Order bumps are viewable by everyone"
+ON public.order_bumps
+FOR SELECT
+USING (true);
+
+CREATE POLICY "Admins can manage order bumps"
+ON public.order_bumps
+FOR ALL
+TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- Create upsell_products policies
+DROP POLICY IF EXISTS "Admins can manage upsell products" ON public.upsell_products;
+CREATE POLICY "Upsell products are viewable by everyone"
+ON public.upsell_products
+FOR SELECT
+USING (true);
+
+CREATE POLICY "Admins can manage upsell products"
+ON public.upsell_products
+FOR ALL
+TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- Create discount_codes policies
+DROP POLICY IF EXISTS "Admins can manage discount codes" ON public.discount_codes;
+CREATE POLICY "Discount codes are viewable by everyone"
+ON public.discount_codes
+FOR SELECT
+USING (true);
+
+CREATE POLICY "Admins can manage discount codes"
+ON public.discount_codes
+FOR ALL
+TO authenticated
+USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- Create function to update timestamps
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create triggers for automatic timestamp updates
+CREATE TRIGGER update_profiles_updated_at
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_products_updated_at
+  BEFORE UPDATE ON public.products
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_orders_updated_at
+  BEFORE UPDATE ON public.orders
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_order_bumps_updated_at
+  BEFORE UPDATE ON public.order_bumps
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_upsell_products_updated_at
+  BEFORE UPDATE ON public.upsell_products
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_discount_codes_updated_at
+  BEFORE UPDATE ON public.discount_codes
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Create function to handle new user profile creation
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+  INSERT INTO public.profiles (user_id, display_name)
+  VALUES (NEW.id, NEW.raw_user_meta_data ->> 'display_name');
+  
+  -- Make first user admin
+  IF NOT EXISTS (SELECT 1 FROM public.user_roles WHERE role = 'admin') THEN
+    INSERT INTO public.user_roles (user_id, role)
+    VALUES (NEW.id, 'admin');
+  ELSE
+    INSERT INTO public.user_roles (user_id, role)
+    VALUES (NEW.id, 'user');
+  END IF;
+  
+  RETURN NEW;
+END;
+$$;
+
+-- Create trigger for new user registration
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

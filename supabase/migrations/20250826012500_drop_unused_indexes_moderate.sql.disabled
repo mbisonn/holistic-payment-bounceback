@@ -1,0 +1,63 @@
+-- Drop a moderate set of unused/low-value indexes (Option B)
+-- Each DROP is idempotent and safe if index is missing
+
+-- Orders
+DROP INDEX IF EXISTS public.idx_orders_status_created_at;          -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_orders_payment_status_created_at;  -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_orders_customer_email_created_at;  -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_orders_delivery_state;             -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_orders_delivery_city;              -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_orders_pending_status;             -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_orders_failed_payment;             -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_orders_reference_status;           -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_orders_phone_status;               -- lint: unused_index
+
+-- Products
+DROP INDEX IF EXISTS public.idx_products_category_active;          -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_products_price_range;              -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_products_discount_price;           -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_products_updated_at;               -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_products_active_price;             -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_products_category_price_active;    -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_products_discount_active;          -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_products_name_price;               -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_products_updated_created;          -- lint: unused_index
+
+-- Profiles
+DROP INDEX IF EXISTS public.idx_profiles_updated_at;               -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_profiles_updated_created;          -- lint: unused_index
+
+-- Invoices
+DROP INDEX IF EXISTS public.idx_invoices_customer_email_created_at;-- lint: unused_index
+DROP INDEX IF EXISTS public.idx_invoices_due_at;                   -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_invoices_paid_at;                  -- lint: unused_index
+
+-- Email campaigns/templates
+DROP INDEX IF EXISTS public.idx_email_campaigns_recipient_tags;    -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_email_campaigns_template_name;     -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_email_campaigns_sent_created;      -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_email_templates_name_search;       -- lint: unused_index
+
+-- Abandoned checkouts
+DROP INDEX IF EXISTS public.idx_abandoned_checkouts_notified;      -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_abandoned_checkouts_created_at;    -- lint: unused_index
+
+-- Customer tagging
+DROP INDEX IF EXISTS public.idx_customer_tags_name_search;         -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_customer_tags_color;               -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_customer_tag_assignments_customer_email; -- lint: unused_index
+
+-- Analytics
+DROP INDEX IF EXISTS public.idx_analytics_metrics_date_recorded;   -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_analytics_metrics_metric_name_date;-- lint: unused_index
+
+-- Product reviews
+DROP INDEX IF EXISTS public.idx_product_reviews_rating;            -- lint: unused_index
+
+-- Upsell products
+DROP INDEX IF EXISTS public.idx_upsell_products_type_active;       -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_upsell_products_price_active;      -- lint: unused_index
+DROP INDEX IF EXISTS public.idx_upsell_products_duration_months;   -- lint: unused_index
+
+-- Shipping settings (already addressed in previous migration; keep here just in case)
+DROP INDEX IF EXISTS public.idx_shipping_settings_is_active_threshold; -- lint: unused_index / duplicate_index

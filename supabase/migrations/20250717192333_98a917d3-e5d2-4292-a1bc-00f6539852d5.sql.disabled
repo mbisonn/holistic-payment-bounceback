@@ -1,0 +1,142 @@
+
+-- Fix multiple permissive RLS policies and clean up duplicates
+
+-- 1. Fix profiles table - remove duplicate and conflicting policies
+DROP POLICY IF EXISTS "Admins can manage all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_own_data" ON public.profiles;
+
+-- Create clean, non-conflicting policies for profiles
+-- Ensure idempotency
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+CREATE POLICY "Users can view own profile" ON public.profiles
+FOR SELECT USING (id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile" ON public.profiles
+FOR INSERT WITH CHECK (id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+CREATE POLICY "Users can update own profile" ON public.profiles
+FOR UPDATE USING (id = auth.uid());
+
+DROP POLICY IF EXISTS "Admins can manage all profiles" ON public.profiles;
+CREATE POLICY "Admins can manage all profiles" ON public.profiles
+FOR ALL USING (current_user_is_admin());
+
+-- 2. Fix orders table - remove duplicate policies
+DROP POLICY IF EXISTS "orders_own_data" ON public.orders;
+DROP POLICY IF EXISTS "Admins can manage orders" ON public.orders;
+
+-- Create single comprehensive policy for orders
+DROP POLICY IF EXISTS "Admins can manage orders" ON public.orders;
+CREATE POLICY "Admins can manage orders" ON public.orders
+FOR ALL USING (current_user_is_admin());
+
+-- 3. Fix invoices table - remove duplicate policies
+DROP POLICY IF EXISTS "invoices_own_data" ON public.invoices;
+DROP POLICY IF EXISTS "Admins can manage invoices" ON public.invoices;
+
+-- Create single comprehensive policy for invoices
+DROP POLICY IF EXISTS "Admins can manage invoices" ON public.invoices;
+CREATE POLICY "Admins can manage invoices" ON public.invoices
+FOR ALL USING (current_user_is_admin());
+
+-- 4. Fix user_roles table - remove conflicting policies
+DROP POLICY IF EXISTS "user_roles_own_data" ON public.user_roles;
+DROP POLICY IF EXISTS "Admins can exclusively manage user roles" ON public.user_roles;
+
+-- Create single comprehensive policy for user_roles
+DROP POLICY IF EXISTS "Admins can manage user roles" ON public.user_roles;
+CREATE POLICY "Admins can manage user roles" ON public.user_roles
+FOR ALL USING (current_user_is_admin());
+
+-- 5. Fix product_reviews table - remove overly broad policies
+DROP POLICY IF EXISTS "product_reviews_own_data" ON public.product_reviews;
+DROP POLICY IF EXISTS "Product reviews policy" ON public.product_reviews;
+
+-- Create specific policies for product reviews
+DROP POLICY IF EXISTS "Anyone can view approved reviews" ON public.product_reviews;
+CREATE POLICY "Anyone can view approved reviews" ON public.product_reviews
+FOR SELECT USING (is_approved = true);
+
+DROP POLICY IF EXISTS "Admins can manage all reviews" ON public.product_reviews;
+CREATE POLICY "Admins can manage all reviews" ON public.product_reviews
+FOR ALL USING (current_user_is_admin());
+
+-- 6. Clean up overly permissive policies on product_categories
+DROP POLICY IF EXISTS "Allow authenticated users to view all product categories" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to create new product categories" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to update any product category" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to delete any product category" ON public.product_categories;
+
+-- Create proper admin-only policies for product categories
+DROP POLICY IF EXISTS "Public can view product categories" ON public.product_categories;
+CREATE POLICY "Public can view product categories" ON public.product_categories
+FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Admins can manage product categories" ON public.product_categories;
+CREATE POLICY "Admins can manage product categories" ON public.product_categories
+FOR ALL USING (current_user_is_admin()) WITH CHECK (current_user_is_admin());
+
+-- 7. Fix overly broad policies on other tables
+DROP POLICY IF EXISTS "Products policy" ON public.products;
+DROP POLICY IF EXISTS "Public can view active products" ON public.products;
+CREATE POLICY "Public can view active products" ON public.products
+FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Admins can manage all products" ON public.products;
+CREATE POLICY "Admins can manage all products" ON public.products
+FOR ALL USING (current_user_is_admin()) WITH CHECK (current_user_is_admin());
+
+DROP POLICY IF EXISTS "Order bumps policy" ON public.order_bumps;
+DROP POLICY IF EXISTS "Public can view active order bumps" ON public.order_bumps;
+CREATE POLICY "Public can view active order bumps" ON public.order_bumps
+FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Admins can manage order bumps" ON public.order_bumps;
+CREATE POLICY "Admins can manage order bumps" ON public.order_bumps
+FOR ALL USING (current_user_is_admin()) WITH CHECK (current_user_is_admin());
+
+DROP POLICY IF EXISTS "Shipping settings policy" ON public.shipping_settings;
+DROP POLICY IF EXISTS "Public can view active shipping settings" ON public.shipping_settings;
+CREATE POLICY "Public can view active shipping settings" ON public.shipping_settings
+FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Admins can manage shipping settings" ON public.shipping_settings;
+CREATE POLICY "Admins can manage shipping settings" ON public.shipping_settings
+FOR ALL USING (current_user_is_admin()) WITH CHECK (current_user_is_admin());
+
+-- 8. Fix upsell_products policies
+DROP POLICY IF EXISTS "upsell_products_view_policy" ON public.upsell_products;
+DROP POLICY IF EXISTS "upsell_products_modify_policy" ON public.upsell_products;
+
+DROP POLICY IF EXISTS "Public can view active upsell products" ON public.upsell_products;
+CREATE POLICY "Public can view active upsell products" ON public.upsell_products
+FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Admins can manage upsell products" ON public.upsell_products;
+CREATE POLICY "Admins can manage upsell products" ON public.upsell_products
+FOR ALL USING (current_user_is_admin()) WITH CHECK (current_user_is_admin());
+
+-- 9. Fix users table - remove the overly restrictive "Deny all operations by default" policy
+DROP POLICY IF EXISTS "Deny all operations by default" ON public.users;
+
+-- Keep the existing user-specific policies for the users table as they seem appropriate
+
+-- 10. Ensure all admin functions are working properly
+-- Refresh the current_user_is_admin function to make sure it's optimized
+CREATE OR REPLACE FUNCTION public.current_user_is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 
+    FROM public.user_roles ur
+    WHERE ur.user_id = auth.uid()
+      AND ur.role = 'admin'::app_role
+  );
+$$;

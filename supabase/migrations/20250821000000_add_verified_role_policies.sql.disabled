@@ -1,0 +1,70 @@
+-- Add RLS policies to support peer verification model
+-- This migration assumes table user_roles(user_id uuid, role text) already exists with RLS enabled or will be enabled.
+
+-- Enable RLS on user_roles if not already
+alter table public.user_roles enable row level security;
+
+-- Drop existing policies that may conflict (safe-if-exists pattern)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_roles' AND policyname = 'select_roles_for_verified_or_admin'
+  ) THEN
+    EXECUTE 'drop policy "select_roles_for_verified_or_admin" on public.user_roles';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_roles' AND policyname = 'select_own_roles'
+  ) THEN
+    EXECUTE 'drop policy "select_own_roles" on public.user_roles';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'user_roles' AND policyname = 'delete_roles_admin_only'
+  ) THEN
+    EXECUTE 'drop policy "delete_roles_admin_only" on public.user_roles';
+  END IF;
+END $$;
+
+-- Allow verified/admin users to read all roles (for User Center UI)
+create policy "select_roles_for_verified_or_admin" on public.user_roles
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.user_roles ur
+      where ur.user_id = auth.uid()
+        and ur.role in ('admin','verified')
+    )
+  );
+
+-- Allow every authenticated user to read their own roles
+create policy "select_own_roles" on public.user_roles
+  for select
+  to authenticated
+  using (user_id = auth.uid());
+
+-- Allow delete of roles only by admins (client-side; edge function uses service role anyway)
+create policy "delete_roles_admin_only" on public.user_roles
+  for delete
+  to authenticated
+  using (
+    exists (
+      select 1 from public.user_roles ur
+      where ur.user_id = auth.uid() and ur.role = 'admin'
+    )
+  );
+
+-- Note: inserts/updates to user_roles are intended to be done via Edge Function with service role.
+-- If you want client-side verified users to verify others directly (without edge function),
+-- uncomment the following policy. It prevents self-verification and only allows verified/admin callers.
+--
+-- create policy "insert_verified_by_verified_or_admin" on public.user_roles
+--   for insert
+--   to authenticated
+--   with check (
+--     new.role = 'verified'
+--     and new.user_id <> auth.uid()
+--     and exists (
+--       select 1 from public.user_roles ur
+--       where ur.user_id = auth.uid() and ur.role in ('admin','verified')
+--     )
+--   );

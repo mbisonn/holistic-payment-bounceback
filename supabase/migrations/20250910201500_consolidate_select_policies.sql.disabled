@@ -1,0 +1,119 @@
+-- Consolidate multiple permissive SELECT policies into a single policy per table
+
+BEGIN;
+
+-- Automation Rules
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.automation_rules;
+CREATE POLICY "Consolidated SELECT access for automation_rules" ON public.automation_rules
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "automation_rules_select_consolidated" ON public.automation_rules;
+
+-- Customer Analytics
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.customer_analytics;
+CREATE POLICY "Consolidated SELECT access for customer_analytics" ON public.customer_analytics
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "customer_analytics_select_consolidated" ON public.customer_analytics;
+
+-- Customer Tag Assignments
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.customer_tag_assignments;
+CREATE POLICY "Consolidated SELECT access for customer_tag_assignments" ON public.customer_tag_assignments
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "customer_tag_assignments_select_consolidated" ON public.customer_tag_assignments;
+
+-- Customer Tags
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.customer_tags;
+CREATE POLICY "Consolidated SELECT access for customer_tags" ON public.customer_tags
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "customer_tags_select_consolidated" ON public.customer_tags;
+
+-- Discount Codes
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.discount_codes;
+CREATE POLICY "Consolidated SELECT access for discount_codes" ON public.discount_codes
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "discount_codes_select" ON public.discount_codes;
+
+-- Email Analytics
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.email_analytics;
+CREATE POLICY "Consolidated SELECT access for email_analytics" ON public.email_analytics
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "email_analytics_select_consolidated" ON public.email_analytics;
+
+-- Email Campaigns
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.email_campaigns;
+CREATE POLICY "Consolidated SELECT access for email_campaigns" ON public.email_campaigns
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "email_campaigns_select_admin" ON public.email_campaigns;
+
+-- Email Events
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.email_events;
+CREATE POLICY "Consolidated SELECT access for email_events" ON public.email_events
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "email_events_select_consolidated" ON public.email_events;
+
+-- Email Logs
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.email_logs;
+CREATE POLICY "Consolidated SELECT access for email_logs" ON public.email_logs
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "email_logs_select_consolidated" ON public.email_logs;
+
+-- Email Outbox
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.email_outbox;
+CREATE POLICY "Consolidated SELECT access for email_outbox" ON public.email_outbox
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "email_outbox_select_consolidated" ON public.email_outbox;
+
+-- Email Settings
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.email_settings;
+CREATE POLICY "Consolidated SELECT access for email_settings" ON public.email_settings
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "email_settings_select_admin" ON public.email_settings;
+
+-- Email Templates
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.email_templates;
+CREATE POLICY "Consolidated SELECT access for email_templates" ON public.email_templates
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "email_templates_select_consolidated" ON public.email_templates;
+
+-- Invoices
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.invoices;
+CREATE POLICY "Consolidated SELECT access for invoices" ON public.invoices
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "invoices_select_admin" ON public.invoices;
+
+-- Meal Plan Sync
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.meal_plan_sync;
+CREATE POLICY "Consolidated SELECT access for meal_plan_sync" ON public.meal_plan_sync
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "meal_plan_sync_select_admin" ON public.meal_plan_sync;
+
+-- Order Bumps
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.order_bumps;
+CREATE POLICY "Consolidated SELECT access for order_bumps" ON public.order_bumps
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "order_bumps_select" ON public.order_bumps;
+
+-- Orders (DELETE)
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.orders;
+CREATE POLICY "Consolidated DELETE access for orders" ON public.orders
+  FOR DELETE USING (public.is_admin());
+DROP POLICY IF EXISTS "orders_delete_consolidated" ON public.orders;
+
+-- Orders (INSERT)
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.orders;
+CREATE POLICY "Consolidated INSERT access for orders" ON public.orders
+  FOR INSERT WITH CHECK (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "orders_insert_consolidated" ON public.orders;
+
+-- Orders (SELECT)
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.orders;
+CREATE POLICY "Consolidated SELECT access for orders" ON public.orders
+  FOR SELECT USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "orders_select_consolidated" ON public.orders;
+
+-- Orders (UPDATE)
+DROP POLICY IF EXISTS "admin_bypass_all" ON public.orders;
+CREATE POLICY "Consolidated UPDATE access for orders" ON public.orders
+  FOR UPDATE USING (public.is_admin() OR (auth.role() = 'authenticated'));
+DROP POLICY IF EXISTS "orders_update_consolidated" ON public.orders;
+
+COMMIT;

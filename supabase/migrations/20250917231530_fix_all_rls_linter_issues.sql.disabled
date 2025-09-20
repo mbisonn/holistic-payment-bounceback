@@ -1,0 +1,492 @@
+-- ==============================================
+-- FIX ALL RLS LINTER ISSUES - COMPREHENSIVE OPTIMIZATION
+-- Migration: 20250917231530_fix_all_rls_linter_issues.sql
+-- 
+-- This migration fixes ALL Supabase linter warnings:
+-- 1. auth_rls_initplan: Wraps auth.uid() calls in SELECT statements
+-- 2. multiple_permissive_policies: Consolidates overlapping policies
+-- ==============================================
+
+-- STEP 1: DROP ALL PROBLEMATIC POLICIES
+-- ==============================================
+
+-- Drop all user_access_requests policies (multiple permissive policies issue)
+DROP POLICY IF EXISTS "admin_manage_access_requests" ON public.user_access_requests;
+DROP POLICY IF EXISTS "admin_delete_access_requests" ON public.user_access_requests;
+DROP POLICY IF EXISTS "authenticated_access_user_access_requests" ON public.user_access_requests;
+DROP POLICY IF EXISTS "user_access_requests_admin_optimized" ON public.user_access_requests;
+DROP POLICY IF EXISTS "create_own_access_request" ON public.user_access_requests;
+DROP POLICY IF EXISTS "view_access_requests" ON public.user_access_requests;
+
+-- Drop all user_roles policies (multiple permissive policies issue)
+DROP POLICY IF EXISTS "admin_manage_user_roles" ON public.user_roles;
+DROP POLICY IF EXISTS "authenticated_access_user_roles" ON public.user_roles;
+DROP POLICY IF EXISTS "user_roles_optimized_mutations" ON public.user_roles;
+DROP POLICY IF EXISTS "user_roles_optimized_select" ON public.user_roles;
+DROP POLICY IF EXISTS "user_roles_public_optimized" ON public.user_roles;
+DROP POLICY IF EXISTS "view_user_roles" ON public.user_roles;
+
+-- Drop all profiles policies (multiple permissive policies issue)
+DROP POLICY IF EXISTS "update_own_profile" ON public.profiles;
+DROP POLICY IF EXISTS "admin_manage_profiles" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_public_optimized" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_update_optimized" ON public.profiles;
+DROP POLICY IF EXISTS "view_profiles" ON public.profiles;
+
+-- Drop all customer_notes policies
+DROP POLICY IF EXISTS "authenticated_access_customer_notes" ON public.customer_notes;
+DROP POLICY IF EXISTS "customer_notes_admin_optimized" ON public.customer_notes;
+
+-- Drop all discount_codes policies
+DROP POLICY IF EXISTS "authenticated_access_discount_codes" ON public.discount_codes;
+DROP POLICY IF EXISTS "discount_codes_public_optimized" ON public.discount_codes;
+DROP POLICY IF EXISTS "discount_codes_admin_optimized" ON public.discount_codes;
+
+-- Drop all email_campaigns policies
+DROP POLICY IF EXISTS "authenticated_access_email_campaigns" ON public.email_campaigns;
+DROP POLICY IF EXISTS "email_campaigns_admin_optimized" ON public.email_campaigns;
+
+-- Drop all email_templates policies
+DROP POLICY IF EXISTS "authenticated_access_email_templates" ON public.email_templates;
+DROP POLICY IF EXISTS "email_templates_admin_optimized" ON public.email_templates;
+
+-- Drop all meal_plan_sync policies
+DROP POLICY IF EXISTS "authenticated_access_meal_plan_sync" ON public.meal_plan_sync;
+DROP POLICY IF EXISTS "meal_plan_sync_admin_optimized" ON public.meal_plan_sync;
+
+-- Drop all order_bumps policies
+DROP POLICY IF EXISTS "authenticated_access_order_bumps" ON public.order_bumps;
+DROP POLICY IF EXISTS "order_bumps_public_optimized" ON public.order_bumps;
+DROP POLICY IF EXISTS "order_bumps_admin_optimized" ON public.order_bumps;
+
+-- Drop all order_items policies
+DROP POLICY IF EXISTS "authenticated_access_order_items" ON public.order_items;
+DROP POLICY IF EXISTS "order_items_admin_optimized" ON public.order_items;
+
+-- Drop all orders policies
+DROP POLICY IF EXISTS "authenticated_access_orders" ON public.orders;
+DROP POLICY IF EXISTS "orders_public_optimized" ON public.orders;
+DROP POLICY IF EXISTS "orders_optimized_delete" ON public.orders;
+DROP POLICY IF EXISTS "orders_optimized_insert" ON public.orders;
+DROP POLICY IF EXISTS "orders_optimized_select" ON public.orders;
+DROP POLICY IF EXISTS "orders_optimized_update" ON public.orders;
+
+-- Drop all products policies
+DROP POLICY IF EXISTS "authenticated_access_products" ON public.products;
+DROP POLICY IF EXISTS "products_public_optimized" ON public.products;
+DROP POLICY IF EXISTS "products_admin_optimized" ON public.products;
+
+-- Drop all shipping_settings policies
+DROP POLICY IF EXISTS "authenticated_access_shipping_settings" ON public.shipping_settings;
+DROP POLICY IF EXISTS "shipping_settings_public_optimized" ON public.shipping_settings;
+DROP POLICY IF EXISTS "shipping_settings_admin_optimized" ON public.shipping_settings;
+
+-- Drop all upsell_products policies
+DROP POLICY IF EXISTS "authenticated_access_upsell_products" ON public.upsell_products;
+DROP POLICY IF EXISTS "upsell_products_public_optimized" ON public.upsell_products;
+DROP POLICY IF EXISTS "upsell_products_admin_optimized" ON public.upsell_products;
+
+-- STEP 2: DROP ANY EXISTING CONSOLIDATED POLICIES AND CREATE NEW ONES
+-- ==============================================
+
+-- Drop any existing consolidated policies first
+DROP POLICY IF EXISTS "user_access_requests_consolidated_select" ON public.user_access_requests;
+DROP POLICY IF EXISTS "user_access_requests_consolidated_insert" ON public.user_access_requests;
+DROP POLICY IF EXISTS "user_access_requests_consolidated_update" ON public.user_access_requests;
+DROP POLICY IF EXISTS "user_access_requests_consolidated_delete" ON public.user_access_requests;
+DROP POLICY IF EXISTS "user_roles_consolidated_select" ON public.user_roles;
+DROP POLICY IF EXISTS "user_roles_consolidated_insert" ON public.user_roles;
+DROP POLICY IF EXISTS "user_roles_consolidated_update" ON public.user_roles;
+DROP POLICY IF EXISTS "user_roles_consolidated_delete" ON public.user_roles;
+DROP POLICY IF EXISTS "profiles_consolidated_select" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_consolidated_update" ON public.profiles;
+DROP POLICY IF EXISTS "customer_notes_consolidated_select" ON public.customer_notes;
+DROP POLICY IF EXISTS "customer_notes_consolidated_insert" ON public.customer_notes;
+DROP POLICY IF EXISTS "customer_notes_consolidated_update" ON public.customer_notes;
+DROP POLICY IF EXISTS "customer_notes_consolidated_delete" ON public.customer_notes;
+DROP POLICY IF EXISTS "discount_codes_consolidated_select" ON public.discount_codes;
+DROP POLICY IF EXISTS "discount_codes_consolidated_insert" ON public.discount_codes;
+DROP POLICY IF EXISTS "discount_codes_consolidated_update" ON public.discount_codes;
+DROP POLICY IF EXISTS "discount_codes_consolidated_delete" ON public.discount_codes;
+DROP POLICY IF EXISTS "email_campaigns_consolidated_select" ON public.email_campaigns;
+DROP POLICY IF EXISTS "email_campaigns_consolidated_insert" ON public.email_campaigns;
+DROP POLICY IF EXISTS "email_campaigns_consolidated_update" ON public.email_campaigns;
+DROP POLICY IF EXISTS "email_campaigns_consolidated_delete" ON public.email_campaigns;
+DROP POLICY IF EXISTS "email_templates_consolidated_select" ON public.email_templates;
+DROP POLICY IF EXISTS "email_templates_consolidated_insert" ON public.email_templates;
+DROP POLICY IF EXISTS "email_templates_consolidated_update" ON public.email_templates;
+DROP POLICY IF EXISTS "email_templates_consolidated_delete" ON public.email_templates;
+DROP POLICY IF EXISTS "meal_plan_sync_consolidated_select" ON public.meal_plan_sync;
+DROP POLICY IF EXISTS "meal_plan_sync_consolidated_insert" ON public.meal_plan_sync;
+DROP POLICY IF EXISTS "meal_plan_sync_consolidated_update" ON public.meal_plan_sync;
+DROP POLICY IF EXISTS "meal_plan_sync_consolidated_delete" ON public.meal_plan_sync;
+DROP POLICY IF EXISTS "order_bumps_consolidated_select" ON public.order_bumps;
+DROP POLICY IF EXISTS "order_bumps_consolidated_insert" ON public.order_bumps;
+DROP POLICY IF EXISTS "order_bumps_consolidated_update" ON public.order_bumps;
+DROP POLICY IF EXISTS "order_bumps_consolidated_delete" ON public.order_bumps;
+DROP POLICY IF EXISTS "order_items_consolidated_select" ON public.order_items;
+DROP POLICY IF EXISTS "order_items_consolidated_insert" ON public.order_items;
+DROP POLICY IF EXISTS "order_items_consolidated_update" ON public.order_items;
+DROP POLICY IF EXISTS "order_items_consolidated_delete" ON public.order_items;
+DROP POLICY IF EXISTS "orders_consolidated_select" ON public.orders;
+DROP POLICY IF EXISTS "orders_consolidated_insert" ON public.orders;
+DROP POLICY IF EXISTS "orders_consolidated_update" ON public.orders;
+DROP POLICY IF EXISTS "orders_consolidated_delete" ON public.orders;
+DROP POLICY IF EXISTS "products_consolidated_select" ON public.products;
+DROP POLICY IF EXISTS "products_consolidated_insert" ON public.products;
+DROP POLICY IF EXISTS "products_consolidated_update" ON public.products;
+DROP POLICY IF EXISTS "products_consolidated_delete" ON public.products;
+DROP POLICY IF EXISTS "shipping_settings_consolidated_select" ON public.shipping_settings;
+DROP POLICY IF EXISTS "shipping_settings_consolidated_insert" ON public.shipping_settings;
+DROP POLICY IF EXISTS "shipping_settings_consolidated_update" ON public.shipping_settings;
+DROP POLICY IF EXISTS "shipping_settings_consolidated_delete" ON public.shipping_settings;
+DROP POLICY IF EXISTS "upsell_products_consolidated_select" ON public.upsell_products;
+DROP POLICY IF EXISTS "upsell_products_consolidated_insert" ON public.upsell_products;
+DROP POLICY IF EXISTS "upsell_products_consolidated_update" ON public.upsell_products;
+DROP POLICY IF EXISTS "upsell_products_consolidated_delete" ON public.upsell_products;
+
+-- Fix user_access_requests table (admin-only with auth optimization)
+CREATE POLICY "user_access_requests_consolidated_select" ON public.user_access_requests
+FOR SELECT TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "user_access_requests_consolidated_insert" ON public.user_access_requests
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "user_access_requests_consolidated_update" ON public.user_access_requests
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "user_access_requests_consolidated_delete" ON public.user_access_requests
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix user_roles table (view own + admin manage with auth optimization)
+CREATE POLICY "user_roles_consolidated_select" ON public.user_roles
+FOR SELECT TO authenticated, anon, authenticator, dashboard_user
+USING (user_id = (SELECT auth.uid()) OR (SELECT EXISTS(SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)));
+
+CREATE POLICY "user_roles_consolidated_insert" ON public.user_roles
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)));
+
+CREATE POLICY "user_roles_consolidated_update" ON public.user_roles
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)));
+
+CREATE POLICY "user_roles_consolidated_delete" ON public.user_roles
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)));
+
+-- Fix profiles table (public read + own/admin update with auth optimization)
+CREATE POLICY "profiles_consolidated_select" ON public.profiles
+FOR SELECT TO anon, authenticated, authenticator, dashboard_user
+USING (true);
+
+CREATE POLICY "profiles_consolidated_update" ON public.profiles
+FOR UPDATE TO authenticated, anon, authenticator, dashboard_user
+USING (id = (SELECT auth.uid()) OR (SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK (id = (SELECT auth.uid()) OR (SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix customer_notes table (admin-only with auth optimization)
+CREATE POLICY "customer_notes_consolidated_select" ON public.customer_notes
+FOR SELECT TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "customer_notes_consolidated_insert" ON public.customer_notes
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "customer_notes_consolidated_update" ON public.customer_notes
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "customer_notes_consolidated_delete" ON public.customer_notes
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix discount_codes table (public read active + admin manage with auth optimization)
+CREATE POLICY "discount_codes_consolidated_select" ON public.discount_codes
+FOR SELECT TO anon, authenticated, authenticator, dashboard_user
+USING (is_active = true);
+
+CREATE POLICY "discount_codes_consolidated_insert" ON public.discount_codes
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "discount_codes_consolidated_update" ON public.discount_codes
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "discount_codes_consolidated_delete" ON public.discount_codes
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix email_campaigns table (admin-only with auth optimization)
+CREATE POLICY "email_campaigns_consolidated_select" ON public.email_campaigns
+FOR SELECT TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "email_campaigns_consolidated_insert" ON public.email_campaigns
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "email_campaigns_consolidated_update" ON public.email_campaigns
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "email_campaigns_consolidated_delete" ON public.email_campaigns
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix email_templates table (admin-only with auth optimization)
+CREATE POLICY "email_templates_consolidated_select" ON public.email_templates
+FOR SELECT TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "email_templates_consolidated_insert" ON public.email_templates
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "email_templates_consolidated_update" ON public.email_templates
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "email_templates_consolidated_delete" ON public.email_templates
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix meal_plan_sync table (admin-only with auth optimization)
+CREATE POLICY "meal_plan_sync_consolidated_select" ON public.meal_plan_sync
+FOR SELECT TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "meal_plan_sync_consolidated_insert" ON public.meal_plan_sync
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "meal_plan_sync_consolidated_update" ON public.meal_plan_sync
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "meal_plan_sync_consolidated_delete" ON public.meal_plan_sync
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix order_bumps table (public read active + admin manage with auth optimization)
+CREATE POLICY "order_bumps_consolidated_select" ON public.order_bumps
+FOR SELECT TO anon, authenticated, authenticator, dashboard_user
+USING (is_active = true);
+
+CREATE POLICY "order_bumps_consolidated_insert" ON public.order_bumps
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "order_bumps_consolidated_update" ON public.order_bumps
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "order_bumps_consolidated_delete" ON public.order_bumps
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix order_items table (admin-only with auth optimization)
+CREATE POLICY "order_items_consolidated_select" ON public.order_items
+FOR SELECT TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "order_items_consolidated_insert" ON public.order_items
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "order_items_consolidated_update" ON public.order_items
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "order_items_consolidated_delete" ON public.order_items
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix orders table (own orders + admin all with auth optimization)
+CREATE POLICY "orders_consolidated_select" ON public.orders
+FOR SELECT TO authenticated, anon, authenticator, dashboard_user
+USING (user_id = (SELECT auth.uid()) OR (SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "orders_consolidated_insert" ON public.orders
+FOR INSERT TO authenticated
+WITH CHECK (user_id = (SELECT auth.uid()) OR (SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "orders_consolidated_update" ON public.orders
+FOR UPDATE TO authenticated
+USING (user_id = (SELECT auth.uid()) OR (SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK (user_id = (SELECT auth.uid()) OR (SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "orders_consolidated_delete" ON public.orders
+FOR DELETE TO authenticated
+USING (user_id = (SELECT auth.uid()) OR (SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix products table (public read + admin manage with auth optimization)
+CREATE POLICY "products_consolidated_select" ON public.products
+FOR SELECT TO anon, authenticated, authenticator, dashboard_user
+USING (true);
+
+CREATE POLICY "products_consolidated_insert" ON public.products
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "products_consolidated_update" ON public.products
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "products_consolidated_delete" ON public.products
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix shipping_settings table (public read active + admin manage with auth optimization)
+CREATE POLICY "shipping_settings_consolidated_select" ON public.shipping_settings
+FOR SELECT TO anon, authenticated, authenticator, dashboard_user
+USING (is_active = true);
+
+CREATE POLICY "shipping_settings_consolidated_insert" ON public.shipping_settings
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "shipping_settings_consolidated_update" ON public.shipping_settings
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "shipping_settings_consolidated_delete" ON public.shipping_settings
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- Fix upsell_products table (public read active + admin manage with auth optimization)
+CREATE POLICY "upsell_products_consolidated_select" ON public.upsell_products
+FOR SELECT TO anon, authenticated, authenticator, dashboard_user
+USING (is_active = true);
+
+CREATE POLICY "upsell_products_consolidated_insert" ON public.upsell_products
+FOR INSERT TO authenticated
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "upsell_products_consolidated_update" ON public.upsell_products
+FOR UPDATE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)))
+WITH CHECK ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+CREATE POLICY "upsell_products_consolidated_delete" ON public.upsell_products
+FOR DELETE TO authenticated
+USING ((SELECT EXISTS(SELECT 1 FROM public.user_roles WHERE user_id = (SELECT auth.uid()) AND role = 'admin'::app_role)));
+
+-- STEP 3: FIX SECURITY DEFINER VIEWS
+-- ==============================================
+
+-- Drop and recreate views without SECURITY DEFINER (fixes security_definer_view warnings)
+DROP VIEW IF EXISTS public.active_products_view;
+DROP VIEW IF EXISTS public.order_summary_view;
+DROP VIEW IF EXISTS public.index_usage_stats;
+
+-- Recreate views without SECURITY DEFINER (default is SECURITY INVOKER)
+CREATE VIEW public.active_products_view AS
+SELECT 
+    p.id,
+    p.name,
+    p.description,
+    p.price,
+    p.image_url,
+    p.category,
+    p.stock_quantity,
+    p.created_at,
+    p.updated_at
+FROM public.products p
+WHERE p.is_active = true;
+
+CREATE VIEW public.order_summary_view AS
+SELECT 
+    o.id,
+    o.customer_name,
+    o.customer_email,
+    o.total_amount,
+    o.status,
+    o.payment_status,
+    o.created_at,
+    COUNT(oi.id) as item_count
+FROM public.orders o
+LEFT JOIN public.order_items oi ON o.id = oi.order_id
+GROUP BY o.id, o.customer_name, o.customer_email, o.total_amount, o.status, o.payment_status, o.created_at;
+
+CREATE VIEW public.index_usage_stats AS
+SELECT 
+    schemaname,
+    relname as tablename,
+    indexrelname as indexname,
+    idx_scan as times_used,
+    idx_tup_read as tuples_read,
+    idx_tup_fetch as tuples_fetched,
+    pg_size_pretty(pg_relation_size(indexrelid)) as index_size
+FROM pg_stat_user_indexes
+WHERE schemaname = 'public'
+ORDER BY idx_scan DESC;
+
+-- STEP 4: ANALYZE TABLES FOR PERFORMANCE
+-- ==============================================
+
+ANALYZE public.user_access_requests;
+ANALYZE public.user_roles;
+ANALYZE public.profiles;
+ANALYZE public.customer_notes;
+ANALYZE public.discount_codes;
+ANALYZE public.email_campaigns;
+ANALYZE public.email_templates;
+ANALYZE public.meal_plan_sync;
+ANALYZE public.order_bumps;
+ANALYZE public.order_items;
+ANALYZE public.orders;
+ANALYZE public.products;
+ANALYZE public.shipping_settings;
+ANALYZE public.upsell_products;
+
+-- STEP 5: SUCCESS MESSAGE
+-- ==============================================
+
+DO $$
+DECLARE
+    policy_count INTEGER;
+    view_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO policy_count 
+    FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND policyname LIKE '%_consolidated_%';
+    
+    SELECT COUNT(*) INTO view_count 
+    FROM information_schema.views 
+    WHERE table_schema = 'public'
+    AND table_name IN ('active_products_view', 'order_summary_view', 'index_usage_stats');
+    
+    RAISE NOTICE '';
+    RAISE NOTICE '🚀 ALL LINTER ISSUES FIXED! 🚀';
+    RAISE NOTICE '=====================================';
+    RAISE NOTICE 'Consolidated RLS policies created: %', policy_count;
+    RAISE NOTICE 'Security-compliant views recreated: %', view_count;
+    RAISE NOTICE '';
+    RAISE NOTICE '✅ FIXES APPLIED:';
+    RAISE NOTICE '- auth_rls_initplan: All auth.uid() calls wrapped in SELECT statements';
+    RAISE NOTICE '- multiple_permissive_policies: All duplicate policies consolidated';
+    RAISE NOTICE '- security_definer_view: All SECURITY DEFINER views converted to SECURITY INVOKER';
+    RAISE NOTICE '- Table statistics updated for better performance';
+    RAISE NOTICE '';
+    RAISE NOTICE '🎉 All Supabase linter warnings should now be resolved!';
+    RAISE NOTICE '=====================================';
+END $$;

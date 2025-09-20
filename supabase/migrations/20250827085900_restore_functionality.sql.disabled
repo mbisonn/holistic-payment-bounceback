@@ -1,0 +1,45 @@
+-- Emergency restore: Re-enable basic functionality
+-- This reverses the overly restrictive RLS changes
+
+-- 1) Ensure anon role has basic access to core tables
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+
+-- 2) Grant access to essential tables for dashboard functionality
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.products TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.orders TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.customers TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.email_templates TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.automations TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.customer_tags TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_items TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.upsell_products TO anon, authenticated;
+
+-- 3) Grant sequence access for auto-increment IDs
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+
+-- 4) Ensure no blocking policies exist
+DO $$
+DECLARE
+  r record;
+BEGIN
+  -- Drop any restrictive policies that might block basic operations
+  FOR r IN
+    SELECT schemaname, tablename, policyname
+    FROM pg_policies
+    WHERE schemaname = 'public'
+    AND tablename IN ('products', 'orders', 'customers', 'email_templates', 'automations', 'customer_tags', 'order_items', 'upsell_products')
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I;', r.policyname, r.schemaname, r.tablename);
+  END LOOP;
+END $$;
+
+-- 5) Disable RLS on core tables to ensure access
+ALTER TABLE public.products DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customers DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.email_templates DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.automations DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customer_tags DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.order_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.upsell_products DISABLE ROW LEVEL SECURITY;

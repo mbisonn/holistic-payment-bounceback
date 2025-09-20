@@ -1,0 +1,75 @@
+-- Migration: Wrap auth.* and current_setting() calls in RLS policies with (select ...)
+-- Purpose: Address Supabase linter auth_rls_initplan for performance
+-- Safe/idempotent: Only rewrites policies whose expressions actually change
+
+DO $$
+DECLARE
+  r RECORD;
+  new_qual TEXT;
+  new_check TEXT;
+  roles_sql TEXT;
+  cmd_sql TEXT;
+  permissive_sql TEXT;
+  using_sql TEXT;
+  check_sql TEXT;
+  create_sql TEXT;
+BEGIN
+  FOR r IN
+    SELECT schemaname, tablename, policyname, roles, permissive, cmd, qual, with_check
+    FROM pg_policies
+    WHERE schemaname = 'public'
+  LOOP
+    new_qual := r.qual;
+    new_check := r.with_check;
+
+    IF new_qual IS NOT NULL THEN
+      -- Wrap common auth.*() calls
+      new_qual := regexp_replace(new_qual, '\bauth\.(uid|role|email|jwt)\(\)', '(select auth.\1())', 'gi');
+      -- Fallback generic wrapper for any auth.<fn>() that isn't already wrapped
+      new_qual := regexp_replace(new_qual, '(?<!select\s)auth\.([a-z_]+)\(\)', '(select auth.\1())', 'gi');
+      -- Wrap current_setting(...)
+      new_qual := regexp_replace(new_qual, '\bcurrent_setting\(', '(select current_setting(', 'gi');
+    END IF;
+
+    IF new_check IS NOT NULL THEN
+      new_check := regexp_replace(new_check, '\bauth\.(uid|role|email|jwt)\(\)', '(select auth.\1())', 'gi');
+      new_check := regexp_replace(new_check, '(?<!select\s)auth\.([a-z_]+)\(\)', '(select auth.\1())', 'gi');
+      new_check := regexp_replace(new_check, '\bcurrent_setting\(', '(select current_setting(', 'gi');
+    END IF;
+
+    IF (new_qual IS DISTINCT FROM r.qual) OR (new_check IS DISTINCT FROM r.with_check) THEN
+      IF r.roles IS NULL OR array_length(r.roles, 1) IS NULL THEN
+        roles_sql := '';
+      ELSE
+        roles_sql := ' TO ' || (
+          SELECT string_agg(format('%I', role_name), ', ')
+          FROM unnest(r.roles) AS role_name
+        );
+      END IF;
+
+      cmd_sql := CASE lower(r.cmd)
+        WHEN 'select' THEN ' FOR SELECT'
+        WHEN 'insert' THEN ' FOR INSERT'
+        WHEN 'update' THEN ' FOR UPDATE'
+        WHEN 'delete' THEN ' FOR DELETE'
+        ELSE ''
+      END;
+
+      permissive_sql := CASE r.permissive
+        WHEN 'PERMISSIVE' THEN ' AS PERMISSIVE'
+        WHEN 'RESTRICTIVE' THEN ' AS RESTRICTIVE'
+        ELSE ''
+      END;
+
+      using_sql := CASE WHEN new_qual IS NOT NULL THEN ' USING (' || new_qual || ')' ELSE '' END;
+      check_sql := CASE WHEN new_check IS NOT NULL THEN ' WITH CHECK (' || new_check || ')' ELSE '' END;
+
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', r.policyname, r.schemaname, r.tablename);
+
+      create_sql := format('CREATE POLICY %I ON %I.%I', r.policyname, r.schemaname, r.tablename)
+                    || permissive_sql || cmd_sql || roles_sql || using_sql || check_sql || ';';
+
+      EXECUTE create_sql;
+    END IF;
+  END LOOP;
+END $$;

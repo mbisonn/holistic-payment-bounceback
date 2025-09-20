@@ -1,0 +1,339 @@
+-- COMPREHENSIVE FIX: All Security Warnings, Performance Warnings & Info Suggestions
+
+-- 1. Fix all remaining RLS policy issues and cleanup
+DROP POLICY IF EXISTS "Allow authenticated users to view all product categories" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to create new product categories" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to update any product category" ON public.product_categories;
+DROP POLICY IF EXISTS "Allow authenticated users to delete any product category" ON public.product_categories;
+
+-- Replace with proper admin-only policies for product_categories
+CREATE POLICY "Admins can manage product categories" ON public.product_categories
+FOR ALL USING (current_user_is_admin());
+
+-- 2. Add ALL missing performance indexes
+CREATE INDEX IF NOT EXISTS idx_orders_status_created_at ON public.orders(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_status_created_at ON public.orders(payment_status, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_customer_email_created_at ON public.orders(customer_email, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_delivery_state ON public.orders(delivery_state);
+CREATE INDEX IF NOT EXISTS idx_orders_delivery_city ON public.orders(delivery_city);
+CREATE INDEX IF NOT EXISTS idx_orders_notes_search ON public.orders USING gin(to_tsvector('english', notes));
+
+CREATE INDEX IF NOT EXISTS idx_products_category_active ON public.products(category, is_active);
+CREATE INDEX IF NOT EXISTS idx_products_price_range ON public.products(price) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_products_discount_price ON public.products(discount_price) WHERE discount_price IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_products_updated_at ON public.products(updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_full_name_search ON public.profiles USING gin(to_tsvector('english', full_name));
+CREATE INDEX IF NOT EXISTS idx_profiles_updated_at ON public.profiles(updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_user_roles_role_created_at ON public.user_roles(role, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_email_logs_status_created_at ON public.email_logs(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_email_logs_campaign_id ON public.email_logs(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_email_logs_template_id ON public.email_logs(template_id);
+
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_status_scheduled_at ON public.email_campaigns(status, scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_sent_at ON public.email_campaigns(sent_at);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_recipient_tags ON public.email_campaigns USING gin(recipient_tags);
+
+CREATE INDEX IF NOT EXISTS idx_email_templates_is_active ON public.email_templates(is_active);
+CREATE INDEX IF NOT EXISTS idx_email_templates_name_search ON public.email_templates USING gin(to_tsvector('english', name));
+CREATE INDEX IF NOT EXISTS idx_email_templates_body_search ON public.email_templates USING gin(to_tsvector('english', body));
+
+CREATE INDEX IF NOT EXISTS idx_invoices_status_created_at ON public.invoices(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_invoices_customer_email_created_at ON public.invoices(customer_email, created_at);
+CREATE INDEX IF NOT EXISTS idx_invoices_due_at ON public.invoices(due_at);
+CREATE INDEX IF NOT EXISTS idx_invoices_paid_at ON public.invoices(paid_at);
+CREATE INDEX IF NOT EXISTS idx_invoices_order_id ON public.invoices(order_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_invoice_number ON public.invoices(invoice_number);
+
+CREATE INDEX IF NOT EXISTS idx_order_bumps_is_active_price ON public.order_bumps(is_active, original_price);
+CREATE INDEX IF NOT EXISTS idx_order_bumps_discounted_price ON public.order_bumps(discounted_price) WHERE discounted_price IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_upsell_products_type_active ON public.upsell_products(type, is_active);
+CREATE INDEX IF NOT EXISTS idx_upsell_products_price_active ON public.upsell_products(price, is_active);
+CREATE INDEX IF NOT EXISTS idx_upsell_products_duration_months ON public.upsell_products(duration_months);
+
+CREATE INDEX IF NOT EXISTS idx_shipping_settings_is_active_threshold ON public.shipping_settings(is_active, free_shipping_threshold);
+
+CREATE INDEX IF NOT EXISTS idx_customer_tags_color ON public.customer_tags(color);
+CREATE INDEX IF NOT EXISTS idx_customer_tag_assignments_customer_email ON public.customer_tag_assignments(customer_email);
+CREATE INDEX IF NOT EXISTS idx_customer_tag_assignments_tag_id ON public.customer_tag_assignments(tag_id);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_metrics_date_recorded ON public.analytics_metrics(date_recorded);
+CREATE INDEX IF NOT EXISTS idx_analytics_metrics_metric_name_date ON public.analytics_metrics(metric_name, date_recorded);
+
+-- 3. Add composite indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_orders_composite_status_payment ON public.orders(status, payment_status, created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_composite_customer ON public.orders(customer_email, status, created_at);
+CREATE INDEX IF NOT EXISTS idx_products_composite_category_price ON public.products(category, price, is_active);
+CREATE INDEX IF NOT EXISTS idx_email_logs_composite_recipient_status ON public.email_logs(recipient_email, status, created_at);
+
+-- 4. Optimize all table statistics (set to maximum for better query planning)
+ALTER TABLE public.orders ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN items SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN total_amount SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN shipping_fee SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN discount_amount SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN customer_name SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN customer_phone SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN delivery_address SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN delivery_city SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN delivery_state SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN payment_reference SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN notes SET STATISTICS 1000;
+ALTER TABLE public.orders ALTER COLUMN updated_at SET STATISTICS 1000;
+
+ALTER TABLE public.products ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.products ALTER COLUMN description SET STATISTICS 1000;
+ALTER TABLE public.products ALTER COLUMN image_url SET STATISTICS 1000;
+ALTER TABLE public.products ALTER COLUMN category SET STATISTICS 1000;
+ALTER TABLE public.products ALTER COLUMN discount_price SET STATISTICS 1000;
+ALTER TABLE public.products ALTER COLUMN price SET STATISTICS 1000;
+ALTER TABLE public.products ALTER COLUMN created_at SET STATISTICS 1000;
+ALTER TABLE public.products ALTER COLUMN updated_at SET STATISTICS 1000;
+
+ALTER TABLE public.profiles ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.profiles ALTER COLUMN email SET STATISTICS 1000;
+ALTER TABLE public.profiles ALTER COLUMN full_name SET STATISTICS 1000;
+ALTER TABLE public.profiles ALTER COLUMN role SET STATISTICS 1000;
+ALTER TABLE public.profiles ALTER COLUMN created_at SET STATISTICS 1000;
+ALTER TABLE public.profiles ALTER COLUMN updated_at SET STATISTICS 1000;
+
+ALTER TABLE public.user_roles ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.user_roles ALTER COLUMN created_at SET STATISTICS 1000;
+
+ALTER TABLE public.email_logs ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.email_logs ALTER COLUMN recipient_email SET STATISTICS 1000;
+ALTER TABLE public.email_logs ALTER COLUMN subject SET STATISTICS 1000;
+ALTER TABLE public.email_logs ALTER COLUMN status SET STATISTICS 1000;
+ALTER TABLE public.email_logs ALTER COLUMN error_message SET STATISTICS 1000;
+ALTER TABLE public.email_logs ALTER COLUMN sent_at SET STATISTICS 1000;
+ALTER TABLE public.email_logs ALTER COLUMN template_id SET STATISTICS 1000;
+ALTER TABLE public.email_logs ALTER COLUMN campaign_id SET STATISTICS 1000;
+ALTER TABLE public.email_logs ALTER COLUMN created_at SET STATISTICS 1000;
+
+ALTER TABLE public.email_campaigns ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.email_campaigns ALTER COLUMN name SET STATISTICS 1000;
+ALTER TABLE public.email_campaigns ALTER COLUMN subject SET STATISTICS 1000;
+ALTER TABLE public.email_campaigns ALTER COLUMN status SET STATISTICS 1000;
+ALTER TABLE public.email_campaigns ALTER COLUMN recipient_tags SET STATISTICS 1000;
+ALTER TABLE public.email_campaigns ALTER COLUMN template_id SET STATISTICS 1000;
+ALTER TABLE public.email_campaigns ALTER COLUMN scheduled_at SET STATISTICS 1000;
+ALTER TABLE public.email_campaigns ALTER COLUMN sent_at SET STATISTICS 1000;
+ALTER TABLE public.email_campaigns ALTER COLUMN created_at SET STATISTICS 1000;
+ALTER TABLE public.email_campaigns ALTER COLUMN updated_at SET STATISTICS 1000;
+
+ALTER TABLE public.email_templates ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.email_templates ALTER COLUMN name SET STATISTICS 1000;
+ALTER TABLE public.email_templates ALTER COLUMN subject SET STATISTICS 1000;
+ALTER TABLE public.email_templates ALTER COLUMN body SET STATISTICS 1000;
+ALTER TABLE public.email_templates ALTER COLUMN is_active SET STATISTICS 1000;
+ALTER TABLE public.email_templates ALTER COLUMN created_at SET STATISTICS 1000;
+ALTER TABLE public.email_templates ALTER COLUMN updated_at SET STATISTICS 1000;
+
+ALTER TABLE public.invoices ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN order_id SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN invoice_number SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN customer_name SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN customer_email SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN items SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN subtotal SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN tax_amount SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN total_amount SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN status SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN issued_at SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN due_at SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN paid_at SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN created_at SET STATISTICS 1000;
+ALTER TABLE public.invoices ALTER COLUMN updated_at SET STATISTICS 1000;
+
+ALTER TABLE public.order_bumps ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.order_bumps ALTER COLUMN title SET STATISTICS 1000;
+ALTER TABLE public.order_bumps ALTER COLUMN description SET STATISTICS 1000;
+ALTER TABLE public.order_bumps ALTER COLUMN original_price SET STATISTICS 1000;
+ALTER TABLE public.order_bumps ALTER COLUMN discounted_price SET STATISTICS 1000;
+ALTER TABLE public.order_bumps ALTER COLUMN image_url SET STATISTICS 1000;
+ALTER TABLE public.order_bumps ALTER COLUMN is_active SET STATISTICS 1000;
+ALTER TABLE public.order_bumps ALTER COLUMN created_at SET STATISTICS 1000;
+ALTER TABLE public.order_bumps ALTER COLUMN updated_at SET STATISTICS 1000;
+
+ALTER TABLE public.upsell_products ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.upsell_products ALTER COLUMN name SET STATISTICS 1000;
+ALTER TABLE public.upsell_products ALTER COLUMN description SET STATISTICS 1000;
+ALTER TABLE public.upsell_products ALTER COLUMN price SET STATISTICS 1000;
+ALTER TABLE public.upsell_products ALTER COLUMN discount_price SET STATISTICS 1000;
+ALTER TABLE public.upsell_products ALTER COLUMN image_url SET STATISTICS 1000;
+ALTER TABLE public.upsell_products ALTER COLUMN type SET STATISTICS 1000;
+ALTER TABLE public.upsell_products ALTER COLUMN duration_months SET STATISTICS 1000;
+ALTER TABLE public.upsell_products ALTER COLUMN is_active SET STATISTICS 1000;
+ALTER TABLE public.upsell_products ALTER COLUMN created_at SET STATISTICS 1000;
+ALTER TABLE public.upsell_products ALTER COLUMN updated_at SET STATISTICS 1000;
+
+ALTER TABLE public.shipping_settings ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.shipping_settings ALTER COLUMN name SET STATISTICS 1000;
+ALTER TABLE public.shipping_settings ALTER COLUMN description SET STATISTICS 1000;
+ALTER TABLE public.shipping_settings ALTER COLUMN base_fee SET STATISTICS 1000;
+ALTER TABLE public.shipping_settings ALTER COLUMN lagos_delivery_fee SET STATISTICS 1000;
+ALTER TABLE public.shipping_settings ALTER COLUMN other_states_delivery_fee SET STATISTICS 1000;
+ALTER TABLE public.shipping_settings ALTER COLUMN free_shipping_threshold SET STATISTICS 1000;
+ALTER TABLE public.shipping_settings ALTER COLUMN enable_free_shipping SET STATISTICS 1000;
+ALTER TABLE public.shipping_settings ALTER COLUMN is_active SET STATISTICS 1000;
+ALTER TABLE public.shipping_settings ALTER COLUMN created_at SET STATISTICS 1000;
+ALTER TABLE public.shipping_settings ALTER COLUMN updated_at SET STATISTICS 1000;
+
+ALTER TABLE public.customer_tags ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.customer_tags ALTER COLUMN name SET STATISTICS 1000;
+ALTER TABLE public.customer_tags ALTER COLUMN description SET STATISTICS 1000;
+ALTER TABLE public.customer_tags ALTER COLUMN color SET STATISTICS 1000;
+ALTER TABLE public.customer_tags ALTER COLUMN created_at SET STATISTICS 1000;
+
+ALTER TABLE public.customer_tag_assignments ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.customer_tag_assignments ALTER COLUMN customer_email SET STATISTICS 1000;
+ALTER TABLE public.customer_tag_assignments ALTER COLUMN tag_id SET STATISTICS 1000;
+ALTER TABLE public.customer_tag_assignments ALTER COLUMN created_at SET STATISTICS 1000;
+
+ALTER TABLE public.product_reviews ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.product_reviews ALTER COLUMN product_id SET STATISTICS 1000;
+ALTER TABLE public.product_reviews ALTER COLUMN customer_name SET STATISTICS 1000;
+ALTER TABLE public.product_reviews ALTER COLUMN customer_email SET STATISTICS 1000;
+ALTER TABLE public.product_reviews ALTER COLUMN rating SET STATISTICS 1000;
+ALTER TABLE public.product_reviews ALTER COLUMN review_text SET STATISTICS 1000;
+ALTER TABLE public.product_reviews ALTER COLUMN is_approved SET STATISTICS 1000;
+ALTER TABLE public.product_reviews ALTER COLUMN is_verified SET STATISTICS 1000;
+ALTER TABLE public.product_reviews ALTER COLUMN created_at SET STATISTICS 1000;
+
+ALTER TABLE public.analytics_metrics ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.analytics_metrics ALTER COLUMN metric_name SET STATISTICS 1000;
+ALTER TABLE public.analytics_metrics ALTER COLUMN metric_value SET STATISTICS 1000;
+ALTER TABLE public.analytics_metrics ALTER COLUMN date_recorded SET STATISTICS 1000;
+ALTER TABLE public.analytics_metrics ALTER COLUMN created_at SET STATISTICS 1000;
+
+ALTER TABLE public.abandoned_checkouts ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.abandoned_checkouts ALTER COLUMN customer_name SET STATISTICS 1000;
+ALTER TABLE public.abandoned_checkouts ALTER COLUMN customer_email SET STATISTICS 1000;
+ALTER TABLE public.abandoned_checkouts ALTER COLUMN customer_phone SET STATISTICS 1000;
+ALTER TABLE public.abandoned_checkouts ALTER COLUMN cart_items SET STATISTICS 1000;
+ALTER TABLE public.abandoned_checkouts ALTER COLUMN notified SET STATISTICS 1000;
+ALTER TABLE public.abandoned_checkouts ALTER COLUMN created_at SET STATISTICS 1000;
+
+ALTER TABLE public.email_settings ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.email_settings ALTER COLUMN smtp_host SET STATISTICS 1000;
+ALTER TABLE public.email_settings ALTER COLUMN smtp_port SET STATISTICS 1000;
+ALTER TABLE public.email_settings ALTER COLUMN smtp_username SET STATISTICS 1000;
+ALTER TABLE public.email_settings ALTER COLUMN smtp_password SET STATISTICS 1000;
+ALTER TABLE public.email_settings ALTER COLUMN smtp_enabled SET STATISTICS 1000;
+ALTER TABLE public.email_settings ALTER COLUMN from_email SET STATISTICS 1000;
+ALTER TABLE public.email_settings ALTER COLUMN from_name SET STATISTICS 1000;
+ALTER TABLE public.email_settings ALTER COLUMN admin_recipients SET STATISTICS 1000;
+ALTER TABLE public.email_settings ALTER COLUMN created_at SET STATISTICS 1000;
+ALTER TABLE public.email_settings ALTER COLUMN updated_at SET STATISTICS 1000;
+
+ALTER TABLE public.product_categories ALTER COLUMN id SET STATISTICS 1000;
+ALTER TABLE public.product_categories ALTER COLUMN name SET STATISTICS 1000;
+ALTER TABLE public.product_categories ALTER COLUMN description SET STATISTICS 1000;
+ALTER TABLE public.product_categories ALTER COLUMN created_at SET STATISTICS 1000;
+ALTER TABLE public.product_categories ALTER COLUMN updated_at SET STATISTICS 1000;
+
+-- 5. Create additional constraints for data integrity and performance
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_email_format_orders') THEN
+    ALTER TABLE public.orders ADD CONSTRAINT check_email_format_orders CHECK (customer_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_email_format_profiles') THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT check_email_format_profiles CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_email_format_invoices') THEN
+    ALTER TABLE public.invoices ADD CONSTRAINT check_email_format_invoices CHECK (customer_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'check_email_format_email_logs') THEN
+    ALTER TABLE public.email_logs ADD CONSTRAINT check_email_format_email_logs CHECK (recipient_email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+  END IF;
+END $$;
+
+-- 6. Optimize function volatility and security
+CREATE OR REPLACE FUNCTION public.is_admin(user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT has_role(user_id, 'admin');
+$$;
+
+-- 7. Add clustering on frequently accessed tables (only if index exists)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relkind = 'i' AND c.relname = 'idx_orders_created_at' AND n.nspname = 'public'
+  ) THEN
+    EXECUTE 'CLUSTER public.orders USING idx_orders_created_at';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_index i ON i.indexrelid = c.oid
+    WHERE c.relkind = 'i'
+      AND c.relname = 'idx_products_active_price'
+      AND n.nspname = 'public'
+      AND i.indpred IS NULL -- not a partial index
+  ) THEN
+    EXECUTE 'CLUSTER public.products USING idx_products_active_price';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_index i ON i.indexrelid = c.oid
+    WHERE c.relkind = 'i'
+      AND c.relname = 'idx_email_logs_status_created_at'
+      AND n.nspname = 'public'
+      AND i.indpred IS NULL -- not a partial index
+  ) THEN
+    EXECUTE 'CLUSTER public.email_logs USING idx_email_logs_status_created_at';
+  END IF;
+END $$;
+
+-- 8. Set appropriate table storage parameters for better performance
+ALTER TABLE public.orders SET (fillfactor = 85);
+ALTER TABLE public.products SET (fillfactor = 90);
+ALTER TABLE public.email_logs SET (fillfactor = 80);
+ALTER TABLE public.user_roles SET (fillfactor = 95);
+
+-- 9. Final comprehensive ANALYZE for all tables
+ANALYZE public.orders;
+ANALYZE public.products;
+ANALYZE public.user_roles;
+ANALYZE public.profiles;
+ANALYZE public.email_logs;
+ANALYZE public.invoices;
+ANALYZE public.order_bumps;
+ANALYZE public.upsell_products;
+ANALYZE public.shipping_settings;
+ANALYZE public.email_templates;
+ANALYZE public.email_campaigns;
+ANALYZE public.customer_tags;
+ANALYZE public.customer_tag_assignments;
+ANALYZE public.product_reviews;
+ANALYZE public.analytics_metrics;
+ANALYZE public.abandoned_checkouts;
+ANALYZE public.email_settings;
+ANALYZE public.product_categories;

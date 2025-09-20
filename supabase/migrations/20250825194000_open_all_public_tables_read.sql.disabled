@@ -1,0 +1,28 @@
+-- Make all public schema tables world-readable (anon + authenticated)
+-- Writes remain admin-only per existing policies
+
+DO $$
+DECLARE r record;
+DECLARE pname text;
+BEGIN
+  FOR r IN
+    SELECT schemaname AS table_schema, tablename AS table_name
+    FROM pg_tables
+    WHERE schemaname='public'
+  LOOP
+    pname := r.table_name || '_public_select';
+
+    EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', r.table_schema, r.table_name);
+
+    IF EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname=r.table_schema AND tablename=r.table_name AND policyname=pname
+    ) THEN
+      EXECUTE format('ALTER POLICY %I ON %I.%I TO anon, authenticated USING (true)',
+                     pname, r.table_schema, r.table_name);
+    ELSE
+      EXECUTE format('CREATE POLICY %I ON %I.%I FOR SELECT TO anon, authenticated USING (true)',
+                     pname, r.table_schema, r.table_name);
+    END IF;
+  END LOOP;
+END $$;

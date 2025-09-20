@@ -1,0 +1,30 @@
+-- Replace assign_user_role to avoid ON CONFLICT without unique index and fix raw_app_meta_data usage
+create or replace function public.assign_user_role(p_user_id uuid)
+returns void
+language plpgsql
+as $$
+DECLARE
+  desired_role text;
+BEGIN
+  -- Pull desired role from auth.users.raw_app_meta_data
+  select coalesce(u.raw_app_meta_data->>'role', 'viewer')
+    into desired_role
+  from auth.users u
+  where u.id = p_user_id;
+
+  -- Validate against enum
+  IF desired_role NOT IN ('admin','manager','editor','viewer') THEN
+    desired_role := 'viewer';
+  END IF;
+
+  -- Update then insert if missing (no ON CONFLICT requirement)
+  update public.user_roles
+     set role = desired_role::public.app_role
+   where user_id = p_user_id;
+
+  IF NOT FOUND THEN
+    insert into public.user_roles (user_id, role)
+    values (p_user_id, desired_role::public.app_role);
+  END IF;
+END;
+$$;

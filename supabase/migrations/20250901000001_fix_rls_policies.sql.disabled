@@ -1,0 +1,36 @@
+-- Critical RLS policy optimizations for security and performance
+
+BEGIN;
+
+-- 1. ABANDONED_CHECKOUTS
+DROP POLICY IF EXISTS abandoned_checkouts_admin_select ON public.abandoned_checkouts;
+DROP POLICY IF EXISTS abandoned_checkouts_public_select ON public.abandoned_checkouts;
+
+CREATE POLICY "View abandoned checkouts" ON public.abandoned_checkouts
+  FOR SELECT USING (
+    public.has_role((SELECT auth.uid()), 'admin'::app_role) OR 
+    public.has_role((SELECT auth.uid()), 'manager'::app_role)
+  );
+
+-- 2. ORDERS (critical for performance)
+DROP POLICY IF EXISTS "Users can view their own orders" ON public.orders;
+DROP POLICY IF EXISTS orders_public_select ON public.orders;
+
+-- Keep existing admin policy
+-- CREATE POLICY "Admins can manage all orders" ON public.orders ...
+
+-- 3. EMAIL_TEMPLATES (security sensitive)
+DROP POLICY IF EXISTS "Admins can manage email templates" ON public.email_templates;
+DROP POLICY IF EXISTS email_templates_public_select ON public.email_templates;
+
+CREATE POLICY "View email templates" ON public.email_templates
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Manage email templates" ON public.email_templates
+  FOR ALL USING (public.has_role((SELECT auth.uid()), 'admin'::app_role));
+
+-- 4. Add critical indexes
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_abandoned_checkouts_user_id ON public.abandoned_checkouts(user_id);
+
+COMMIT;

@@ -1,0 +1,126 @@
+-- Create tables for all missing functionality
+
+-- Create product_analytics table for tracking product performance
+CREATE TABLE IF NOT EXISTS public.product_analytics (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  product_id UUID REFERENCES public.products(id) ON DELETE CASCADE,
+  date_recorded DATE NOT NULL DEFAULT CURRENT_DATE,
+  views INTEGER DEFAULT 0,
+  purchases INTEGER DEFAULT 0,
+  revenue NUMERIC DEFAULT 0,
+  cart_additions INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Create customer_analytics table for customer insights
+CREATE TABLE IF NOT EXISTS public.customer_analytics (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  customer_email TEXT NOT NULL,
+  total_orders INTEGER DEFAULT 0,
+  total_spent NUMERIC DEFAULT 0,
+  last_order_date TIMESTAMP WITH TIME ZONE,
+  avg_order_value NUMERIC DEFAULT 0,
+  lifetime_value NUMERIC DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Create email_analytics table for tracking email performance
+CREATE TABLE IF NOT EXISTS public.email_analytics (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  campaign_id UUID REFERENCES public.email_campaigns(id) ON DELETE CASCADE,
+  email_address TEXT NOT NULL,
+  sent_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  opened_at TIMESTAMP WITH TIME ZONE,
+  clicked_at TIMESTAMP WITH TIME ZONE,
+  bounced_at TIMESTAMP WITH TIME ZONE,
+  unsubscribed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Create workflow_steps table for automation workflows
+CREATE TABLE IF NOT EXISTS public.workflow_steps (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  workflow_id UUID REFERENCES public.automation_rules(id) ON DELETE CASCADE,
+  step_type TEXT NOT NULL, -- 'email', 'wait', 'tag', 'webhook'
+  step_order INTEGER NOT NULL,
+  configuration JSONB NOT NULL DEFAULT '{}',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Create customer_exports table for tracking export operations
+CREATE TABLE IF NOT EXISTS public.customer_exports (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  export_type TEXT NOT NULL, -- 'csv', 'excel', 'pdf'
+  file_url TEXT,
+  record_count INTEGER DEFAULT 0,
+  exported_by UUID REFERENCES auth.users(id),
+  status TEXT DEFAULT 'pending', -- 'pending', 'completed', 'failed'
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Update upsell_transactions table structure
+ALTER TABLE public.upsell_transactions 
+ADD COLUMN IF NOT EXISTS customer_name TEXT,
+ADD COLUMN IF NOT EXISTS customer_phone TEXT,
+ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+
+-- Create meal_plan_sync table for external meal plan integration
+CREATE TABLE IF NOT EXISTS public.meal_plan_sync (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  external_user_id TEXT NOT NULL,
+  customer_name TEXT NOT NULL,
+  customer_email TEXT NOT NULL,
+  customer_phone TEXT,
+  meal_plan_data JSONB DEFAULT '{}',
+  synced_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Enable RLS on all new tables
+ALTER TABLE public.product_analytics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customer_analytics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.email_analytics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.workflow_steps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customer_exports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.meal_plan_sync ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for admin-only access
+DROP POLICY IF EXISTS "Admin only access to product analytics" ON public.product_analytics;
+CREATE POLICY "Admin only access to product analytics" ON public.product_analytics FOR ALL USING (current_user_is_admin());
+DROP POLICY IF EXISTS "Admin only access to customer analytics" ON public.customer_analytics;
+CREATE POLICY "Admin only access to customer analytics" ON public.customer_analytics FOR ALL USING (current_user_is_admin());
+DROP POLICY IF EXISTS "Admin only access to email analytics" ON public.email_analytics;
+CREATE POLICY "Admin only access to email analytics" ON public.email_analytics FOR ALL USING (current_user_is_admin());
+DROP POLICY IF EXISTS "Admin only access to workflow steps" ON public.workflow_steps;
+CREATE POLICY "Admin only access to workflow steps" ON public.workflow_steps FOR ALL USING (current_user_is_admin());
+DROP POLICY IF EXISTS "Admin only access to customer exports" ON public.customer_exports;
+CREATE POLICY "Admin only access to customer exports" ON public.customer_exports FOR ALL USING (current_user_is_admin());
+DROP POLICY IF EXISTS "Admin only access to meal plan sync" ON public.meal_plan_sync;
+CREATE POLICY "Admin only access to meal plan sync" ON public.meal_plan_sync FOR ALL USING (current_user_is_admin());
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_product_analytics_product_date ON public.product_analytics(product_id, date_recorded);
+CREATE INDEX IF NOT EXISTS idx_customer_analytics_email ON public.customer_analytics(customer_email);
+CREATE INDEX IF NOT EXISTS idx_email_analytics_campaign ON public.email_analytics(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_steps_workflow ON public.workflow_steps(workflow_id, step_order);
+CREATE INDEX IF NOT EXISTS idx_meal_plan_sync_email ON public.meal_plan_sync(customer_email);
+
+-- Create triggers for updated_at columns
+DROP TRIGGER IF EXISTS update_product_analytics_updated_at ON public.product_analytics;
+CREATE TRIGGER update_product_analytics_updated_at
+  BEFORE UPDATE ON public.product_analytics
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_customer_analytics_updated_at ON public.customer_analytics;
+CREATE TRIGGER update_customer_analytics_updated_at
+  BEFORE UPDATE ON public.customer_analytics
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_workflow_steps_updated_at ON public.workflow_steps;
+CREATE TRIGGER update_workflow_steps_updated_at
+  BEFORE UPDATE ON public.workflow_steps
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

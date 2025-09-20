@@ -1,0 +1,4 @@
+-- Add covering index for FK email_logs_campaign_id_fkey
+-- Lint: unindexed_foreign_keys on public.email_logs(campaign_id)
+CREATE INDEX IF NOT EXISTS idx_email_logs_campaign_id
+  ON public.email_logs (campaign_id);

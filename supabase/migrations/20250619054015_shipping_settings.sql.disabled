@@ -1,0 +1,63 @@
+
+-- Create shipping_settings table (referenced in shippingManager.ts)
+CREATE TABLE IF NOT EXISTS public.shipping_settings (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  lagos_delivery_fee integer NOT NULL DEFAULT 2000,
+  other_states_delivery_fee integer NOT NULL DEFAULT 5000,
+  free_shipping_threshold integer NOT NULL DEFAULT 50000,
+  enable_free_shipping boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- Create apply_discount_code function (referenced in discountManager.ts)
+CREATE OR REPLACE FUNCTION public.apply_discount_code(
+  code_text text,
+  order_total integer
+)
+RETURNS TABLE(
+  id uuid,
+  code text,
+  type text,
+  value numeric,
+  is_valid boolean,
+  is_active boolean,
+  max_uses integer,
+  current_uses integer,
+  expires_at timestamp with time zone
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    dc.id,
+    dc.code,
+    dc.type,
+    dc.value,
+    CASE 
+      WHEN dc.is_active = true 
+      AND (dc.expires_at IS NULL OR dc.expires_at > now())
+      AND dc.current_uses < dc.max_uses
+      THEN true
+      ELSE false
+    END as is_valid,
+    dc.is_active,
+    dc.max_uses,
+    dc.current_uses,
+    dc.expires_at
+  FROM public.discount_codes dc
+  WHERE dc.code = code_text;
+END;
+$$;
+
+-- Add missing columns to order_bumps table for the features requested
+ALTER TABLE public.order_bumps 
+ADD COLUMN IF NOT EXISTS display_condition_type text DEFAULT 'always',
+ADD COLUMN IF NOT EXISTS required_products text[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS min_cart_value integer DEFAULT 0;
+
+-- Insert default shipping settings
+INSERT INTO public.shipping_settings (lagos_delivery_fee, other_states_delivery_fee, free_shipping_threshold, enable_free_shipping)
+VALUES (2000, 5000, 50000, true)
+ON CONFLICT DO NOTHING;

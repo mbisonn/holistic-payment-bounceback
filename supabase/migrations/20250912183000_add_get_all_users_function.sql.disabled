@@ -1,0 +1,49 @@
+-- Add get_all_users function for User Center dashboard
+-- This function allows admins to view all authenticated users
+
+CREATE OR REPLACE FUNCTION public.get_all_users()
+RETURNS TABLE (
+    id UUID,
+    email TEXT,
+    created_at TIMESTAMPTZ,
+    email_confirmed_at TIMESTAMPTZ,
+    user_metadata JSONB
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    current_user_id UUID;
+BEGIN
+    -- Get current user ID
+    current_user_id := (SELECT auth.uid());
+    
+    IF current_user_id IS NULL THEN
+        RAISE EXCEPTION 'User must be authenticated';
+    END IF;
+
+    -- Check if user is admin
+    IF NOT EXISTS (
+        SELECT 1 FROM public.user_roles 
+        WHERE user_id = current_user_id 
+        AND role = 'admin'
+    ) THEN
+        RAISE EXCEPTION 'Only admins can view all users';
+    END IF;
+
+    -- Return all users from auth.users
+    RETURN QUERY
+    SELECT 
+        au.id,
+        au.email,
+        au.created_at,
+        au.email_confirmed_at,
+        au.user_metadata
+    FROM auth.users au
+    ORDER BY au.created_at DESC;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION public.get_all_users TO authenticated;

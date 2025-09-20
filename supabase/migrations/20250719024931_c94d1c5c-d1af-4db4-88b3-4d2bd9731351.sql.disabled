@@ -1,0 +1,52 @@
+
+-- Fix remaining RLS performance issues: multiple policies and auth function optimization
+
+-- 1. Remove duplicate policies for orders table
+DROP POLICY IF EXISTS "Admins can manage orders" ON public.orders;
+DROP POLICY IF EXISTS "manage_orders" ON public.orders;
+-- Keep only the optimized orders_access policy
+
+-- 2. Fix product_categories policies - remove duplicates and optimize
+DROP POLICY IF EXISTS "manage_product_categories" ON public.product_categories;
+DROP POLICY IF EXISTS "product_categories_read" ON public.product_categories;
+DROP POLICY IF EXISTS "product_categories_write" ON public.product_categories;
+
+-- Create single optimized policies for product_categories
+CREATE POLICY "product_categories_public_read" ON public.product_categories
+  FOR SELECT USING (true);
+
+CREATE POLICY "product_categories_admin_manage" ON public.product_categories
+  FOR ALL USING (current_user_is_admin())
+  WITH CHECK (current_user_is_admin());
+
+-- 3. Fix product_reviews policies - remove all duplicate policies
+DROP POLICY IF EXISTS "Product reviews policy" ON public.product_reviews;
+DROP POLICY IF EXISTS "manage_product_reviews" ON public.product_reviews;
+DROP POLICY IF EXISTS "view_approved_reviews" ON public.product_reviews;
+DROP POLICY IF EXISTS "view_product_reviews" ON public.product_reviews;
+-- Keep only the optimized reviews_access policy
+
+-- 4. Fix products policies - optimize auth function calls
+DROP POLICY IF EXISTS "Products policy" ON public.products;
+DROP POLICY IF EXISTS "manage_products" ON public.products;
+DROP POLICY IF EXISTS "view_active_products" ON public.products;
+DROP POLICY IF EXISTS "products_access" ON public.products;
+
+-- Create single optimized policy for products
+CREATE POLICY "products_optimized_access" ON public.products
+  FOR ALL USING (
+    is_active = true OR current_user_is_admin()
+  )
+  WITH CHECK (current_user_is_admin());
+
+-- 5. Fix upsell_products policies - optimize auth function calls
+DROP POLICY IF EXISTS "upsell_products_modify_policy" ON public.upsell_products;
+DROP POLICY IF EXISTS "upsell_products_view_policy" ON public.upsell_products;
+DROP POLICY IF EXISTS "view_upsell_products" ON public.upsell_products;
+
+-- Create single optimized policy for upsell_products
+CREATE POLICY "upsell_products_optimized_access" ON public.upsell_products
+  FOR ALL USING (
+    is_active = true OR current_user_is_admin()
+  )
+  WITH CHECK (current_user_is_admin());

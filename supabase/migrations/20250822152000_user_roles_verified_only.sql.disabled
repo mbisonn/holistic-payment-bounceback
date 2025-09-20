@@ -1,0 +1,35 @@
+-- Verified-only visibility for user_roles (no admin checks)
+-- Keeps self-read for owners; no changes to write/delete here
+
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing SELECT policies on user_roles
+DO $$
+DECLARE
+  pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname FROM pg_policies 
+    WHERE schemaname='public' AND tablename='user_roles' AND cmd='select'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.user_roles', pol.policyname);
+  END LOOP;
+END $$;
+
+-- Create verified-only + self-read policy (idempotent)
+DROP POLICY IF EXISTS user_roles_select_verified_only ON public.user_roles;
+CREATE POLICY user_roles_select_verified_only
+ON public.user_roles
+FOR SELECT
+TO authenticated
+USING (
+  -- Owners can read their own roles
+  user_id = (SELECT auth.uid())
+  OR
+  -- Verified users can read all roles
+  EXISTS (
+    SELECT 1 FROM public.user_roles ur
+    WHERE ur.user_id = (SELECT auth.uid())
+      AND ur.role = 'verified'
+  )
+);

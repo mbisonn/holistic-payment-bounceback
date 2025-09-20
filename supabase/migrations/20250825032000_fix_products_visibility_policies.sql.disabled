@@ -1,0 +1,52 @@
+-- Fix products visibility: allow admins OR verified users to read products
+-- Safe/idempotent: drops conflicting policies and re-creates desired ones
+
+-- Ensure RLS enabled
+ALTER TABLE IF EXISTS public.products ENABLE ROW LEVEL SECURITY;
+
+-- Drop conflicting policies on products
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname FROM pg_policies
+    WHERE schemaname='public' AND tablename='products'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.products', pol.policyname);
+  END LOOP;
+END $$;
+
+-- SELECT: admins OR verified users
+CREATE POLICY products_admin_or_verified_select
+  ON public.products
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.current_user_is_admin()
+    OR EXISTS (
+      SELECT 1 FROM public.user_roles ur
+      WHERE ur.user_id = (SELECT auth.uid())
+        AND ur.role = 'verified'::public.app_role
+    )
+  );
+
+-- ALL (insert/update/delete): admins only
+CREATE POLICY products_admin_all
+  ON public.products
+  FOR ALL
+  TO authenticated
+  USING (public.current_user_is_admin())
+  WITH CHECK (public.current_user_is_admin());
+
+-- Keep public view available for storefronts
+CREATE OR REPLACE VIEW public.products_public AS
+  SELECT id, name, description, price, image_url, is_active
+  FROM public.products
+  WHERE is_active = true;
+
+REVOKE ALL ON public.products_public FROM PUBLIC;
+GRANT SELECT ON public.products_public TO anon;
+GRANT SELECT ON public.products_public TO authenticated;
+
+-- Helpful index if missing
+CREATE INDEX IF NOT EXISTS idx_products_is_active ON public.products(is_active);

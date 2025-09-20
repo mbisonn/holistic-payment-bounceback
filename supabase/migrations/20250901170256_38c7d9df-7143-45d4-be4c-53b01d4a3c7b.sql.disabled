@@ -1,0 +1,69 @@
+-- Fix RLS policies for security without duplicating existing policies
+-- Remove only the problematic public select policies
+
+-- Drop public select policies that expose sensitive data
+DROP POLICY IF EXISTS "profiles_public_select" ON public.profiles;
+DROP POLICY IF EXISTS "customer_tag_assignments_public_select" ON public.customer_tag_assignments;
+DROP POLICY IF EXISTS "upsell_transactions_public_select" ON public.upsell_transactions;
+DROP POLICY IF EXISTS "email_outbox_public_select" ON public.email_outbox;
+DROP POLICY IF EXISTS "automation_rules_public_select" ON public.automation_rules;
+DROP POLICY IF EXISTS "security_events_public_select" ON public.security_events;
+DROP POLICY IF EXISTS "email_analytics_public_select" ON public.email_analytics;
+DROP POLICY IF EXISTS "email_events_public_select" ON public.email_events;
+DROP POLICY IF EXISTS "email_logs_public_select" ON public.email_logs;
+DROP POLICY IF EXISTS "customer_analytics_public_select" ON public.customer_analytics;
+DROP POLICY IF EXISTS "customer_exports_public_select" ON public.customer_exports;
+DROP POLICY IF EXISTS "customer_tags_public_select" ON public.customer_tags;
+DROP POLICY IF EXISTS "email_campaigns_public_select" ON public.email_campaigns;
+DROP POLICY IF EXISTS "email_settings_public_select" ON public.email_settings;
+DROP POLICY IF EXISTS "email_templates_public_select" ON public.email_templates;
+DROP POLICY IF EXISTS "facebook_conversion_settings_public_select" ON public.facebook_conversion_settings;
+DROP POLICY IF EXISTS "invoices_public_select" ON public.invoices;
+DROP POLICY IF EXISTS "meal_plan_sync_public_select" ON public.meal_plan_sync;
+DROP POLICY IF EXISTS "product_analytics_public_select" ON public.product_analytics;
+DROP POLICY IF EXISTS "role_types_public_select" ON public.role_types;
+DROP POLICY IF EXISTS "abandoned_checkouts_public_select" ON public.abandoned_checkouts;
+DROP POLICY IF EXISTS "analytics_metrics_public_select" ON public.analytics_metrics;
+
+-- Drop and recreate specific public policies for necessary data
+DROP POLICY IF EXISTS "discount_codes_public_select" ON public.discount_codes;
+DROP POLICY IF EXISTS "order_bumps_public_select" ON public.order_bumps;
+DROP POLICY IF EXISTS "product_categories_public_select" ON public.product_categories;
+DROP POLICY IF EXISTS "product_reviews_public_select" ON public.product_reviews;
+DROP POLICY IF EXISTS "products_public_select" ON public.products;
+DROP POLICY IF EXISTS "shipping_settings_public_select" ON public.shipping_settings;
+DROP POLICY IF EXISTS "upsell_products_public_select" ON public.upsell_products;
+
+-- Create secure public access policies for necessary data
+CREATE POLICY "Anyone can view active products" ON public.products
+  FOR SELECT
+  USING (is_active = true);
+
+CREATE POLICY "Anyone can view product categories" ON public.product_categories
+  FOR SELECT
+  USING (true);
+
+CREATE POLICY "Anyone can view active upsell products" ON public.upsell_products
+  FOR SELECT
+  USING (is_active = true);
+
+CREATE POLICY "Anyone can view active order bumps" ON public.order_bumps
+  FOR SELECT
+  USING (is_active = true);
+
+CREATE POLICY "Anyone can view active shipping settings" ON public.shipping_settings
+  FOR SELECT
+  USING (is_active = true);
+
+CREATE POLICY "Anyone can view active discount codes" ON public.discount_codes
+  FOR SELECT
+  USING (is_active = true);
+
+CREATE POLICY "Anyone can view approved product reviews" ON public.product_reviews
+  FOR SELECT
+  USING (is_approved = true);
+
+-- Secure profile access
+CREATE POLICY IF NOT EXISTS "Users can view their own profile" ON public.profiles
+  FOR SELECT
+  USING (id = current_user_id());

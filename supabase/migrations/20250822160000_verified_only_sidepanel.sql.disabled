@@ -1,0 +1,220 @@
+-- Verified-only access for all admin sidebar resources (SELECT-only)
+-- This migration drops existing SELECT policies for target tables and replaces them
+-- with a unified policy requiring the caller to have role 'verified' in public.user_roles.
+
+-- Helper predicate used inline: EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+
+-- Target tables inferred from UI: products, orders, order_bumps, discount_codes, upsell_products,
+-- customer_tags, email_templates, email_campaigns, invoices, profiles (read), shipping_settings,
+-- email_settings, automation_rules, customer_tag_assignments, orders_products
+
+-- 0) Ensure RLS is enabled on all target tables
+DO $$
+BEGIN
+  -- Enable RLS if tables exist
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='products';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.products ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='orders';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='order_bumps';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.order_bumps ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='discount_codes';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.discount_codes ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='upsell_products';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.upsell_products ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='customer_tags';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.customer_tags ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='email_templates';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.email_templates ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='email_campaigns';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.email_campaigns ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='invoices';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='profiles';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='shipping_settings';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.shipping_settings ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='email_settings';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.email_settings ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='automation_rules';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.automation_rules ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='customer_tag_assignments';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.customer_tag_assignments ENABLE ROW LEVEL SECURITY'; END IF;
+
+  PERFORM 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='orders_products';
+  IF FOUND THEN EXECUTE 'ALTER TABLE public.orders_products ENABLE ROW LEVEL SECURITY'; END IF;
+END $$;
+
+-- 1) Utility to drop existing SELECT policies for a table (idempotent)
+CREATE OR REPLACE FUNCTION public._drop_select_policies(tbl regclass)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE r RECORD; BEGIN
+  FOR r IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename = split_part(tbl::text, '.', 2) AND cmd='select'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %s', r.policyname, tbl);
+  END LOOP;
+END $$;
+
+-- 2) Apply verified-only SELECT policy per table
+-- products
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='products') THEN
+    PERFORM public._drop_select_policies('public.products');
+    EXECUTE $$CREATE POLICY products_verified_select ON public.products FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- orders
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='orders') THEN
+    PERFORM public._drop_select_policies('public.orders');
+    EXECUTE $$CREATE POLICY orders_verified_select ON public.orders FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- order_bumps
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='order_bumps') THEN
+    PERFORM public._drop_select_policies('public.order_bumps');
+    EXECUTE $$CREATE POLICY order_bumps_verified_select ON public.order_bumps FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- discount_codes
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='discount_codes') THEN
+    PERFORM public._drop_select_policies('public.discount_codes');
+    EXECUTE $$CREATE POLICY discount_codes_verified_select ON public.discount_codes FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- upsell_products
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='upsell_products') THEN
+    PERFORM public._drop_select_policies('public.upsell_products');
+    EXECUTE $$CREATE POLICY upsell_products_verified_select ON public.upsell_products FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- customer_tags
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='customer_tags') THEN
+    PERFORM public._drop_select_policies('public.customer_tags');
+    EXECUTE $$CREATE POLICY customer_tags_verified_select ON public.customer_tags FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- email_templates
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='email_templates') THEN
+    PERFORM public._drop_select_policies('public.email_templates');
+    EXECUTE $$CREATE POLICY email_templates_verified_select ON public.email_templates FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- email_campaigns
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='email_campaigns') THEN
+    PERFORM public._drop_select_policies('public.email_campaigns');
+    EXECUTE $$CREATE POLICY email_campaigns_verified_select ON public.email_campaigns FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- invoices
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='invoices') THEN
+    PERFORM public._drop_select_policies('public.invoices');
+    EXECUTE $$CREATE POLICY invoices_verified_select ON public.invoices FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- profiles (read-only verified access; other CRUD policies remain as defined elsewhere)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='profiles') THEN
+    PERFORM public._drop_select_policies('public.profiles');
+    EXECUTE $$CREATE POLICY profiles_verified_select ON public.profiles FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- shipping_settings
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='shipping_settings') THEN
+    PERFORM public._drop_select_policies('public.shipping_settings');
+    EXECUTE $$CREATE POLICY shipping_settings_verified_select ON public.shipping_settings FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- email_settings
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='email_settings') THEN
+    PERFORM public._drop_select_policies('public.email_settings');
+    EXECUTE $$CREATE POLICY email_settings_verified_select ON public.email_settings FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- automation_rules
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='automation_rules') THEN
+    PERFORM public._drop_select_policies('public.automation_rules');
+    EXECUTE $$CREATE POLICY automation_rules_verified_select ON public.automation_rules FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- customer_tag_assignments
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='customer_tag_assignments') THEN
+    PERFORM public._drop_select_policies('public.customer_tag_assignments');
+    EXECUTE $$CREATE POLICY customer_tag_assignments_verified_select ON public.customer_tag_assignments FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;
+
+-- orders_products
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='orders_products') THEN
+    PERFORM public._drop_select_policies('public.orders_products');
+    EXECUTE $$CREATE POLICY orders_products_verified_select ON public.orders_products FOR SELECT TO authenticated USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'verified')
+    )$$;
+  END IF;
+END $$;

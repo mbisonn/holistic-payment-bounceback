@@ -1,0 +1,45 @@
+-- Log out current user ebuchenna1@gmail.com by clearing their session
+-- This will be handled in the frontend code, not in database
+
+-- Add email notification settings table
+CREATE TABLE IF NOT EXISTS public.notification_settings (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  setting_type TEXT NOT NULL,
+  email_addresses TEXT[] NOT NULL DEFAULT '{}',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE public.notification_settings ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for notification_settings
+CREATE POLICY "notification_settings_admin_all" 
+ON public.notification_settings 
+FOR ALL 
+USING (current_user_is_admin()) 
+WITH CHECK (current_user_is_admin());
+
+-- Insert default activity notification emails
+INSERT INTO public.notification_settings (setting_type, email_addresses, is_active)
+VALUES (
+  'activity_notifications',
+  ARRAY['ebuchenna1@gmail.com', 'bouncebacktolifeconsult@gmail.com', 'info@bouncebacktolifeconsult.pro', 'pecjos2017@gmail.com'],
+  true
+)
+ON CONFLICT DO NOTHING;
+
+-- Create trigger for updating notification_settings
+CREATE OR REPLACE FUNCTION public.update_notification_settings_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_notification_settings_updated_at
+    BEFORE UPDATE ON public.notification_settings
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_notification_settings_updated_at();

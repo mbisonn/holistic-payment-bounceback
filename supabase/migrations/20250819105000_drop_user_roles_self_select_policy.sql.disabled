@@ -1,0 +1,15 @@
+-- Drop duplicate permissive policy on public.user_roles to satisfy lints
+-- - Removes user_roles_self_select (duplicates combined policy)
+-- - The remaining policy user_roles_select_combined already wraps auth.uid() in SELECT
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename  = 'user_roles'
+      AND policyname = 'user_roles_self_select'
+  ) THEN
+    EXECUTE 'DROP POLICY user_roles_self_select ON public.user_roles';
+  END IF;
+END $$;

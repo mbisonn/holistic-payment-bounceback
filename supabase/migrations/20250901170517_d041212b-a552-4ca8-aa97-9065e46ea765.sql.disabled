@@ -1,0 +1,45 @@
+-- Create product_variants table and fix remaining policies
+-- Create product variants table for multi-bottle packages
+CREATE TABLE IF NOT EXISTS public.product_variants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  price NUMERIC NOT NULL DEFAULT 0,
+  quantity_multiplier INTEGER NOT NULL DEFAULT 1,
+  is_bumper_offer BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS on product_variants
+ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can view product variants
+CREATE POLICY "Anyone can view product variants" ON public.product_variants
+  FOR SELECT
+  USING (true);
+
+-- Only admins can manage product variants
+CREATE POLICY "Admins can manage product variants" ON public.product_variants
+  FOR ALL
+  USING (is_admin(current_user_id()));
+
+-- Create update trigger for product_variants
+DROP TRIGGER IF EXISTS update_product_variants_updated_at ON public.product_variants;
+CREATE TRIGGER update_product_variants_updated_at
+  BEFORE UPDATE ON public.product_variants
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Secure profile access - only create if doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'Users can view their own profile'
+  ) THEN
+    CREATE POLICY "Users can view their own profile" ON public.profiles
+      FOR SELECT
+      USING (id = current_user_id());
+  END IF;
+END $$;

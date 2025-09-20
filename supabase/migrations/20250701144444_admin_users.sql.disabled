@@ -1,0 +1,56 @@
+
+-- Ensure unique email in auth.users for ON CONFLICT to work
+-- ALTER TABLE auth.users ADD CONSTRAINT users_email_unique UNIQUE (email);
+
+-- Insert admin users with their roles (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'ebuchenna1@gmail.com') THEN
+    INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_user_meta_data, is_super_admin, role)
+    VALUES (gen_random_uuid(), 'ebuchenna1@gmail.com', crypt('@Lynxxx007', gen_salt('bf')), now(), now(), now(), '{"full_name": "Admin User 1"}', false, 'authenticated');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'info@bouncebacktolifeconsult.pro') THEN
+    INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_user_meta_data, is_super_admin, role)
+    VALUES (gen_random_uuid(), 'info@bouncebacktolifeconsult.pro', crypt('Owerri@58', gen_salt('bf')), now(), now(), now(), '{"full_name": "Admin User 2"}', false, 'authenticated');
+  END IF;
+END $$;
+
+-- Create user_roles table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.user_roles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  role text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  UNIQUE(user_id, role)
+);
+
+-- Enable RLS on user_roles
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for user_roles
+DROP POLICY IF EXISTS "Admins can manage all user roles" ON public.user_roles;
+CREATE POLICY "Admins can manage all user roles" ON public.user_roles
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.user_roles ur 
+      WHERE ur.user_id = auth.uid() AND ur.role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can view their own roles" ON public.user_roles;
+CREATE POLICY "Users can view their own roles" ON public.user_roles
+  FOR SELECT USING (user_id = auth.uid());
+
+-- Add admin roles for the specified users
+INSERT INTO public.user_roles (user_id, role)
+SELECT u.id, 'admin'
+FROM auth.users u
+WHERE u.email IN ('ebuchenna1@gmail.com', 'info@bouncebacktolifeconsult.pro')
+ON CONFLICT (user_id, role) DO NOTHING;
+
+-- Update profiles table to include admin role
+INSERT INTO public.profiles (id, email, full_name, role)
+SELECT u.id, u.email, u.raw_user_meta_data->>'full_name', 'admin'
+FROM auth.users u
+WHERE u.email IN ('ebuchenna1@gmail.com', 'info@bouncebacktolifeconsult.pro')
+ON CONFLICT (id) DO UPDATE SET role = 'admin';

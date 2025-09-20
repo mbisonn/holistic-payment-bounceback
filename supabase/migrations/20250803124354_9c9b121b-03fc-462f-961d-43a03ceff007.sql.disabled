@@ -1,0 +1,54 @@
+-- Fix critical RLS policy vulnerabilities
+-- Replace auth.role() with current_user_is_admin() for order_bumps table
+DROP POLICY IF EXISTS "Order bumps policy" ON public.order_bumps;
+CREATE POLICY "Order bumps access policy" 
+ON public.order_bumps 
+FOR ALL 
+USING (is_active OR current_user_is_admin())
+WITH CHECK (current_user_is_admin());
+
+-- Replace auth.role() with current_user_is_admin() for shipping_settings table  
+DROP POLICY IF EXISTS "Shipping settings policy" ON public.shipping_settings;
+CREATE POLICY "Shipping settings access policy"
+ON public.shipping_settings
+FOR ALL
+USING (is_active OR current_user_is_admin()) 
+WITH CHECK (current_user_is_admin());
+
+-- Add public read access for active discount codes
+CREATE POLICY "Public can view active discount codes"
+ON public.discount_codes
+FOR SELECT
+USING (is_active = true);
+
+-- Ensure upsell_products has proper public read access
+DROP POLICY IF EXISTS "upsell_products_optimized_access" ON public.upsell_products;
+CREATE POLICY "Public can view active upsell products"
+ON public.upsell_products
+FOR SELECT
+USING (is_active = true);
+
+CREATE POLICY "Admins can manage upsell products"
+ON public.upsell_products
+FOR ALL
+USING (current_user_is_admin())
+WITH CHECK (current_user_is_admin());
+
+-- Add security logging table
+CREATE TABLE IF NOT EXISTS public.security_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type text NOT NULL,
+  user_id uuid REFERENCES auth.users(id),
+  ip_address text,
+  user_agent text,
+  metadata jsonb DEFAULT '{}',
+  created_at timestamp with time zone DEFAULT now()
+);
+
+ALTER TABLE public.security_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can view security events"
+ON public.security_events
+FOR ALL
+USING (current_user_is_admin())
+WITH CHECK (current_user_is_admin());

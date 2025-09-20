@@ -1,0 +1,56 @@
+-- First, let's check the current RLS status
+SELECT 
+    table_schema,
+    table_name,
+    row_security_active
+FROM 
+    information_schema.tables 
+WHERE 
+    table_schema = 'public' 
+    AND table_type = 'BASE TABLE'
+    AND table_name IN (
+        'profiles',
+        'user_roles',
+        'products',
+        'orders',
+        'order_items',
+        'email_settings',
+        'email_templates',
+        'email_campaigns'
+    )
+ORDER BY 
+    table_name;
+
+-- Now let's apply the RLS policies from the previous migration
+\i supabase/migrations/20250829230000_setup_rls_policies.sql
+
+-- Verify the policies were created
+SELECT 
+    n.nspname as schema,
+    c.relname as table,
+    r.rolname as owner,
+    p.policyname as policy_name,
+    p.cmd as command,
+    p.permissive,
+    p.roles,
+    p.qual as using_expression,
+    p.with_check as with_check_expression
+FROM 
+    pg_policy p
+    JOIN pg_class c ON p.polrelid = c.oid
+    JOIN pg_roles r ON c.relowner = r.oid
+    LEFT JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE 
+    n.nspname = 'public'
+    AND c.relname IN (
+        'profiles',
+        'user_roles',
+        'products',
+        'orders',
+        'order_items',
+        'email_settings',
+        'email_templates',
+        'email_campaigns'
+    )
+ORDER BY 
+    c.relname, p.policyname;

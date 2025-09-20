@@ -1,0 +1,48 @@
+-- Optimize RLS policies for performance and consolidation
+
+-- PRODUCTS
+DROP POLICY IF EXISTS "Products are viewable by everyone" ON public.products;
+DROP POLICY IF EXISTS "Admins can manage products" ON public.products;
+CREATE POLICY "Products are viewable by everyone" ON public.products
+  FOR SELECT USING (is_active = true);
+CREATE POLICY "Admins can manage products" ON public.products
+  FOR ALL USING (public.has_role((SELECT auth.uid()), 'admin'::app_role));
+
+-- PRODUCT_CATEGORIES
+DROP POLICY IF EXISTS "manage_product_categories" ON public.product_categories;
+DROP POLICY IF EXISTS "product_categories_read" ON public.product_categories;
+DROP POLICY IF EXISTS "product_categories_write" ON public.product_categories;
+CREATE POLICY "Manage or read product categories" ON public.product_categories
+  FOR ALL USING (
+    public.has_role((SELECT auth.uid()), 'admin'::app_role)
+    OR public.has_role((SELECT auth.uid()), 'manager'::app_role)
+    OR (SELECT auth.uid()) IS NOT NULL
+  );
+
+-- UPSELL_PRODUCTS
+DROP POLICY IF EXISTS "view_upsell_products" ON public.upsell_products;
+DROP POLICY IF EXISTS "upsell_products_modify_policy" ON public.upsell_products;
+DROP POLICY IF EXISTS "upsell_products_view_policy" ON public.upsell_products;
+CREATE POLICY "View active upsell products" ON public.upsell_products
+  FOR SELECT USING (is_active = true);
+CREATE POLICY "Admins can manage upsell products" ON public.upsell_products
+  FOR ALL USING (public.has_role((SELECT auth.uid()), 'admin'::app_role));
+
+-- ORDERS
+DROP POLICY IF EXISTS "manage_orders" ON public.orders;
+DROP POLICY IF EXISTS "orders_access" ON public.orders;
+DROP POLICY IF EXISTS "Admins can manage orders" ON public.orders;
+CREATE POLICY "Admins can manage orders" ON public.orders
+  FOR ALL USING (public.has_role((SELECT auth.uid()), 'admin'::app_role));
+
+-- PRODUCT_REVIEWS
+DROP POLICY IF EXISTS "view_product_reviews" ON public.product_reviews;
+DROP POLICY IF EXISTS "manage_product_reviews" ON public.product_reviews;
+DROP POLICY IF EXISTS "reviews_access" ON public.product_reviews;
+DROP POLICY IF EXISTS "view_approved_reviews" ON public.product_reviews;
+CREATE POLICY "View approved product reviews" ON public.product_reviews
+  FOR SELECT USING (is_approved = true);
+CREATE POLICY "Admins can manage product reviews" ON public.product_reviews
+  FOR ALL USING (public.has_role((SELECT auth.uid()), 'admin'::app_role));
+
+-- Add more policies as needed for other flagged tables. 

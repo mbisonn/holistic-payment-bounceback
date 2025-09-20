@@ -1,0 +1,175 @@
+-- Fix and normalize RLS for orders and products, idempotent
+-- Ensures admin access via current_user_is_admin(), and owners can see own orders.
+-- Also re-creates helpers with proper search_path and SECURITY DEFINER.
+
+-- 0) Helpers
+DO $$
+BEGIN
+  -- has_role(check_user_id uuid, role_name text)
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname='public' AND p.proname='has_role' AND p.pronargs=2
+  ) THEN
+    -- create placeholder; we'll replace right after to enforce definition
+    CREATE OR REPLACE FUNCTION public.has_role(check_user_id uuid, role_name text)
+    RETURNS boolean LANGUAGE sql AS 'SELECT false';
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.has_role(check_user_id uuid, role_name text)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_roles ur
+    WHERE ur.user_id = check_user_id
+      AND ur.role = role_name::public.app_role
+  );
+$$;
+
+DO $$
+BEGIN
+  -- current_user_is_admin()
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname='public' AND p.proname='current_user_is_admin' AND p.pronargs=0
+  ) THEN
+    CREATE OR REPLACE FUNCTION public.current_user_is_admin()
+    RETURNS boolean LANGUAGE sql AS 'SELECT false';
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.current_user_is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_roles ur
+    WHERE ur.user_id = (SELECT auth.uid())
+      AND ur.role = 'admin'::public.app_role
+  );
+$$;
+
+-- 1) Orders RLS
+ALTER TABLE IF EXISTS public.orders ENABLE ROW LEVEL SECURITY;
+
+-- Drop conflicting policies if present
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname FROM pg_policies
+    WHERE schemaname='public' AND tablename='orders'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.orders', pol.policyname);
+  END LOOP;
+END $$;
+
+-- Admin-only access: SELECT and full CRUD
+CREATE POLICY orders_admin_select
+  ON public.orders
+  FOR SELECT
+  TO authenticated
+  USING (public.current_user_is_admin());
+
+CREATE POLICY orders_admin_all
+  ON public.orders
+  FOR ALL
+  TO authenticated
+  USING (public.current_user_is_admin())
+  WITH CHECK (public.current_user_is_admin());
+
+-- 2) Products RLS
+ALTER TABLE IF EXISTS public.products ENABLE ROW LEVEL SECURITY;
+
+-- Drop conflicting policies if present
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname FROM pg_policies
+    WHERE schemaname='public' AND tablename='products'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.products', pol.policyname);
+  END LOOP;
+END $$;
+
+-- Admin-only access for products
+CREATE POLICY products_admin_select
+  ON public.products
+  FOR SELECT
+  TO authenticated
+  USING (public.current_user_is_admin());
+
+CREATE POLICY products_admin_all
+  ON public.products
+  FOR ALL
+  TO authenticated
+  USING (public.current_user_is_admin())
+  WITH CHECK (public.current_user_is_admin());
+
+-- 3) Ensure covering index for orders.user_id exists
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id);
+
+-- 4) Owner visibility for orders
+-- Allow authenticated users to SELECT their own orders
+CREATE POLICY orders_owner_select
+  ON public.orders
+  FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
+-- 5) orders_products RLS
+ALTER TABLE IF EXISTS public.orders_products ENABLE ROW LEVEL SECURITY;
+
+-- Drop conflicting policies on orders_products if present
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname FROM pg_policies
+    WHERE schemaname='public' AND tablename='orders_products'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.orders_products', pol.policyname);
+  END LOOP;
+END $$;
+
+-- Admin access for orders_products
+CREATE POLICY orders_products_admin_select
+  ON public.orders_products
+  FOR SELECT
+  TO authenticated
+  USING (public.current_user_is_admin());
+
+CREATE POLICY orders_products_admin_all
+  ON public.orders_products
+  FOR ALL
+  TO authenticated
+  USING (public.current_user_is_admin())
+  WITH CHECK (public.current_user_is_admin());
+
+-- Owner SELECT via related order
+CREATE POLICY orders_products_owner_select
+  ON public.orders_products
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.orders o
+      WHERE o.id = orders_products.order_id
+        AND o.user_id = auth.uid()
+    )
+  );
+
+-- Helpful indexes for join table
+CREATE INDEX IF NOT EXISTS idx_orders_products_order_id ON public.orders_products(order_id);
+CREATE INDEX IF NOT EXISTS idx_orders_products_product_id ON public.orders_products(product_id);

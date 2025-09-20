@@ -1,0 +1,23 @@
+-- Add covering indexes for reported foreign keys (non-concurrent to keep in single TX)
+-- orders.user_id
+create index if not exists idx_orders_user_id on public.orders (user_id);
+
+-- security_events.user_id
+create index if not exists idx_security_events_user_id on public.security_events (user_id);
+
+-- upsell_transactions.product_id
+create index if not exists idx_upsell_transactions_product_id on public.upsell_transactions (product_id);
+
+-- customer_exports.exported_by (best-effort based on FK name)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'customer_exports'
+      AND column_name = 'exported_by'
+  ) THEN
+    EXECUTE 'create index if not exists idx_customer_exports_exported_by on public.customer_exports (exported_by)';
+  END IF;
+END $$;

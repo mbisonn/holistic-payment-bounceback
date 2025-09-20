@@ -1,0 +1,48 @@
+-- Create product_variants table
+BEGIN;
+
+-- Enable UUID extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create product_variants table
+CREATE TABLE IF NOT EXISTS public.product_variants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    price NUMERIC(10,2) NOT NULL,
+    quantity_multiplier INTEGER NOT NULL DEFAULT 1,
+    is_bumper_offer BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- Ensure product + variant name is unique
+    CONSTRAINT product_variants_product_id_name_key UNIQUE (product_id, name)
+);
+
+-- Add indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_product_variants_product_id ON public.product_variants(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_variants_is_bumper_offer ON public.product_variants(is_bumper_offer);
+
+-- Add trigger for updated_at
+CREATE OR REPLACE FUNCTION update_modified_column() 
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW; 
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_product_variants_updated_at
+BEFORE UPDATE ON public.product_variants
+FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+
+-- Add RLS policies if needed
+ALTER TABLE public.product_variants ENABLE ROW LEVEL SECURITY;
+
+-- Add comments for documentation
+COMMENT ON TABLE public.product_variants IS 'Stores product variants including bumper offers';
+COMMENT ON COLUMN public.product_variants.quantity_multiplier IS 'Number of units in this variant (e.g., 2 for 2-bottle pack)';
+COMMENT ON COLUMN public.product_variants.is_bumper_offer IS 'Whether this is a special bumper offer variant';
+
+COMMIT;

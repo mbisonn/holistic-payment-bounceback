@@ -1,0 +1,65 @@
+-- Consolidate permissive SELECT policies and drop duplicate index per linter
+-- Context: all tables in public are intended to be world-readable
+-- Actions:
+-- 1) Drop SELECT policies named *_admin_select (redundant with public_select)
+-- 2) Drop products_verified_select (redundant)
+-- 3) Ensure a single <table>_public_select exists for each table (anon + authenticated)
+-- 4) Drop duplicate index on shipping_settings
+
+DO $$
+DECLARE p RECORD;
+DECLARE r RECORD;
+DECLARE pname text;
+BEGIN
+  -- 1) Drop all SELECT policies that end with _admin_select
+  FOR p IN
+    SELECT schemaname, tablename, policyname
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND cmd = 'select'
+      AND policyname LIKE '%_admin_select'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', p.policyname, p.schemaname, p.tablename);
+  END LOOP;
+
+  -- 2) Drop products_verified_select if present
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname='public' AND tablename='products' AND policyname='products_verified_select'
+  ) THEN
+    EXECUTE 'DROP POLICY IF EXISTS products_verified_select ON public.products';
+  END IF;
+
+  -- 3) Ensure single <table>_public_select policy exists and is world-readable
+  FOR r IN
+    SELECT schemaname AS table_schema, tablename AS table_name
+    FROM pg_tables
+    WHERE schemaname='public'
+  LOOP
+    pname := r.table_name || '_public_select';
+
+    EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', r.table_schema, r.table_name);
+
+    IF EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname=r.table_schema AND tablename=r.table_name AND policyname=pname AND cmd='select'
+    ) THEN
+      EXECUTE format('ALTER POLICY %I ON %I.%I TO anon, authenticated USING (true)',
+                     pname, r.table_schema, r.table_name);
+    ELSE
+      EXECUTE format('CREATE POLICY %I ON %I.%I FOR SELECT TO anon, authenticated USING (true)',
+                     pname, r.table_schema, r.table_name);
+    END IF;
+
+    -- Remove any additional permissive SELECT policies besides <table>_public_select
+    FOR p IN
+      SELECT policyname FROM pg_policies
+      WHERE schemaname=r.table_schema AND tablename=r.table_name AND cmd='select' AND policyname <> pname
+    LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', p.policyname, r.table_schema, r.table_name);
+    END LOOP;
+  END LOOP;
+END $$;
+
+-- 4) Drop the duplicate index; keep idx_shipping_settings_active_threshold
+DROP INDEX IF EXISTS public.idx_shipping_settings_is_active_threshold;

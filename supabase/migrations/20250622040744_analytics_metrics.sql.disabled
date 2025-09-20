@@ -1,0 +1,80 @@
+-- Update order_bumps table to fix the pricing and make it more functional
+UPDATE order_bumps 
+SET original_price = 25000 
+WHERE id IN (
+  SELECT id FROM order_bumps 
+  ORDER BY created_at 
+  LIMIT 2
+);
+
+UPDATE order_bumps 
+SET original_price = 10000 
+WHERE id = (
+  SELECT id FROM order_bumps 
+  ORDER BY created_at DESC 
+  LIMIT 1
+);
+
+-- Create analytics table for dashboard metrics
+CREATE TABLE IF NOT EXISTS public.analytics_metrics (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  metric_name TEXT NOT NULL,
+  metric_value NUMERIC NOT NULL DEFAULT 0,
+  date_recorded DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE(metric_name, date_recorded)
+);
+
+-- Enable RLS for analytics
+ALTER TABLE public.analytics_metrics ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for analytics - only admins can view
+DROP POLICY IF EXISTS "Admins can view analytics" ON public.analytics_metrics;
+CREATE POLICY "Admins can view analytics" 
+  ON public.analytics_metrics 
+  FOR ALL 
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE profiles.id = auth.uid() 
+      AND profiles.role = 'admin'
+    )
+  );
+
+-- Insert some sample analytics data
+INSERT INTO public.analytics_metrics (metric_name, metric_value, date_recorded) VALUES
+('total_orders', 45, CURRENT_DATE),
+('total_revenue', 125000, CURRENT_DATE),
+('new_customers', 12, CURRENT_DATE),
+('conversion_rate', 3.2, CURRENT_DATE)
+ON CONFLICT (metric_name, date_recorded) DO NOTHING;
+
+-- Create function to update analytics
+CREATE OR REPLACE FUNCTION public.update_analytics_metric(
+  p_metric_name TEXT,
+  p_metric_value NUMERIC
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+BEGIN
+  INSERT INTO public.analytics_metrics (metric_name, metric_value, date_recorded)
+  VALUES (p_metric_name, p_metric_value, CURRENT_DATE)
+  ON CONFLICT (metric_name, date_recorded) 
+  DO UPDATE SET 
+    metric_value = EXCLUDED.metric_value,
+    created_at = now();
+END;
+$$;
+
+-- Create abandoned_checkouts table
+create table if not exists public.abandoned_checkouts (
+  id uuid primary key default gen_random_uuid(),
+  customer_name text,
+  customer_email text,
+  customer_phone text,
+  cart_items jsonb,
+  created_at timestamptz default now(),
+  notified boolean default false
+);

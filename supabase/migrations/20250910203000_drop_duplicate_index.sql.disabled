@@ -1,0 +1,7 @@
+-- Remove duplicate index from the user_roles table
+
+BEGIN;
+
+DROP INDEX IF EXISTS public.idx_user_roles_user_id_role;
+
+COMMIT;

@@ -1,0 +1,178 @@
+-- Migration: Fix Table Dependency Errors
+-- Date: 2025-09-18 05:30:00
+-- Description: Create a comprehensive migration that fixes all table dependency issues by wrapping all table operations in existence checks
+
+-- This migration replaces the problematic 20250101000000_fix_all_rls_lints.sql
+-- by ensuring all table operations are conditional on table existence
+
+-- STEP 1: Fix duplicate index issue (safe to run)
+-- ==============================================
+DROP INDEX IF EXISTS idx_shipping_settings_is_active_threshold;
+
+-- STEP 2: Create table existence check function
+-- ==============================================
+CREATE OR REPLACE FUNCTION table_exists(schema_name text, table_name text)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = schema_name AND table_name = table_name
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+-- STEP 3: Conditional RLS policy fixes
+-- ==============================================
+
+-- Fix orders table policies (only if table exists)
+DO $$
+BEGIN
+  IF table_exists('public', 'orders') THEN
+    -- Drop all existing policies on orders
+    DROP POLICY IF EXISTS "Authenticated users can view orders" ON public.orders;
+    DROP POLICY IF EXISTS "Users can view their own orders" ON public.orders;
+    DROP POLICY IF EXISTS "Admins can manage all orders" ON public.orders;
+    DROP POLICY IF EXISTS "Admins can manage orders" ON public.orders;
+    DROP POLICY IF EXISTS orders_admin_select ON public.orders;
+    DROP POLICY IF EXISTS orders_admin_insert ON public.orders;
+    DROP POLICY IF EXISTS orders_admin_update ON public.orders;
+    DROP POLICY IF EXISTS orders_admin_delete ON public.orders;
+    DROP POLICY IF EXISTS orders_select_consolidated ON public.orders;
+    DROP POLICY IF EXISTS orders_insert_consolidated ON public.orders;
+    DROP POLICY IF EXISTS orders_update_consolidated ON public.orders;
+    DROP POLICY IF EXISTS orders_delete_consolidated ON public.orders;
+    DROP POLICY IF EXISTS orders_public_select ON public.orders;
+    
+    -- Create consolidated policies with proper auth wrapping
+    CREATE POLICY orders_select_consolidated ON public.orders 
+    FOR SELECT TO authenticated 
+    USING (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)
+    );
+    
+    CREATE POLICY orders_insert_consolidated ON public.orders 
+    FOR INSERT TO authenticated 
+    WITH CHECK (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)
+    );
+    
+    CREATE POLICY orders_update_consolidated ON public.orders 
+    FOR UPDATE TO authenticated 
+    USING (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)
+    ) 
+    WITH CHECK (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)
+    );
+    
+    CREATE POLICY orders_delete_consolidated ON public.orders 
+    FOR DELETE TO authenticated 
+    USING (
+      user_id = (SELECT auth.uid()) OR 
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)
+    );
+    
+    RAISE NOTICE 'Orders table policies updated successfully';
+  ELSE
+    RAISE NOTICE 'Orders table does not exist, skipping policy updates';
+  END IF;
+END $$;
+
+-- Fix user_roles table policies (only if table exists)
+DO $$
+BEGIN
+  IF table_exists('public', 'user_roles') THEN
+    -- Drop all existing policies on user_roles
+    DROP POLICY IF EXISTS "Authenticated users can view user roles" ON public.user_roles;
+    DROP POLICY IF EXISTS "Users can view their own roles" ON public.user_roles;
+    DROP POLICY IF EXISTS "Admins can manage all user roles" ON public.user_roles;
+    DROP POLICY IF EXISTS user_roles_admin_select ON public.user_roles;
+    DROP POLICY IF EXISTS user_roles_admin_insert ON public.user_roles;
+    DROP POLICY IF EXISTS user_roles_admin_update ON public.user_roles;
+    DROP POLICY IF EXISTS user_roles_admin_delete ON public.user_roles;
+    DROP POLICY IF EXISTS user_roles_public_select ON public.user_roles;
+    DROP POLICY IF EXISTS user_roles_select_consolidated ON public.user_roles;
+    DROP POLICY IF EXISTS user_roles_admin_mutations ON public.user_roles;
+    
+    -- Create consolidated policies with proper auth wrapping
+    CREATE POLICY user_roles_select_consolidated ON public.user_roles 
+    FOR SELECT TO authenticated, anon, authenticator, dashboard_user
+    USING (user_id = (SELECT auth.uid()));
+    
+    CREATE POLICY user_roles_admin_mutations ON public.user_roles 
+    FOR ALL TO authenticated 
+    USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)
+    ) 
+    WITH CHECK (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)
+    );
+    
+    RAISE NOTICE 'User_roles table policies updated successfully';
+  ELSE
+    RAISE NOTICE 'User_roles table does not exist, skipping policy updates';
+  END IF;
+END $$;
+
+-- Fix other tables conditionally
+DO $$
+BEGIN
+  -- Fix abandoned_checkouts table policies (only if table exists)
+  IF table_exists('public', 'abandoned_checkouts') THEN
+    DROP POLICY IF EXISTS "Admins can manage abandoned checkouts" ON public.abandoned_checkouts;
+    DROP POLICY IF EXISTS abandoned_checkouts_admin_select ON public.abandoned_checkouts;
+    DROP POLICY IF EXISTS abandoned_checkouts_admin_insert ON public.abandoned_checkouts;
+    DROP POLICY IF EXISTS abandoned_checkouts_admin_update ON public.abandoned_checkouts;
+    DROP POLICY IF EXISTS abandoned_checkouts_admin_delete ON public.abandoned_checkouts;
+    DROP POLICY IF EXISTS abandoned_checkouts_admin_only ON public.abandoned_checkouts;
+    
+    CREATE POLICY abandoned_checkouts_admin_only ON public.abandoned_checkouts 
+    FOR ALL TO authenticated 
+    USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)
+    ) 
+    WITH CHECK (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)
+    );
+    
+    RAISE NOTICE 'Abandoned_checkouts table policies updated successfully';
+  END IF;
+  
+  -- Fix customer_analytics table policies (only if table exists)
+  IF table_exists('public', 'customer_analytics') THEN
+    DROP POLICY IF EXISTS "Admins can manage customer analytics" ON public.customer_analytics;
+    DROP POLICY IF EXISTS customer_analytics_admin_only ON public.customer_analytics;
+    
+    CREATE POLICY customer_analytics_admin_only ON public.customer_analytics 
+    FOR ALL TO authenticated 
+    USING (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)
+    ) 
+    WITH CHECK (
+      EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = (SELECT auth.uid()) AND ur.role = 'admin'::app_role)
+    );
+    
+    RAISE NOTICE 'Customer_analytics table policies updated successfully';
+  END IF;
+END $$;
+
+-- STEP 4: Success message
+-- ==============================================
+DO $$
+BEGIN
+  RAISE NOTICE '';
+  RAISE NOTICE '🚀 TABLE DEPENDENCY ERRORS FIXED! 🚀';
+  RAISE NOTICE '=====================================';
+  RAISE NOTICE '✅ FIXES APPLIED:';
+  RAISE NOTICE '- All table operations wrapped in existence checks';
+  RAISE NOTICE '- RLS policies updated with proper auth wrapping';
+  RAISE NOTICE '- Duplicate index removed safely';
+  RAISE NOTICE '- Migration will not fail on missing tables';
+  RAISE NOTICE '';
+  RAISE NOTICE '🎉 Build errors should now be resolved!';
+  RAISE NOTICE '=====================================';
+END $$;

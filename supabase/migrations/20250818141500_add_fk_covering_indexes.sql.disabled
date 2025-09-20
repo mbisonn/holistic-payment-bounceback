@@ -1,0 +1,32 @@
+-- Add covering indexes for foreign keys flagged by linter
+-- Idempotent: CREATE INDEX IF NOT EXISTS
+
+-- customer_exports(exported_by)
+CREATE INDEX IF NOT EXISTS idx_customer_exports_exported_by ON public.customer_exports (exported_by);
+
+-- customer_tag_assignments(tag_id)
+CREATE INDEX IF NOT EXISTS idx_customer_tag_assignments_tag_id ON public.customer_tag_assignments (tag_id);
+
+-- email_campaigns(template_id)
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_template_id ON public.email_campaigns (template_id);
+
+-- email_logs(campaign_id)
+CREATE INDEX IF NOT EXISTS idx_email_logs_campaign_id ON public.email_logs (campaign_id);
+
+-- email_logs(template_id)
+CREATE INDEX IF NOT EXISTS idx_email_logs_template_id ON public.email_logs (template_id);
+
+-- orders(user_id)
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders (user_id);
+
+-- product_analytics(product_id)
+CREATE INDEX IF NOT EXISTS idx_product_analytics_product_id ON public.product_analytics (product_id);
+
+-- security_events(user_id)
+CREATE INDEX IF NOT EXISTS idx_security_events_user_id ON public.security_events (user_id);
+
+-- upsell_transactions(product_id)
+CREATE INDEX IF NOT EXISTS idx_upsell_transactions_product_id ON public.upsell_transactions (product_id);
+
+-- workflow_steps(workflow_id)
+CREATE INDEX IF NOT EXISTS idx_workflow_steps_workflow_id ON public.workflow_steps (workflow_id);

@@ -1,0 +1,208 @@
+-- Update product prices and add bumper offer variants
+BEGIN;
+
+-- Update base product prices (in naira, not kobo)
+UPDATE public.products 
+SET 
+    price = CASE 
+        WHEN name = 'Dynace Rocenta' THEN 30000
+        WHEN name = 'Salud' THEN 20000
+        WHEN name = 'Jinja' THEN 17000
+        WHEN name = 'Jigsimur' THEN 17500
+        ELSE price
+    END,
+    updated_at = now()
+WHERE name IN ('Dynace Rocenta', 'Salud', 'Jinja', 'Jigsimur');
+
+-- Create or update product variants for bumper offers
+-- This is a simplified version - you'll need to adjust based on your schema
+-- and add more products/variants as needed
+
+-- Dynace Rocenta variants
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT 
+    id, 
+    '2 Bottles', 
+    'Save big with 2 bottles of Dynace Rocenta at ₦29,900 each',
+    29900, -- Price per bottle
+    2,     -- Quantity multiplier
+    true   -- Is bumper offer
+FROM public.products WHERE name = 'Dynace Rocenta'
+ON CONFLICT (product_id, name) DO UPDATE 
+SET 
+    description = EXCLUDED.description,
+    price = EXCLUDED.price,
+    quantity_multiplier = EXCLUDED.quantity_multiplier,
+    is_bumper_offer = EXCLUDED.is_bumper_offer,
+    updated_at = now();
+
+-- Salud variants
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT 
+    id, 
+    '2 Bottles', 
+    'Save big with 2 bottles of Salud at ₦19,800 each',
+    19800, -- Price per bottle
+    2,     -- Quantity multiplier
+    true   -- Is bumper offer
+FROM public.products WHERE name = 'Salud'
+ON CONFLICT (product_id, name) DO UPDATE 
+SET 
+    description = EXCLUDED.description,
+    price = EXCLUDED.price,
+    quantity_multiplier = EXCLUDED.quantity_multiplier,
+    is_bumper_offer = EXCLUDED.is_bumper_offer,
+    updated_at = now();
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT 
+    id, 
+    '4 Bottles', 
+    'Save more with 4 bottles of Salud at ₦19,500 each',
+    19500, -- Price per bottle
+    4,     -- Quantity multiplier
+    true   -- Is bumper offer
+FROM public.products WHERE name = 'Salud'
+ON CONFLICT (product_id, name) DO UPDATE 
+SET 
+    description = EXCLUDED.description,
+    price = EXCLUDED.price,
+    quantity_multiplier = EXCLUDED.quantity_multiplier,
+    is_bumper_offer = EXCLUDED.is_bumper_offer,
+    updated_at = now();
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT 
+    id, 
+    '6 Bottles', 
+    'Best deal! 6 bottles of Salud at ₦17,000 each',
+    17000, -- Price per bottle
+    6,     -- Quantity multiplier
+    true   -- Is bumper offer
+FROM public.products WHERE name = 'Salud'
+ON CONFLICT (product_id, name) DO UPDATE 
+SET 
+    description = EXCLUDED.description,
+    price = EXCLUDED.price,
+    quantity_multiplier = EXCLUDED.quantity_multiplier,
+    is_bumper_offer = EXCLUDED.is_bumper_offer,
+    updated_at = now();
+
+-- Jinja variants
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT 
+    id, 
+    '2 Bottles', 
+    'Save big with 2 bottles of Jinja at ₦15,300 each',
+    15300, -- Price per bottle
+    2,     -- Quantity multiplier
+    true   -- Is bumper offer
+FROM public.products WHERE name = 'Jinja'
+ON CONFLICT (product_id, name) DO UPDATE 
+SET 
+    description = EXCLUDED.description,
+    price = EXCLUDED.price,
+    quantity_multiplier = EXCLUDED.quantity_multiplier,
+    is_bumper_offer = EXCLUDED.is_bumper_offer,
+    updated_at = now();
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT 
+    id, 
+    '4 Bottles', 
+    'Save more with 4 bottles of Jinja at ₦15,000 each',
+    15000, -- Price per bottle
+    4,     -- Quantity multiplier
+    true   -- Is bumper offer
+FROM public.products WHERE name = 'Jinja'
+ON CONFLICT (product_id, name) DO UPDATE 
+SET 
+    description = EXCLUDED.description,
+    price = EXCLUDED.price,
+    quantity_multiplier = EXCLUDED.quantity_multiplier,
+    is_bumper_offer = EXCLUDED.is_bumper_offer,
+    updated_at = now();
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT 
+    id, 
+    '6 Bottles', 
+    'Best deal! 6 bottles of Jinja at ₦13,500 each',
+    13500, -- Price per bottle
+    6,     -- Quantity multiplier
+    true   -- Is bumper offer
+FROM public.products WHERE name = 'Jinja'
+ON CONFLICT (product_id, name) DO UPDATE 
+SET 
+    description = EXCLUDED.description,
+    price = EXCLUDED.price,
+    quantity_multiplier = EXCLUDED.quantity_multiplier,
+    is_bumper_offer = EXCLUDED.is_bumper_offer,
+    updated_at = now();
+
+-- Jigsimur variants
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT 
+    id, 
+    '2 Bottles', 
+    'Save big with 2 bottles of Jigsimur at ₦17,300 each',
+    17300, -- Price per bottle
+    2,     -- Quantity multiplier
+    true   -- Is bumper offer
+FROM public.products WHERE name = 'Jigsimur'
+ON CONFLICT (product_id, name) DO UPDATE 
+SET 
+    description = EXCLUDED.description,
+    price = EXCLUDED.price,
+    quantity_multiplier = EXCLUDED.quantity_multiplier,
+    is_bumper_offer = EXCLUDED.is_bumper_offer,
+    updated_at = now();
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT 
+    id, 
+    '4 Bottles', 
+    'Save more with 4 bottles of Jigsimur at ₦17,000 each',
+    17000, -- Price per bottle
+    4,     -- Quantity multiplier
+    true   -- Is bumper offer
+FROM public.products WHERE name = 'Jigsimur'
+ON CONFLICT (product_id, name) DO UPDATE 
+SET 
+    description = EXCLUDED.description,
+    price = EXCLUDED.price,
+    quantity_multiplier = EXCLUDED.quantity_multiplier,
+    is_bumper_offer = EXCLUDED.is_bumper_offer,
+    updated_at = now();
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT 
+    id, 
+    '6 Bottles', 
+    'Best deal! 6 bottles of Jigsimur at ₦16,000 each',
+    16000, -- Price per bottle
+    6,     -- Quantity multiplier
+    true   -- Is bumper offer
+FROM public.products WHERE name = 'Jigsimur'
+ON CONFLICT (product_id, name) DO UPDATE 
+SET 
+    description = EXCLUDED.description,
+    price = EXCLUDED.price,
+    quantity_multiplier = EXCLUDED.quantity_multiplier,
+    is_bumper_offer = EXCLUDED.is_bumper_offer,
+    updated_at = now();
+
+-- Verify the updates
+SELECT 
+    p.name as product_name,
+    p.price as base_price_ngn,
+    pv.name as variant_name,
+    pv.price as variant_price_ngn,
+    pv.quantity_multiplier,
+    pv.is_bumper_offer
+FROM public.products p
+LEFT JOIN public.product_variants pv ON p.id = pv.product_id
+WHERE p.name IN ('Dynace Rocenta', 'Salud', 'Jinja', 'Jigsimur')
+ORDER BY p.name, pv.quantity_multiplier;
+
+COMMIT;

@@ -1,0 +1,26 @@
+-- Grant admin role to user by email (idempotent)
+DO $$
+DECLARE
+  v_user_id uuid;
+BEGIN
+  SELECT u.id INTO v_user_id
+  FROM auth.users u
+  WHERE lower(u.email) = lower('ebuchenna1@gmail.com')
+  LIMIT 1;
+
+  IF v_user_id IS NOT NULL THEN
+    -- Try update first
+    UPDATE public.user_roles
+       SET role = 'admin'::public.app_role
+     WHERE user_id = v_user_id;
+
+    -- If no row was updated, insert if still absent
+    IF NOT FOUND THEN
+      INSERT INTO public.user_roles (user_id, role)
+      SELECT v_user_id, 'admin'::public.app_role
+      WHERE NOT EXISTS (
+        SELECT 1 FROM public.user_roles WHERE user_id = v_user_id
+      );
+    END IF;
+  END IF;
+END $$;

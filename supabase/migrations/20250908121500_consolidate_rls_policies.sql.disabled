@@ -1,0 +1,151 @@
+-- Consolidate multiple permissive RLS SELECT policies per table.
+-- Strategy:
+-- 1) Ensure admin_manage policies do not include SELECT (limit to INSERT, UPDATE, DELETE)
+-- 2) Keep/ensure a single SELECT policy per role/action. Prefer existing public/conditional policies.
+-- 3) Drop redundant admin_read/admin_only SELECT policies for authenticated.
+
+-- Helper: recreate manage policy without SELECT if existing FOR ALL
+CREATE OR REPLACE FUNCTION public.__rls_limit_manage_to_write(
+  p_table regclass,
+  p_policy_name text
+) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  v_cmd text;
+  v_tbl text;
+BEGIN
+  SELECT relname INTO v_tbl FROM pg_class WHERE oid = p_table;
+  IF EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = v_tbl AND policyname = p_policy_name
+  ) THEN
+    -- Capture policy definition
+    PERFORM 1;
+    -- Safely drop and recreate limited to write operations
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %s', p_policy_name, p_table);
+    EXECUTE format('CREATE POLICY %I ON %s FOR INSERT TO authenticated USING (true) WITH CHECK (true)', p_policy_name, p_table);
+    EXECUTE format('CREATE POLICY %I_update ON %s FOR UPDATE TO authenticated USING (true) WITH CHECK (true)', p_policy_name, p_table);
+    EXECUTE format('CREATE POLICY %I_delete ON %s FOR DELETE TO authenticated USING (true)', p_policy_name, p_table);
+  END IF;
+END;$$;
+
+-- Consolidation for products: keep public select (is_active=true), limit manage to write, drop admin_read
+DO $$
+BEGIN
+  PERFORM public.__rls_limit_manage_to_write('public.products'::regclass, 'products_admin_manage');
+  -- Drop redundant admin_read select policy
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='products' AND policyname='products_admin_read') THEN
+    EXECUTE 'DROP POLICY products_admin_read ON public.products';
+  END IF;
+  -- Ensure public/authenticated can select active products (if missing)
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='products' AND policyname='products_public_select') THEN
+    EXECUTE $$CREATE POLICY products_public_select ON public.products FOR SELECT TO anon, authenticated USING (is_active = true)$$;
+  END IF;
+END $$ LANGUAGE plpgsql;
+
+-- Consolidation for upsell_products
+DO $$
+BEGIN
+  PERFORM public.__rls_limit_manage_to_write('public.upsell_products'::regclass, 'upsell_products_admin_manage');
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='upsell_products' AND policyname='upsell_products_admin_read') THEN
+    EXECUTE 'DROP POLICY upsell_products_admin_read ON public.upsell_products';
+  END IF;
+  -- Ensure single public select on active items
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='upsell_products' AND policyname='Anyone can view active upsell products') THEN
+    EXECUTE $$CREATE POLICY "Anyone can view active upsell products" ON public.upsell_products FOR SELECT TO anon, authenticated USING (is_active = true)$$;
+  END IF;
+END $$ LANGUAGE plpgsql;
+
+-- Consolidation for orders: keep consolidated select for authenticated; limit manage to write if any
+DO $$
+BEGIN
+  PERFORM public.__rls_limit_manage_to_write('public.orders'::regclass, 'orders_admin_manage');
+  -- Drop legacy admin_read if present
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='orders' AND policyname='orders_admin_read') THEN
+    EXECUTE 'DROP POLICY orders_admin_read ON public.orders';
+  END IF;
+  -- Ensure a single consolidated select policy for authenticated users
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='orders' AND policyname='orders_select_consolidated') THEN
+    EXECUTE $$CREATE POLICY orders_select_consolidated ON public.orders FOR SELECT TO authenticated USING (true)$$;
+  END IF;
+END $$ LANGUAGE plpgsql;
+
+-- Consolidation for email_templates: ensure single authenticated select; limit manage
+DO $$
+BEGIN
+  PERFORM public.__rls_limit_manage_to_write('public.email_templates'::regclass, 'email_templates_admin_manage');
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='email_templates' AND policyname='email_templates_admin_read') THEN
+    EXECUTE 'DROP POLICY email_templates_admin_read ON public.email_templates';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='email_templates' AND policyname='email_templates_admin_only') THEN
+    EXECUTE 'DROP POLICY email_templates_admin_only ON public.email_templates';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='email_templates' AND policyname='email_templates_select') THEN
+    EXECUTE $$CREATE POLICY email_templates_select ON public.email_templates FOR SELECT TO authenticated USING (true)$$;
+  END IF;
+END $$ LANGUAGE plpgsql;
+
+-- Consolidation for discount_codes (authenticated select only), limit manage
+DO $$
+BEGIN
+  PERFORM public.__rls_limit_manage_to_write('public.discount_codes'::regclass, 'discount_codes_admin_manage');
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='discount_codes' AND policyname='discount_codes_admin_read') THEN
+    EXECUTE 'DROP POLICY discount_codes_admin_read ON public.discount_codes';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='discount_codes' AND policyname='discount_codes_select') THEN
+    -- Already single select policy exists; nothing to do
+  ELSE
+    EXECUTE $$CREATE POLICY discount_codes_select ON public.discount_codes FOR SELECT TO authenticated USING (true)$$;
+  END IF;
+END $$ LANGUAGE plpgsql;
+
+-- Consolidation for profiles: prefer public select if exists; otherwise authenticated
+DO $$
+BEGIN
+  PERFORM public.__rls_limit_manage_to_write('public.profiles'::regclass, 'profiles_admin_manage');
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profiles' AND policyname='profiles_admin_read') THEN
+    EXECUTE 'DROP POLICY profiles_admin_read ON public.profiles';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profiles' AND policyname='profiles_admin_select') THEN
+    EXECUTE 'DROP POLICY profiles_admin_select ON public.profiles';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profiles' AND policyname='profiles_public_select') THEN
+    EXECUTE $$CREATE POLICY profiles_public_select ON public.profiles FOR SELECT TO anon, authenticated USING (true)$$;
+  END IF;
+END $$ LANGUAGE plpgsql;
+
+-- Similar consolidation patterns for remaining tables where multiple SELECT exist
+DO $$
+DECLARE
+  rec RECORD;
+BEGIN
+  FOR rec IN SELECT unnest(ARRAY[
+    'customer_analytics',
+    'customer_tag_assignments',
+    'email_campaigns',
+    'email_settings',
+    'invoices',
+    'meal_plan_sync',
+    'order_bumps',
+    'shipping_settings',
+    'workflow_steps'
+  ]) AS tbl
+  LOOP
+    PERFORM public.__rls_limit_manage_to_write(format('public.%s', rec.tbl)::regclass, rec.tbl || '_admin_manage');
+    -- Drop common redundant admin_read/admin_only
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename=rec.tbl AND policyname=rec.tbl || '_admin_read') THEN
+      EXECUTE format('DROP POLICY %I ON public.%I', rec.tbl || '_admin_read', rec.tbl);
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename=rec.tbl AND policyname=rec.tbl || '_admin_only') THEN
+      EXECUTE format('DROP POLICY %I ON public.%I', rec.tbl || '_admin_only', rec.tbl);
+    END IF;
+    -- Ensure a single authenticated select policy if none present
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename=rec.tbl AND permissive AND roles @> ARRAY['authenticated']::name[] AND cmd = 'SELECT') THEN
+      EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO authenticated USING (true)', rec.tbl || '_select_consolidated', rec.tbl);
+    END IF;
+  END LOOP;
+END $$ LANGUAGE plpgsql;
+
+-- Cleanup helper function
+DROP FUNCTION IF EXISTS public.__rls_limit_manage_to_write(regclass, text);
+
+-- NOTE: Review these changes in a staging environment. Some tables may require stricter predicates than USING(true).
+

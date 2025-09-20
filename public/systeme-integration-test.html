@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tenera Systeme.io Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .product {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #10B981;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #059669;
+        }
+        .checkout-btn {
+            background: #3B82F6;
+            font-size: 18px;
+            padding: 15px 30px;
+        }
+        .checkout-btn:hover {
+            background: #2563EB;
+        }
+        .cart-info {
+            background: #E5E7EB;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .debug-panel {
+            background: #F3F4F6;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #6B7280;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌿 Tenera Holistic & Wellness - Integration Test</h1>
+    <p>This page demonstrates how to integrate Tenera products with your Systeme.io website.</p>
+
+    <div class="cart-info">
+        <h3>Cart Status</h3>
+        <div id="cart-display">Cart is empty</div>
+        <button onclick="updateCartDisplay()">Refresh Cart Display</button>
+        <button onclick="TeneraCart.clearCart()">Clear Cart</button>
+        <button onclick="TeneraCart.refresh()">Refresh Cart Sync</button>
+    </div>
+
+    <h2>Products</h2>
+    
+    <div class="product" data-product-sku="blood_booster">
+        <h3>Blood Booster - ₦25,000</h3>
+        <p>Premium supplement for blood health and circulation.</p>
+        <button class="add-to-cart" data-product-sku="blood_booster">Add to Cart</button>
+    </div>
+
+    <div class="product" data-product-sku="immuno_guard_plus">
+        <h3>Immuno Guard Plus - ₦25,000</h3>
+        <p>Advanced immune system support supplement.</p>
+        <button class="add-to-cart" data-product-sku="immuno_guard_plus">Add to Cart</button>
+    </div>
+
+    <div class="product" data-product-sku="brain_booster">
+        <h3>Brain Booster - ₦25,000</h3>
+        <p>Cognitive enhancement and brain health supplement.</p>
+        <button class="add-to-cart" data-product-sku="brain_booster">Add to Cart</button>
+    </div>
+
+    <div class="product" data-product-sku="cardio_tincture">
+        <h3>Cardio Tincture - ₦10,000</h3>
+        <p>Heart health and cardiovascular support tincture.</p>
+        <button class="add-to-cart" data-product-sku="cardio_tincture">Add to Cart</button>
+    </div>
+
+    <div style="text-align: center; margin: 30px 0;">
+        <button class="checkout-btn" data-checkout>Proceed to Checkout</button>
+    </div>
+
+    <div class="debug-panel">
+        <h3>Debug Functions</h3>
+        <p>Use these functions in the browser console for testing:</p>
+        <ul>
+            <li><code>TeneraCart.addProduct('blood_booster', 2)</code> - Add 2 Blood Booster to cart</li>
+            <li><code>TeneraCart.getItems()</code> - View current cart items</li>
+            <li><code>TeneraCart.getTotal()</code> - Get cart total</li>
+            <li><code>TeneraCart.clearCart()</code> - Clear the cart</li>
+            <li><code>TeneraCart.checkout()</code> - Proceed to checkout</li>
+            <li><code>TeneraDebug.testProduct('blood_booster')</code> - Test product matching</li>
+            <li><code>TeneraDebug.listProducts()</code> - List all available products</li>
+        </ul>
+        
+        <h4>Manual Testing Buttons:</h4>
+        <button onclick="TeneraCart.addProduct('blood_booster', 1)">Add Blood Booster</button>
+        <button onclick="TeneraCart.addProduct('brain_booster', 2)">Add 2 Brain Boosters</button>
+        <button onclick="TeneraDebug.sendTestCart()">Send Test Cart</button>
+        <button onclick="console.log('Cart:', TeneraCart.getItems())">Log Cart to Console</button>
+    </div>
+
+    <div class="debug-panel">
+        <h3>Integration Instructions</h3>
+        <p>To integrate with your Systeme.io website:</p>
+        <ol>
+            <li>Include the integration script in your Systeme.io page header</li>
+            <li>Add <code>data-product-sku</code> attributes to your product buttons</li>
+            <li>Add <code>class="add-to-cart"</code> or <code>data-checkout</code> to your buttons</li>
+            <li>The script will automatically sync cart data with the payment hub</li>
+        </ol>
+        
+        <h4>Example HTML for your Systeme.io page:</h4>
+        <pre><code>&lt;button class="add-to-cart" data-product-sku="blood_booster"&gt;Add Blood Booster&lt;/button&gt;
+&lt;button class="checkout-btn" data-checkout&gt;Checkout&lt;/button&gt;</code></pre>
+    </div>
+
+    <!-- Include the integration script -->
+    <script src="/js/updated-systeme-integration.js"></script>
+    
+    <script>
+        // Update cart display function
+        function updateCartDisplay() {
+            const cartItems = TeneraCart.getItems();
+            const cartTotal = TeneraCart.getTotal();
+            const display = document.getElementById('cart-display');
+            
+            if (cartItems.length === 0) {
+                display.innerHTML = 'Cart is empty';
+            } else {
+                const itemsHtml = cartItems.map(item => 
+                    `<div>${item.name} x ${item.quantity} = ₦${(item.price * item.quantity).toLocaleString()}</div>`
+                ).join('');
+                display.innerHTML = `
+                    <div><strong>Cart Items:</strong></div>
+                    ${itemsHtml}
+                    <div><strong>Total: ₦${cartTotal.toLocaleString()}</strong></div>
+                `;
+            }
+        }
+        
+        // Auto-update cart display every 2 seconds
+        setInterval(updateCartDisplay, 2000);
+        
+        // Initial cart display update
+        setTimeout(updateCartDisplay, 1000);
+        
+        // Listen for cart updates
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'CART_DATA') {
+                setTimeout(updateCartDisplay, 100);
+            }
+        });
+    </script>
+</body>
+</html>

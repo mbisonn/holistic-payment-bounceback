@@ -1,0 +1,89 @@
+-- Create or update Google Review email template idempotently to avoid FK violations
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM email_templates WHERE name = 'Google Review Request') THEN
+    UPDATE email_templates
+    SET subject = 'How did we do?',
+        body = '<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rate Our Service</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h1 style="color: #2c3e50;">How did we do?</h1>
+  <p>Hello {{name}},</p>
+  <p>Thank you for choosing us, we''d love your feedback. How was your experience today?</p>
+  <div style="display: flex; flex-wrap: wrap; justify-content: space-between; margin-top: 20px;">
+    <a href="#" style="background-color: #FF4136; color: white; border: none; padding: 10px 15px; margin: 5px; font-size: 14px; text-decoration: none; border-radius: 5px; text-align: center; display: inline-block;">1 - Poor</a>
+    <a href="#" style="background-color: #FF851B; color: white; border: none; padding: 10px 15px; margin: 5px; font-size: 14px; text-decoration: none; border-radius: 5px; text-align: center; display: inline-block;">2 - Fair</a>
+    <a href="#" style="background-color: #FFDC00; color: black; border: none; padding: 10px 15px; margin: 5px; font-size: 14px; text-decoration: none; border-radius: 5px; text-align: center; display: inline-block;">3 - Good</a>
+    <a href="#" style="background-color: #2ECC40; color: white; border: none; padding: 10px 15px; margin: 5px; font-size: 14px; text-decoration: none; border-radius: 5px; text-align: center; display: inline-block;">4 - Great</a>
+    <a href="#" style="background-color: #0074D9; color: white; border: none; padding: 10px 15px; margin: 5px; font-size: 14px; text-decoration: none; border-radius: 5px; text-align: center; display: inline-block;">5 - Excellent</a>
+  </div>
+  <p>Your feedback helps us to be better.</p>
+  <p>I appreciate you,</p>
+  <p>Tenera Holistic and Wellness Team</p>
+</body>
+</html>',
+        is_active = true
+    WHERE name = 'Google Review Request';
+  ELSE
+    INSERT INTO email_templates (name, subject, body, is_active)
+    VALUES (
+      'Google Review Request',
+      'How did we do?',
+      '<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rate Our Service</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h1 style="color: #2c3e50;">How did we do?</h1>
+  <p>Hello {{name}},</p>
+  <p>Thank you for choosing us, we''d love your feedback. How was your experience today?</p>
+  <div style="display: flex; flex-wrap: wrap; justify-content: space-between; margin-top: 20px;">
+    <a href="#" style="background-color: #FF4136; color: white; border: none; padding: 10px 15px; margin: 5px; font-size: 14px; text-decoration: none; border-radius: 5px; text-align: center; display: inline-block;">1 - Poor</a>
+    <a href="#" style="background-color: #FF851B; color: white; border: none; padding: 10px 15px; margin: 5px; font-size: 14px; text-decoration: none; border-radius: 5px; text-align: center; display: inline-block;">2 - Fair</a>
+    <a href="#" style="background-color: #FFDC00; color: black; border: none; padding: 10px 15px; margin: 5px; font-size: 14px; text-decoration: none; border-radius: 5px; text-align: center; display: inline-block;">3 - Good</a>
+    <a href="#" style="background-color: #2ECC40; color: white; border: none; padding: 10px 15px; margin: 5px; font-size: 14px; text-decoration: none; border-radius: 5px; text-align: center; display: inline-block;">4 - Great</a>
+    <a href="#" style="background-color: #0074D9; color: white; border: none; padding: 10px 15px; margin: 5px; font-size: 14px; text-decoration: none; border-radius: 5px; text-align: center; display: inline-block;">5 - Excellent</a>
+  </div>
+  <p>Your feedback helps us to be better.</p>
+  <p>I appreciate you,</p>
+  <p>Tenera Holistic and Wellness Team</p>
+</body>
+</html>',
+      true
+    );
+  END IF;
+END;
+$$;
+
+-- Create or update automation rule idempotently
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM automation_rules WHERE name = 'Google Review Request - 1 Month After Purchase') THEN
+    UPDATE automation_rules
+    SET trigger = 'order_completed',
+        action = 'send_email',
+        trigger_data = '{"delay_days": 30}',
+        action_data = '{"template_name": "Google Review Request"}',
+        is_active = true
+    WHERE name = 'Google Review Request - 1 Month After Purchase';
+  ELSE
+    INSERT INTO automation_rules (name, trigger, action, trigger_data, action_data, is_active)
+    VALUES (
+      'Google Review Request - 1 Month After Purchase',
+      'order_completed',
+      'send_email',
+      '{"delay_days": 30}',
+      '{"template_name": "Google Review Request"}',
+      true
+    );
+  END IF;
+END;
+$$;

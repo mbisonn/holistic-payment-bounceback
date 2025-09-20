@@ -1,0 +1,97 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tenera Holistic Payment Hub Integration</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2c7a4f;
+    }
+    .info {
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #e8f5e9;
+      border-left: 4px solid #2c7a4f;
+      border-radius: 4px;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .button {
+      display: inline-block;
+      background-color: #2c7a4f;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 4px;
+      text-decoration: none;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Tenera Integration Successfully Loaded</h1>
+    <div class="info">
+      <p>The Tenera Holistic Payment Hub Integration is now active on this page. You can use the global <code>teneraPayment</code> object to interact with the integration.</p>
+    </div>
+    
+    <h2>Available Methods</h2>
+    <ul>
+      <li><strong>teneraPayment.checkout()</strong> - Process cart and redirect to checkout</li>
+      <li><strong>teneraPayment.getCartData()</strong> - Get the current cart data</li>
+      <li><strong>teneraPayment.clearCart()</strong> - Clear all cart data</li>
+      <li><strong>teneraPayment.setCheckoutUrl(url)</strong> - Update the checkout URL</li>
+    </ul>
+    
+    <h2>Integration Snippet</h2>
+    <p>Add this script to your sales page:</p>
+    <pre>&lt;script src="https://www.teneraholisticandwellness.com/landingPageIntegration.js" type="module"&gt;&lt;/script&gt;</pre>
+    <p>For older browsers that don't support ES modules:</p>
+    <pre>&lt;script src="https://www.teneraholisticandwellness.com/landingPageIntegration.legacy.js"&gt;&lt;/script&gt;</pre>
+    
+    <button id="test-button" class="button">Test Integration</button>
+    
+    <script type="module">
+      import { initIntegration } from './integration/integration.js';
+      
+      // Initialize the integration
+      initIntegration();
+      
+      // Set up test button
+      document.getElementById('test-button').addEventListener('click', function() {
+        const testCart = [
+          {
+            id: 'test-product',
+            sku: 'TEST001',
+            name: 'Test Product',
+            price: 1000,
+            quantity: 1
+          }
+        ];
+        
+        localStorage.setItem('systemeCart', JSON.stringify(testCart));
+        alert('Test cart created! You can now click checkout to test the integration.');
+      });
+    </script>
+  </div>
+</body>
+</html>

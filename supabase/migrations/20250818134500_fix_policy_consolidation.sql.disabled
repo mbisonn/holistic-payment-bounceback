@@ -1,0 +1,49 @@
+-- Fix consolidation of permissive SELECT policies with correct plpgsql FOR syntax
+
+-- Consolidate policies on public.orders (idempotent)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='orders'
+  ) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname='public' AND tablename='orders' AND policyname='orders_select_combined'
+    ) THEN
+      CREATE POLICY "orders_select_combined"
+        ON public.orders
+        FOR SELECT
+        TO authenticated
+        USING (
+          exists (
+            select 1 from public.user_roles ur
+            where ur.user_id = (select auth.uid()) and ur.role = 'admin'
+          ) OR (user_id = (select auth.uid()))
+        );
+    END IF;
+  END IF;
+END $$;
+
+-- Consolidate policies on public.user_roles (idempotent)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='user_roles'
+  ) THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies
+      WHERE schemaname='public' AND tablename='user_roles' AND policyname='user_roles_select_combined'
+    ) THEN
+      CREATE POLICY "user_roles_select_combined"
+        ON public.user_roles
+        FOR SELECT
+        TO authenticated
+        USING (
+          exists (
+            select 1 from public.user_roles ur
+            where ur.user_id = (select auth.uid()) and ur.role = 'admin'
+          ) OR (user_id = (select auth.uid()))
+        );
+    END IF;
+  END IF;
+END $$;

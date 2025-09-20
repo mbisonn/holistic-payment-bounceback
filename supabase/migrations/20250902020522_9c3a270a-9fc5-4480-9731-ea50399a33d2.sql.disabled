@@ -1,0 +1,158 @@
+-- CRITICAL SECURITY FIX: Remove public access to customer data tables
+-- This migration removes overly permissive RLS policies that allow public SELECT access
+
+-- Remove public SELECT policies from customer data tables
+DROP POLICY IF EXISTS "abandoned_checkouts_public_select" ON public.abandoned_checkouts;
+DROP POLICY IF EXISTS "customer_analytics_public_select" ON public.customer_analytics;
+DROP POLICY IF EXISTS "customer_tag_assignments_public_select" ON public.customer_tag_assignments;
+DROP POLICY IF EXISTS "meal_plan_sync_public_select" ON public.meal_plan_sync;
+DROP POLICY IF EXISTS "orders_public_select" ON public.orders;
+DROP POLICY IF EXISTS "invoices_public_select" ON public.invoices;
+DROP POLICY IF EXISTS "upsell_transactions_public_select" ON public.upsell_transactions;
+DROP POLICY IF EXISTS "product_reviews_public_select" ON public.product_reviews;
+DROP POLICY IF EXISTS "email_outbox_public_select" ON public.email_outbox;
+DROP POLICY IF EXISTS "email_logs_public_select" ON public.email_logs;
+DROP POLICY IF EXISTS "email_analytics_public_select" ON public.email_analytics;
+DROP POLICY IF EXISTS "email_events_public_select" ON public.email_events;
+DROP POLICY IF EXISTS "email_campaigns_public_select" ON public.email_campaigns;
+DROP POLICY IF EXISTS "email_templates_public_select" ON public.email_templates;
+DROP POLICY IF EXISTS "email_settings_public_select" ON public.email_settings;
+DROP POLICY IF EXISTS "analytics_metrics_public_select" ON public.analytics_metrics;
+DROP POLICY IF EXISTS "automation_rules_public_select" ON public.automation_rules;
+DROP POLICY IF EXISTS "product_analytics_public_select" ON public.product_analytics;
+DROP POLICY IF EXISTS "customer_exports_public_select" ON public.customer_exports;
+DROP POLICY IF EXISTS "customer_tags_public_select" ON public.customer_tags;
+DROP POLICY IF EXISTS "discount_codes_public_select" ON public.discount_codes;
+DROP POLICY IF EXISTS "facebook_conversion_settings_public_select" ON public.facebook_conversion_settings;
+DROP POLICY IF EXISTS "order_bumps_public_select" ON public.order_bumps;
+DROP POLICY IF EXISTS "product_categories_public_select" ON public.product_categories;
+DROP POLICY IF EXISTS "profiles_public_select" ON public.profiles;
+DROP POLICY IF EXISTS "role_types_public_select" ON public.role_types;
+DROP POLICY IF EXISTS "security_events_public_select" ON public.security_events;
+DROP POLICY IF EXISTS "shipping_settings_public_select" ON public.shipping_settings;
+DROP POLICY IF EXISTS "upsell_products_public_select" ON public.upsell_products;
+
+-- Keep products and product_variants publicly readable for the storefront
+-- These don't contain sensitive customer data, just product information
+
+-- Create secure policies for customer data tables
+
+-- Abandoned checkouts: Only admins can access
+CREATE POLICY "Admins can manage abandoned checkouts" ON public.abandoned_checkouts
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Customer analytics: Only admins can access
+CREATE POLICY "Admins can view customer analytics" ON public.customer_analytics
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Customer tag assignments: Only admins can access
+CREATE POLICY "Admins can manage customer tag assignments" ON public.customer_tag_assignments
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Meal plan sync: Only admins can access
+CREATE POLICY "Admins can manage meal plan sync" ON public.meal_plan_sync
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Orders: Users can view their own orders, admins can view all
+-- Note: Orders table may not have user_id properly linked, so admin-only for now
+CREATE POLICY "Admins can manage all orders" ON public.orders
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Invoices: Only admins can access
+CREATE POLICY "Admins can manage invoices" ON public.invoices
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Upsell transactions: Only admins can access
+CREATE POLICY "Admins can manage upsell transactions" ON public.upsell_transactions
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Product reviews: Approved reviews can be viewed by everyone, all reviews by admins
+CREATE POLICY "Anyone can view approved product reviews" ON public.product_reviews
+FOR SELECT USING (is_approved = true);
+
+CREATE POLICY "Admins can manage all product reviews" ON public.product_reviews
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Email tables: Only admins can access
+CREATE POLICY "Admins can manage email outbox" ON public.email_outbox
+FOR ALL USING (is_admin(current_user_id()));
+
+CREATE POLICY "Admins can view email logs" ON public.email_logs
+FOR ALL USING (is_admin(current_user_id()));
+
+CREATE POLICY "Admins can view email analytics" ON public.email_analytics
+FOR ALL USING (is_admin(current_user_id()));
+
+CREATE POLICY "Admins can view email events" ON public.email_events
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Analytics and business data: Only admins can access
+CREATE POLICY "Admins can view analytics metrics" ON public.analytics_metrics
+FOR ALL USING (is_admin(current_user_id()));
+
+CREATE POLICY "Admins can manage automation rules" ON public.automation_rules
+FOR ALL USING (is_admin(current_user_id()));
+
+CREATE POLICY "Admins can view product analytics" ON public.product_analytics
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Customer exports: Only admins can access
+CREATE POLICY "Admins can manage customer exports" ON public.customer_exports
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Customer tags: Only admins can access
+CREATE POLICY "Admins can manage customer tags" ON public.customer_tags
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Discount codes: Admins can manage, users might need to validate codes
+CREATE POLICY "Admins can manage discount codes" ON public.discount_codes
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Allow users to check if a discount code is valid (without exposing usage stats)
+CREATE POLICY "Users can validate discount codes" ON public.discount_codes
+FOR SELECT USING (is_active = true AND (expires_at IS NULL OR expires_at > now()));
+
+-- Marketing and conversion settings: Only admins can access
+CREATE POLICY "Admins can manage facebook conversion settings" ON public.facebook_conversion_settings
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Order bumps and upsell products: Can be viewed by everyone for storefront
+CREATE POLICY "Anyone can view active order bumps" ON public.order_bumps
+FOR SELECT USING (is_active = true);
+
+CREATE POLICY "Admins can manage order bumps" ON public.order_bumps
+FOR ALL USING (is_admin(current_user_id()));
+
+CREATE POLICY "Anyone can view active upsell products" ON public.upsell_products
+FOR SELECT USING (is_active = true);
+
+CREATE POLICY "Admins can manage upsell products" ON public.upsell_products
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Product categories: Can be viewed by everyone for storefront
+CREATE POLICY "Anyone can view product categories" ON public.product_categories
+FOR SELECT USING (true);
+
+CREATE POLICY "Admins can manage product categories" ON public.product_categories
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Shipping settings: Can be viewed by everyone for checkout calculations
+CREATE POLICY "Anyone can view shipping settings" ON public.shipping_settings
+FOR SELECT USING (is_active = true);
+
+CREATE POLICY "Admins can manage shipping settings" ON public.shipping_settings
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Role types: Can be viewed by authenticated users
+CREATE POLICY "Authenticated users can view role types" ON public.role_types
+FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Admins can manage role types" ON public.role_types
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Security events: Only admins can access
+CREATE POLICY "Admins can view security events" ON public.security_events
+FOR ALL USING (is_admin(current_user_id()));
+
+-- Profiles: Users can view their own profile, admins can view all
+-- Keep existing policies as they're already secure

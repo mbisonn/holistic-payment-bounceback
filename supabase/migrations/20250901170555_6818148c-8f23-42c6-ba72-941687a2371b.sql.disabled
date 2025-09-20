@@ -1,0 +1,66 @@
+-- Insert product variants for the specified products
+-- First, get the product IDs for the products we need to add variants to
+
+-- Insert variants for Dynace Rocenta (assuming product exists)
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT p.id, '2 Bottles', 'Special 2-bottle package deal', 29900, 2, true
+FROM public.products p
+WHERE p.name = 'Dynace Rocenta'
+ON CONFLICT DO NOTHING;
+
+-- Insert variants for Jigsimur
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT p.id, '2 Bottles', 'Special 2-bottle package deal', 17300, 2, true
+FROM public.products p
+WHERE p.name = 'Jigsimur'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT p.id, '4 Bottles', 'Special 4-bottle package deal', 17000, 4, true
+FROM public.products p
+WHERE p.name = 'Jigsimur'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT p.id, '6 Bottles', 'Special 6-bottle package deal', 16000, 6, true
+FROM public.products p
+WHERE p.name = 'Jigsimur'
+ON CONFLICT DO NOTHING;
+
+-- Insert variants for Jinja
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT p.id, '2 Bottles', 'Special 2-bottle package deal', 15300, 2, true
+FROM public.products p
+WHERE p.name = 'Jinja'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT p.id, '4 Bottles', 'Special 4-bottle package deal', 15000, 4, true
+FROM public.products p
+WHERE p.name = 'Jinja'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT p.id, '6 Bottles', 'Special 6-bottle package deal', 13500, 6, true
+FROM public.products p
+WHERE p.name = 'Jinja'
+ON CONFLICT DO NOTHING;
+
+-- Insert variants for Salud
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT p.id, '2 Bottles', 'Special 2-bottle package deal', 19800, 2, true
+FROM public.products p
+WHERE p.name = 'Salud'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT p.id, '4 Bottles', 'Special 4-bottle package deal', 19500, 4, true
+FROM public.products p
+WHERE p.name = 'Salud'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.product_variants (product_id, name, description, price, quantity_multiplier, is_bumper_offer)
+SELECT p.id, '6 Bottles', 'Special 6-bottle package deal', 17000, 6, true
+FROM public.products p
+WHERE p.name = 'Salud'
+ON CONFLICT DO NOTHING;

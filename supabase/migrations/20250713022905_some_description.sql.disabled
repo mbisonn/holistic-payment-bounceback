@@ -1,0 +1,81 @@
+
+-- Fix 1: Add search_path parameter to get_function_definition function
+CREATE OR REPLACE FUNCTION public.get_function_definition()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN (
+        SELECT pg_get_functiondef(oid)
+        FROM pg_proc
+        WHERE proname = 'has_role'
+        AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+    );
+END;
+$$;
+
+-- Fix 2: Add search_path parameter to generate_invoice_number function
+CREATE OR REPLACE FUNCTION public.generate_invoice_number()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  next_number INTEGER;
+  invoice_number TEXT;
+BEGIN
+  SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_number FROM 'INV-(\d+)') AS INTEGER)), 0) + 1
+  INTO next_number
+  FROM public.invoices
+  WHERE invoice_number ~ '^INV-\d+$';
+  
+  invoice_number := 'INV-' || LPAD(next_number::TEXT, 6, '0');
+  RETURN invoice_number;
+END;
+$$;
+
+-- Fix 3: Add search_path parameter to set_invoice_number function
+CREATE OR REPLACE FUNCTION public.set_invoice_number()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.invoice_number IS NULL OR NEW.invoice_number = '' THEN
+    NEW.invoice_number := generate_invoice_number();
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+-- Fix 4: Add search_path parameter to has_role function
+CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
+RETURNS boolean
+LANGUAGE sql
+STABLE 
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_roles
+    WHERE user_id = _user_id
+      AND role = _role
+  )
+$$;
+
+-- Fix 5: Enable leaked password protection by updating auth configuration
+-- Note: This requires updating the auth.config table, but since we can't directly modify auth schema,
+-- we'll create a function to help administrators understand this needs to be configured in Supabase dashboard
+CREATE OR REPLACE FUNCTION public.get_auth_security_notice()
+RETURNS text
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT 'Please enable password leak protection in Supabase Dashboard under Authentication > Settings > Password Protection';
+$$;

@@ -1,0 +1,199 @@
+-- Create product_variants table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.product_variants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    price NUMERIC(10,2) NOT NULL,
+    quantity_multiplier INTEGER NOT NULL DEFAULT 1,
+    is_bumper_offer BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT product_variants_product_id_name_key UNIQUE (product_id, name)
+);
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_product_variants_product_id ON public.product_variants(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_variants_is_bumper_offer ON public.product_variants(is_bumper_offer);
+
+-- Function to create or update product variants
+CREATE OR REPLACE FUNCTION update_product_variant(
+    product_name text,
+    variant_name text,
+    variant_description text,
+    price numeric,
+    quantity_multiplier integer,
+    is_bumper_offer boolean DEFAULT true
+) RETURNS void AS $$
+DECLARE
+    product_id uuid;
+    variant_id uuid;
+BEGIN
+    -- Get the product ID
+    SELECT id INTO product_id FROM public.products WHERE name = product_name LIMIT 1;
+    
+    IF product_id IS NULL THEN
+        RAISE NOTICE 'Product not found: %', product_name;
+        RETURN;
+    END IF;
+    
+    -- Check if variant exists
+    SELECT id INTO variant_id 
+    FROM public.product_variants 
+    WHERE product_id = product_id 
+    AND name = variant_name;
+    
+    -- Update or insert variant
+    IF variant_id IS NOT NULL THEN
+        UPDATE public.product_variants
+        SET 
+            description = variant_description,
+            price = price,
+            quantity_multiplier = quantity_multiplier,
+            is_bumper_offer = is_bumper_offer,
+            updated_at = now()
+        WHERE id = variant_id;
+    ELSE
+        INSERT INTO public.product_variants (
+            product_id, 
+            name, 
+            description, 
+            price, 
+            quantity_multiplier, 
+            is_bumper_offer
+        ) VALUES (
+            product_id, 
+            variant_name, 
+            variant_description, 
+            price, 
+            quantity_multiplier, 
+            is_bumper_offer
+        );
+    END IF;
+    
+    RAISE NOTICE 'Processed variant % for %', variant_name, product_name;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Update base product prices
+UPDATE public.products 
+SET 
+    price = CASE 
+        WHEN name = 'Dynace Rocenta' THEN 30000.00
+        WHEN name = 'Salud' THEN 20000.00
+        WHEN name = 'Jinja' THEN 17000.00
+        WHEN name = 'Jigsimur' THEN 17500.00
+        ELSE price
+    END,
+    updated_at = now()
+WHERE name IN ('Dynace Rocenta', 'Salud', 'Jinja', 'Jigsimur');
+
+-- Insert/Update product variants
+-- Dynace Rocenta
+SELECT update_product_variant(
+    'Dynace Rocenta',
+    '2 Bottles',
+    'Save big with 2 bottles of Dynace Rocenta at ₦29,900 each',
+    29900.00,
+    2,
+    true
+);
+
+-- Jigsimur
+SELECT update_product_variant(
+    'Jigsimur',
+    '2 Bottles',
+    'Save big with 2 bottles of Jigsimur at ₦17,300 each',
+    17300.00,
+    2,
+    true
+);
+
+SELECT update_product_variant(
+    'Jigsimur',
+    '4 Bottles',
+    'Save more with 4 bottles of Jigsimur at ₦17,000 each',
+    17000.00,
+    4,
+    true
+);
+
+SELECT update_product_variant(
+    'Jigsimur',
+    '6 Bottles',
+    'Best deal! 6 bottles of Jigsimur at ₦16,000 each',
+    16000.00,
+    6,
+    true
+);
+
+-- Jinja
+SELECT update_product_variant(
+    'Jinja',
+    '2 Bottles',
+    'Save big with 2 bottles of Jinja at ₦15,300 each',
+    15300.00,
+    2,
+    true
+);
+
+SELECT update_product_variant(
+    'Jinja',
+    '4 Bottles',
+    'Save more with 4 bottles of Jinja at ₦15,000 each',
+    15000.00,
+    4,
+    true
+);
+
+SELECT update_product_variant(
+    'Jinja',
+    '6 Bottles',
+    'Best deal! 6 bottles of Jinja at ₦13,500 each',
+    13500.00,
+    6,
+    true
+);
+
+-- Salud
+SELECT update_product_variant(
+    'Salud',
+    '2 Bottles',
+    'Save big with 2 bottles of Salud at ₦19,800 each',
+    19800.00,
+    2,
+    true
+);
+
+SELECT update_product_variant(
+    'Salud',
+    '4 Bottles',
+    'Save more with 4 bottles of Salud at ₦19,500 each',
+    19500.00,
+    4,
+    true
+);
+
+SELECT update_product_variant(
+    'Salud',
+    '6 Bottles',
+    'Best deal! 6 bottles of Salud at ₦17,000 each',
+    17000.00,
+    6,
+    true
+);
+
+-- Verify the updates
+SELECT 
+    p.name as product_name,
+    p.price as base_price_ngn,
+    pv.name as variant_name,
+    pv.price as variant_price_ngn,
+    pv.quantity_multiplier,
+    pv.is_bumper_offer,
+    pv.price * pv.quantity_multiplier as total_price_ngn,
+    ROUND((1 - (pv.price / p.price)) * 100, 1) as discount_percentage
+FROM public.products p
+LEFT JOIN public.product_variants pv ON p.id = pv.product_id
+WHERE p.name IN ('Dynace Rocenta', 'Jigsimur', 'Jinja', 'Salud')
+ORDER BY p.name, pv.quantity_multiplier;

@@ -1,0 +1,150 @@
+-- Fix RLS violations for automation_rules table - Multiple policy options
+-- This migration provides several approaches to fix the RLS policy violations
+
+-- First, let's check what policies currently exist and clean them up
+DROP POLICY IF EXISTS "Admins can manage automation rules" ON public.automation_rules;
+DROP POLICY IF EXISTS "Users can manage automation rules" ON public.automation_rules;
+DROP POLICY IF EXISTS "Authenticated users can manage automation rules" ON public.automation_rules;
+
+-- Option 1: Create a policy that checks for admin role (most secure)
+CREATE POLICY "Admin access to automation rules" ON public.automation_rules
+FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM public.user_roles 
+        WHERE user_id = auth.uid() 
+        AND role = 'admin'::public.app_role
+    )
+);
+
+-- Option 2: Create a fallback policy for authenticated users (less secure but will work)
+-- This is commented out by default - uncomment if Option 1 doesn't work
+-- CREATE POLICY "Authenticated users can manage automation rules" ON public.automation_rules
+-- FOR ALL USING (auth.role() = 'authenticated');
+
+-- Option 3: Create a policy that checks if user exists in user_roles table (medium security)
+-- This is commented out by default - uncomment if you want this approach
+-- CREATE POLICY "Role-based access to automation rules" ON public.automation_rules
+-- FOR ALL USING (
+--     EXISTS (
+--         SELECT 1 FROM public.user_roles 
+--         WHERE user_id = auth.uid()
+--     )
+-- );
+
+-- Ensure the automation_rules table has all required columns
+ALTER TABLE public.automation_rules 
+ADD COLUMN IF NOT EXISTS trigger_data JSONB DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT now();
+
+-- Create or replace the get_current_user_role function with better error handling
+CREATE OR REPLACE FUNCTION public.get_current_user_role()
+RETURNS TEXT AS $$
+DECLARE
+    user_role TEXT;
+    user_id UUID;
+BEGIN
+    -- Get the current user ID
+    user_id := auth.uid();
+    
+    -- Check if user is authenticated
+    IF user_id IS NULL THEN
+        RETURN 'anonymous';
+    END IF;
+    
+    -- Get the user's role from the user_roles table
+    SELECT role::TEXT INTO user_role
+    FROM public.user_roles
+    WHERE user_id = user_id
+    LIMIT 1;
+    
+    -- Return the role or 'user' as default
+    RETURN COALESCE(user_role, 'user');
+EXCEPTION
+    WHEN OTHERS THEN
+        -- If there's any error, return 'user' as default
+        RETURN 'user';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permission on the function
+GRANT EXECUTE ON FUNCTION public.get_current_user_role() TO authenticated;
+
+-- Create a debug function to help troubleshoot role issues
+CREATE OR REPLACE FUNCTION public.debug_user_role()
+RETURNS TABLE(
+    user_id UUID,
+    auth_role TEXT,
+    user_role TEXT,
+    is_admin BOOLEAN,
+    has_user_roles BOOLEAN
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        auth.uid() as user_id,
+        auth.role() as auth_role,
+        get_current_user_role() as user_role,
+        EXISTS(
+            SELECT 1 FROM public.user_roles 
+            WHERE user_id = auth.uid() 
+            AND role = 'admin'::public.app_role
+        ) as is_admin,
+        EXISTS(
+            SELECT 1 FROM public.user_roles 
+            WHERE user_id = auth.uid()
+        ) as has_user_roles;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute permission on the debug function
+GRANT EXECUTE ON FUNCTION public.debug_user_role() TO authenticated;
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_automation_rules_name_trigger_action 
+ON public.automation_rules(name, trigger, action);
+
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id 
+ON public.user_roles(user_id);
+
+-- Create trigger for updated_at column
+CREATE OR REPLACE FUNCTION update_automation_rules_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Drop existing trigger if it exists
+DROP TRIGGER IF EXISTS update_automation_rules_updated_at ON public.automation_rules;
+
+-- Create the trigger
+CREATE TRIGGER update_automation_rules_updated_at
+    BEFORE UPDATE ON public.automation_rules
+    FOR EACH ROW EXECUTE FUNCTION update_automation_rules_updated_at();
+
+-- Insert a default admin user role if none exists (for testing purposes)
+-- WARNING: This will create an admin role for the first authenticated user
+-- Remove this section after testing or if you want to manage roles manually
+DO $$
+DECLARE
+    first_user_id UUID;
+BEGIN
+    -- Get the first authenticated user (you should replace this with your actual admin user ID)
+    SELECT id INTO first_user_id 
+    FROM auth.users 
+    WHERE email IS NOT NULL 
+    LIMIT 1;
+    
+    -- Insert admin role if no roles exist for this user
+    IF first_user_id IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM public.user_roles WHERE user_id = first_user_id
+    ) THEN
+        INSERT INTO public.user_roles (user_id, role) 
+        VALUES (first_user_id, 'admin'::public.app_role);
+        
+        RAISE NOTICE 'Created admin role for user: %', first_user_id;
+    END IF;
+END $$;

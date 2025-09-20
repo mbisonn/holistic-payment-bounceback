@@ -1,0 +1,29 @@
+
+-- Fix final RLS performance issues: remaining multiple permissive policies
+
+-- 1. Fix product_categories policies - the admin_manage policy is conflicting with public_read for SELECT
+DROP POLICY IF EXISTS "product_categories_admin_manage" ON public.product_categories;
+
+-- Create admin management policy (all operations) with valid syntax
+DROP POLICY IF EXISTS "product_categories_admin_write" ON public.product_categories;
+CREATE POLICY "product_categories_admin_write" ON public.product_categories
+  FOR ALL USING (current_user_is_admin())
+  WITH CHECK (current_user_is_admin());
+
+-- 2. Fix profiles policies - remove the duplicate update policy
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+-- Keep only the comprehensive profiles_access policy
+
+-- 3. Clean up unused indexes to improve performance
+DROP INDEX IF EXISTS public.idx_customer_tag_assignments_tag_id;
+DROP INDEX IF EXISTS public.idx_email_campaigns_template_id;
+DROP INDEX IF EXISTS public.idx_email_logs_campaign_id;
+DROP INDEX IF EXISTS public.idx_email_logs_template_id;
+DROP INDEX IF EXISTS public.idx_invoices_order_id;
+DROP INDEX IF EXISTS public.idx_product_reviews_product_id;
+DROP INDEX IF EXISTS public.idx_user_roles_user_id;
+DROP INDEX IF EXISTS public.idx_profiles_user_id;
+
+-- 4. Create more targeted indexes only for actively used foreign key relationships
+CREATE INDEX IF NOT EXISTS idx_customer_tag_assignments_tag_id_active ON public.customer_tag_assignments(tag_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_order_id_active ON public.invoices(order_id);

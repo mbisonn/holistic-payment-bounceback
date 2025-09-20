@@ -1,0 +1,44 @@
+-- Create email_settings table for managing email configuration
+CREATE TABLE IF NOT EXISTS public.email_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_email TEXT NOT NULL,
+  sender_name TEXT DEFAULT 'Bounce Back to Life Consult',
+  admin_recipients TEXT[] NOT NULL DEFAULT '{}',
+  smtp_enabled BOOLEAN DEFAULT false,
+  smtp_host TEXT,
+  smtp_port INTEGER,
+  smtp_username TEXT,
+  smtp_password TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE public.email_settings ENABLE ROW LEVEL SECURITY;
+
+-- Create policies
+DROP POLICY IF EXISTS "Admins can manage email settings" ON public.email_settings;
+CREATE POLICY "Admins can manage email settings" 
+ON public.email_settings 
+FOR ALL 
+USING (get_current_user_role() = 'admin');
+
+-- Insert default settings
+INSERT INTO public.email_settings (sender_email, admin_recipients) 
+VALUES ('info@bouncebacktolifeconsult.pro', ARRAY['ebuchenna1@gmail.com', 'info@bouncebacktolifeconsult.pro']);
+
+-- Create function to update timestamps
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for updated_at
+DROP TRIGGER IF EXISTS update_email_settings_updated_at ON public.email_settings;
+CREATE TRIGGER update_email_settings_updated_at
+BEFORE UPDATE ON public.email_settings
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();

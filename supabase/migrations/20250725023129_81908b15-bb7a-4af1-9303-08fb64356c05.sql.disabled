@@ -1,0 +1,125 @@
+-- Update products table with hardcoded product data
+INSERT INTO public.products (name, description, price, image_url, category, is_active) VALUES
+('Faforon', 'Premium herbal supplement for overall wellness', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b70fdeb16d_52.png', 'Supplements', true),
+('Becool', 'Natural cooling supplement for body temperature regulation', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8aea50919_43.png', 'Supplements', true),
+('Dynace Rocenta', 'Advanced wellness formula for enhanced vitality', 30000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b708190650_42.png', 'Premium', true),
+('Spidex 12', 'Specialized health supplement for immune support', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b7105cd6d2_62.png', 'Supplements', true),
+('Salud', 'Complete health formula for daily wellness', 20000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b711b93315_82.png', 'Supplements', true),
+('Jigsimur', 'Traditional herbal blend for digestive health', 17500, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8afde7c99_63.png', 'Supplements', true),
+('Jinja', 'Energy boosting herbal supplement', 17000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b70301077f_32.png', 'Supplements', true),
+('Faforditoz', 'Enhanced formula for optimal health', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8af681d36_53.png', 'Supplements', true),
+('Spidex 17', 'Advanced immune system support', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b71440b18d_121.png', 'Supplements', true),
+('Spidex 20', 'Premium wellness supplement', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b65dfab8a5_12.png', 'Supplements', true),
+('Spidex 18', 'Comprehensive health support formula', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b71529fe6c_131.png', 'Supplements', true),
+('Men Coffee', 'Specially formulated coffee for men''s health', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8b18acad0_83.png', 'Beverages', true),
+('Spidex 21', 'Complete wellness solution', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b7135da5ca_101.png', 'Supplements', true),
+('Spidex 19', 'Advanced health maintenance formula', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b710f8a766_72.png', 'Supplements', true),
+('Spidex 15', 'Essential health supplement', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b66c75de26_22.png', 'Supplements', true),
+('Prosclick', 'Professional strength wellness formula', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b712643cd7_91.png', 'Supplements', true),
+('Green Coffee', 'Natural green coffee for weight management', 14000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8b27469be_92.png', 'Beverages', true),
+('Iru Antiseptic Soap', 'Natural antiseptic soap for skin care', 15000, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8b09633de_73.png', 'Personal Care', true),
+('Multi Effect Toothpaste', 'Complete oral care toothpaste', 4500, 'https://d1yei2z3i6k35z.cloudfront.net/8219284/679b8b338f624_102.png', 'Personal Care', true)
+ON CONFLICT (name) DO UPDATE SET
+  description = EXCLUDED.description,
+  price = EXCLUDED.price,
+  image_url = EXCLUDED.image_url,
+  category = EXCLUDED.category,
+  is_active = EXCLUDED.is_active;
+
+-- Create product_analytics table for tracking product performance
+CREATE TABLE IF NOT EXISTS public.product_analytics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID REFERENCES public.products(id) ON DELETE CASCADE,
+  views INTEGER DEFAULT 0,
+  purchases INTEGER DEFAULT 0,
+  revenue NUMERIC DEFAULT 0,
+  date_recorded DATE DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(product_id, date_recorded)
+);
+
+-- Enable RLS on product_analytics
+ALTER TABLE public.product_analytics ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for product_analytics
+DROP POLICY IF EXISTS "admin_product_analytics_access" ON public.product_analytics;
+CREATE POLICY "admin_product_analytics_access" 
+ON public.product_analytics 
+FOR ALL 
+USING (current_user_is_admin())
+WITH CHECK (current_user_is_admin());
+
+-- Create upsell_transactions table for tracking upsell payments
+CREATE TABLE IF NOT EXISTS public.upsell_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  reference TEXT UNIQUE NOT NULL,
+  email TEXT NOT NULL,
+  product_type TEXT NOT NULL,
+  price NUMERIC NOT NULL,
+  status TEXT DEFAULT 'initiated',
+  paystack_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS on upsell_transactions
+ALTER TABLE public.upsell_transactions ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for upsell_transactions
+DROP POLICY IF EXISTS "upsell_transactions_admin_access" ON public.upsell_transactions;
+CREATE POLICY "upsell_transactions_admin_access" 
+ON public.upsell_transactions 
+FOR ALL 
+USING (current_user_is_admin())
+WITH CHECK (current_user_is_admin());
+
+-- Create policy for users to view their own transactions
+-- Make this conditional on the presence of the email column to avoid errors if remote schema differs
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'upsell_transactions' AND column_name = 'email'
+  ) THEN
+    DROP POLICY IF EXISTS "upsell_transactions_user_access" ON public.upsell_transactions;
+    EXECUTE 'CREATE POLICY "upsell_transactions_user_access" 
+      ON public.upsell_transactions 
+      FOR SELECT 
+      USING (email = auth.email())';
+  END IF;
+END$$;
+
+-- Create triggers for updated_at columns
+DROP TRIGGER IF EXISTS update_product_analytics_updated_at ON public.product_analytics;
+CREATE TRIGGER update_product_analytics_updated_at
+  BEFORE UPDATE ON public.product_analytics
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_upsell_transactions_updated_at ON public.upsell_transactions;
+CREATE TRIGGER update_upsell_transactions_updated_at
+  BEFORE UPDATE ON public.upsell_transactions
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_product_analytics_product_date ON public.product_analytics(product_id, date_recorded);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'upsell_transactions' AND column_name = 'email'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_upsell_transactions_email ON public.upsell_transactions(email)';
+  END IF;
+END$$;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' AND table_name = 'upsell_transactions' AND column_name = 'reference'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_upsell_transactions_reference ON public.upsell_transactions(reference)';
+  END IF;
+END$$;

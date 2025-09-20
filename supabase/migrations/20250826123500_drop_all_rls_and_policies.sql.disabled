@@ -1,0 +1,93 @@
+-- Danger: Drops ALL RLS policies and disables RLS on non-system schemas
+-- Excludes system schemas: pg_catalog, information_schema, pg_toast, auth, storage, extensions
+-- Review before applying in production.
+
+-- 1) Drop all policies on non-system schemas
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT
+      schemaname,
+      tablename,
+      policyname
+    FROM pg_policies
+    WHERE schemaname NOT IN ('pg_catalog','information_schema','pg_toast','auth','storage','extensions')
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I;', r.policyname, r.schemaname, r.tablename);
+  END LOOP;
+END $$;
+
+-- 2) Disable RLS and NO FORCE on all regular tables in non-system schemas
+DO $$
+DECLARE
+  t record;
+BEGIN
+  FOR t IN
+    SELECT schemaname, tablename
+    FROM pg_tables
+    WHERE schemaname NOT IN ('pg_catalog','information_schema','pg_toast','auth','storage','extensions')
+  LOOP
+    EXECUTE format('ALTER TABLE %I.%I DISABLE ROW LEVEL SECURITY;', t.schemaname, t.tablename);
+    EXECUTE format('ALTER TABLE %I.%I NO FORCE ROW LEVEL SECURITY;', t.schemaname, t.tablename);
+  END LOOP;
+END $$;
+
+-- 3) Grant USAGE on all non-system schemas to anon/authenticated
+DO $$
+DECLARE ns record;
+BEGIN
+  FOR ns IN
+    SELECT nspname AS schemaname
+    FROM pg_namespace
+    WHERE nspname NOT IN ('pg_catalog','information_schema','pg_toast','auth','storage','extensions')
+  LOOP
+    EXECUTE format('GRANT USAGE ON SCHEMA %I TO anon;', ns.schemaname);
+    EXECUTE format('GRANT USAGE ON SCHEMA %I TO authenticated;', ns.schemaname);
+  END LOOP;
+END $$;
+
+-- 4) Grant broad table access on all tables in non-system schemas
+DO $$
+DECLARE g record;
+BEGIN
+  FOR g IN
+    SELECT schemaname, tablename
+    FROM pg_tables
+    WHERE schemaname NOT IN ('pg_catalog','information_schema','pg_toast','auth','storage','extensions')
+  LOOP
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %I.%I TO anon;', g.schemaname, g.tablename);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %I.%I TO authenticated;', g.schemaname, g.tablename);
+  END LOOP;
+END $$;
+
+-- 5) Grant sequence usage for identity/serial columns
+DO $$
+DECLARE s record;
+BEGIN
+  FOR s IN
+    SELECT sequence_schema AS schemaname, sequence_name
+    FROM information_schema.sequences
+    WHERE sequence_schema NOT IN ('pg_catalog','information_schema','pg_toast','auth','storage','extensions')
+  LOOP
+    EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %I.%I TO anon;', s.schemaname, s.sequence_name);
+    EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %I.%I TO authenticated;', s.schemaname, s.sequence_name);
+  END LOOP;
+END $$;
+
+-- 6) Default privileges so future tables/sequences remain open
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT n.nspname AS schemaname, pg_get_userbyid(n.nspowner) AS owner
+    FROM pg_namespace n
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema','pg_toast','auth','storage','extensions')
+  LOOP
+    EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon;', r.owner, r.schemaname);
+    EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;', r.owner, r.schemaname);
+    EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA %I GRANT USAGE, SELECT ON SEQUENCES TO anon;', r.owner, r.schemaname);
+    EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA %I GRANT USAGE, SELECT ON SEQUENCES TO authenticated;', r.owner, r.schemaname);
+  END LOOP;
+END $$;

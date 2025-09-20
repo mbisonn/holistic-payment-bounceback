@@ -1,0 +1,33 @@
+-- Migration: Fix Login Redirect Issue
+-- Date: 2025-09-18 03:54:00
+-- Description: Fix circular dependency in user_roles RLS policy that prevents admin role checks after login
+
+-- STEP 1: DROP PROBLEMATIC POLICY
+-- ==============================================
+
+DROP POLICY IF EXISTS "user_roles_consolidated_select" ON public.user_roles;
+
+-- STEP 2: CREATE FIXED POLICY WITHOUT CIRCULAR DEPENDENCY
+-- ==============================================
+
+-- Fix user_roles table - allow users to read their own roles without circular admin check
+CREATE POLICY "user_roles_consolidated_select" ON public.user_roles
+FOR SELECT TO authenticated, anon, authenticator, dashboard_user
+USING (user_id = (SELECT auth.uid()));
+
+-- STEP 3: SUCCESS MESSAGE
+-- ==============================================
+
+DO $$
+BEGIN
+    RAISE NOTICE '';
+    RAISE NOTICE '🚀 LOGIN REDIRECT ISSUE FIXED! 🚀';
+    RAISE NOTICE '=====================================';
+    RAISE NOTICE '✅ FIXES APPLIED:';
+    RAISE NOTICE '- Removed circular dependency in user_roles RLS policy';
+    RAISE NOTICE '- Users can now read their own roles for admin checks';
+    RAISE NOTICE '- Login should now redirect properly to dashboard';
+    RAISE NOTICE '';
+    RAISE NOTICE '🎉 Login redirect should now work correctly!';
+    RAISE NOTICE '=====================================';
+END $$;

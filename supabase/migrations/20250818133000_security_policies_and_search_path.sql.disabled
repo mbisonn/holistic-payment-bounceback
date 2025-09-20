@@ -1,0 +1,138 @@
+-- Harden function search_path to avoid role-mutable resolution
+DO $$
+BEGIN
+  -- assign_user_role(uuid)
+  PERFORM 1 FROM pg_proc p
+   JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'assign_user_role' AND pg_get_function_identity_arguments(p.oid) = 'p_user_id uuid';
+  IF FOUND THEN
+    ALTER FUNCTION public.assign_user_role(uuid) SET search_path = public, auth;
+  END IF;
+
+  -- generate_invoice_number()
+  PERFORM 1 FROM pg_proc p
+   JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'generate_invoice_number' AND pg_get_function_identity_arguments(p.oid) = '';
+  IF FOUND THEN
+    ALTER FUNCTION public.generate_invoice_number() SET search_path = public, auth;
+  END IF;
+
+  -- update_automation_rules_updated_at()
+  PERFORM 1 FROM pg_proc p
+   JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'update_automation_rules_updated_at' AND pg_get_function_identity_arguments(p.oid) = '';
+  IF FOUND THEN
+    ALTER FUNCTION public.update_automation_rules_updated_at() SET search_path = public, auth;
+  END IF;
+END $$;
+
+-- Admin-only policies for RLS-enabled tables missing policies
+-- Assumes table RLS already enabled
+-- Uses user_roles to determine admin
+
+-- Helper predicate repeated inline to avoid creating a new function:
+--   exists (select 1 from public.user_roles ur where ur.user_id = (select auth.uid()) and ur.role = 'admin')
+
+-- automation_rules
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'automation_rules'
+  ) THEN
+    CREATE POLICY "Admins manage automation_rules"
+      ON public.automation_rules
+      FOR ALL
+      TO authenticated
+      USING (
+        exists (
+          select 1 from public.user_roles ur
+          where ur.user_id = (select auth.uid()) and ur.role = 'admin'
+        )
+      )
+      WITH CHECK (
+        exists (
+          select 1 from public.user_roles ur
+          where ur.user_id = (select auth.uid()) and ur.role = 'admin'
+        )
+      );
+  END IF;
+END $$;
+
+-- customer_tags
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'customer_tags'
+  ) THEN
+    CREATE POLICY "Admins manage customer_tags"
+      ON public.customer_tags
+      FOR ALL
+      TO authenticated
+      USING (
+        exists (
+          select 1 from public.user_roles ur
+          where ur.user_id = (select auth.uid()) and ur.role = 'admin'
+        )
+      )
+      WITH CHECK (
+        exists (
+          select 1 from public.user_roles ur
+          where ur.user_id = (select auth.uid()) and ur.role = 'admin'
+        )
+      );
+  END IF;
+END $$;
+
+-- email_campaigns
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'email_campaigns'
+  ) THEN
+    CREATE POLICY "Admins manage email_campaigns"
+      ON public.email_campaigns
+      FOR ALL
+      TO authenticated
+      USING (
+        exists (
+          select 1 from public.user_roles ur
+          where ur.user_id = (select auth.uid()) and ur.role = 'admin'
+        )
+      )
+      WITH CHECK (
+        exists (
+          select 1 from public.user_roles ur
+          where ur.user_id = (select auth.uid()) and ur.role = 'admin'
+        )
+      );
+  END IF;
+END $$;
+
+-- email_templates
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'email_templates'
+  ) THEN
+    CREATE POLICY "Admins manage email_templates"
+      ON public.email_templates
+      FOR ALL
+      TO authenticated
+      USING (
+        exists (
+          select 1 from public.user_roles ur
+          where ur.user_id = (select auth.uid()) and ur.role = 'admin'
+        )
+      )
+      WITH CHECK (
+        exists (
+          select 1 from public.user_roles ur
+          where ur.user_id = (select auth.uid()) and ur.role = 'admin'
+        )
+      );
+  END IF;
+END $$;

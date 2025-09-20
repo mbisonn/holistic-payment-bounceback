@@ -1,0 +1,113 @@
+-- Standardize RLS for admin dashboard tables
+-- Read: admins OR verified users
+-- Write (INSERT/UPDATE/DELETE): admins only
+-- Idempotent; skips non-existent tables
+
+-- Ensure helper exists (created earlier in your project)
+--   public.current_user_is_admin()
+
+DO $$
+DECLARE t text;
+DECLARE pol RECORD;
+DECLARE tables text[] := ARRAY[
+  'products',
+  'orders',
+  'orders_products',
+  'profiles',
+  'customers',
+  'customer_tags',
+  'tags',
+  'discount_codes',
+  'upsell_products',
+  'downsells',
+  'order_bumps',
+  'email_campaigns',
+  'scheduled_emails',
+  'email_logs',
+  'email_templates',
+  'automations',
+  'automation_rules',
+  'analytics_metrics',
+  'shipping_settings',
+  'shipping_zones',
+  'store_settings',
+  'invoices'
+];
+BEGIN
+  FOREACH t IN ARRAY tables LOOP
+    IF EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema='public' AND table_name=t
+    ) THEN
+      EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+
+      -- Drop existing policies for a clean slate
+      FOR pol IN
+        SELECT policyname FROM pg_policies
+        WHERE schemaname='public' AND tablename=t
+      LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', pol.policyname, t);
+      END LOOP;
+
+      -- SELECT: admin or verified
+      EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO authenticated '
+        || 'USING ( '
+        || '  public.current_user_is_admin() '
+        || '  OR EXISTS ( '
+        || '    SELECT 1 FROM public.user_roles ur '
+        || '    WHERE ur.user_id = (SELECT auth.uid()) '
+        || '      AND ur.role = ''verified''::public.app_role '
+        || '  ) '
+        || ')', t || '_admin_or_verified_select', t);
+
+      -- ALL mutations: admin only
+      EXECUTE format('CREATE POLICY %I ON public.%I FOR ALL TO authenticated '
+        || 'USING (public.current_user_is_admin()) '
+        || 'WITH CHECK (public.current_user_is_admin())', t || '_admin_all', t);
+    END IF;
+  END LOOP;
+END $$;
+
+-- Helpful indexes (if missing)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='orders'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='user_id'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id)';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='orders_products'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders_products' AND column_name='order_id'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_orders_products_order_id ON public.orders_products(order_id)';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='orders_products'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders_products' AND column_name='product_id'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_orders_products_product_id ON public.orders_products(product_id)';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='customer_tags'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='customer_tags' AND column_name='customer_id'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_customer_tags_customer_id ON public.customer_tags(customer_id)';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='customer_tags'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='customer_tags' AND column_name='tag_id'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_customer_tags_tag_id ON public.customer_tags(tag_id)';
+  END IF;
+END $$;

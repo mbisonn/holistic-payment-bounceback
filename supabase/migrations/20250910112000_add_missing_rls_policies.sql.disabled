@@ -1,0 +1,26 @@
+-- Add missing RLS policies to tables with RLS enabled
+
+BEGIN;
+
+-- Grant all privileges to admins for all tables
+CREATE POLICY "Enable full access for admins" ON public.abandoned_checkouts FOR ALL USING (public.is_admin());
+CREATE POLICY "Enable full access for admins" ON public.analytics_metrics FOR ALL USING (public.is_admin());
+CREATE POLICY "Enable full access for admins" ON public.customer_exports FOR ALL USING (public.is_admin());
+CREATE POLICY "Enable full access for admins" ON public.facebook_conversion_settings FOR ALL USING (public.is_admin());
+CREATE POLICY "Enable full access for admins" ON public.notification_settings FOR ALL USING (public.is_admin());
+CREATE POLICY "Enable full access for admins" ON public.product_analytics FOR ALL USING (public.is_admin());
+CREATE POLICY "Enable full access for admins" ON public.product_categories FOR ALL USING (public.is_admin());
+CREATE POLICY "Enable full access for admins" ON public.product_reviews FOR ALL USING (public.is_admin());
+CREATE POLICY "Enable full access for admins" ON public.product_variants FOR ALL USING (public.is_admin());
+CREATE POLICY "Enable full access for admins" ON public.security_events FOR ALL USING (public.is_admin());
+CREATE POLICY "Enable full access for admins" ON public.upsell_transactions FOR ALL USING (public.is_admin());
+
+-- Grant select access to authenticated users for specific tables
+CREATE POLICY "Enable select for authenticated users" ON public.product_categories FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Enable select for authenticated users" ON public.product_reviews FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Enable select for authenticated users" ON public.product_variants FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Grant users access to their own data
+CREATE POLICY "Enable access to own user records" ON public.users FOR ALL USING (auth.uid() = id);
+
+COMMIT;

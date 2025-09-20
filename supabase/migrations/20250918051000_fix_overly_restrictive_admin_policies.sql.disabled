@@ -1,0 +1,106 @@
+-- Migration: Fix Overly Restrictive Admin-Only Policies
+-- Date: 2025-09-18 05:10:00
+-- Description: The admin lockdown migration made ALL tables admin-only, preventing authenticated users from reading their own roles.
+-- This fixes the user_roles table to allow users to read their own roles while keeping other restrictions.
+
+-- STEP 1: CHECK CURRENT FUNCTION DEFINITION
+-- ==============================================
+
+-- Check if current_user_is_admin function is causing circular dependency
+DO $$
+BEGIN
+    -- The current function checks JWT app_metadata which may not be set correctly
+    -- We need to allow basic role reading for authenticated users
+    RAISE NOTICE 'Checking current admin function definition...';
+END $$;
+
+-- STEP 2: FIX USER_ROLES TABLE ACCESS
+-- ==============================================
+
+-- Drop the overly restrictive admin-only policies on user_roles
+DROP POLICY IF EXISTS "user_roles_admin_select" ON public.user_roles;
+DROP POLICY IF EXISTS "user_roles_admin_all" ON public.user_roles;
+
+-- Create a policy that allows users to read their own roles (essential for login flow)
+CREATE POLICY "user_roles_read_own" ON public.user_roles
+FOR SELECT TO authenticated
+USING (user_id = auth.uid());
+
+-- Keep admin-only policies for modifications
+CREATE POLICY "user_roles_admin_manage" ON public.user_roles
+FOR ALL TO authenticated
+USING (
+    -- Allow if user is reading their own role OR if they're admin
+    (user_id = auth.uid()) OR 
+    (EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'::app_role))
+)
+WITH CHECK (
+    -- Only admins can insert/update/delete
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'::app_role)
+);
+
+-- STEP 3: FIX PROFILES TABLE ACCESS (needed for user info)
+-- ==============================================
+
+-- Drop overly restrictive policies
+DROP POLICY IF EXISTS "profiles_admin_select" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_admin_all" ON public.profiles;
+
+-- Allow users to read all profiles (public info) and update their own
+CREATE POLICY "profiles_public_read" ON public.profiles
+FOR SELECT TO anon, authenticated
+USING (true);
+
+CREATE POLICY "profiles_own_update" ON public.profiles
+FOR UPDATE TO authenticated
+USING (id = auth.uid())
+WITH CHECK (id = auth.uid());
+
+CREATE POLICY "profiles_admin_manage" ON public.profiles
+FOR ALL TO authenticated
+USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'::app_role)
+)
+WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'::app_role)
+);
+
+-- STEP 4: FIX PRODUCTS TABLE ACCESS (needed for dashboard)
+-- ==============================================
+
+-- Drop overly restrictive policies
+DROP POLICY IF EXISTS "products_admin_select" ON public.products;
+DROP POLICY IF EXISTS "products_admin_all" ON public.products;
+
+-- Allow public read access to products (needed for frontend)
+CREATE POLICY "products_public_read" ON public.products
+FOR SELECT TO anon, authenticated
+USING (true);
+
+-- Admin-only for modifications
+CREATE POLICY "products_admin_manage" ON public.products
+FOR ALL TO authenticated
+USING (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'::app_role)
+)
+WITH CHECK (
+    EXISTS (SELECT 1 FROM public.user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin'::app_role)
+);
+
+-- STEP 5: SUCCESS MESSAGE
+-- ==============================================
+
+DO $$
+BEGIN
+    RAISE NOTICE '';
+    RAISE NOTICE '🚀 OVERLY RESTRICTIVE POLICIES FIXED! 🚀';
+    RAISE NOTICE '=====================================';
+    RAISE NOTICE '✅ FIXES APPLIED:';
+    RAISE NOTICE '- user_roles: Users can now read their own roles (essential for login)';
+    RAISE NOTICE '- profiles: Public read access restored';
+    RAISE NOTICE '- products: Public read access restored';
+    RAISE NOTICE '- Admin-only restrictions maintained for modifications';
+    RAISE NOTICE '';
+    RAISE NOTICE '🎉 Login redirect should now work correctly!';
+    RAISE NOTICE '=====================================';
+END $$;

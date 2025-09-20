@@ -1,0 +1,202 @@
+-- Create achievements table if it does not exist
+CREATE TABLE IF NOT EXISTS public.achievements (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- Create missing tables if they do not exist
+CREATE TABLE IF NOT EXISTS public.admins (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.client_attachments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid,
+  file_url text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.client_logos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid,
+  logo_url text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.client_onboarding (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.contact_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text,
+  message text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.meal_plans (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.order_bumps (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.orders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_email text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.patient_data (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_name text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  key text,
+  value text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.upsell_products (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.upsell_transactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- 1. Enable Row Level Security on all tables that don't have it
+ALTER TABLE public.achievements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.client_attachments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.client_logos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.client_onboarding ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.meal_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.order_bumps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.patient_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.upsell_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.upsell_transactions ENABLE ROW LEVEL SECURITY;
+
+-- 2. Create basic RLS policies for the most critical tables
+
+-- For orders table - only admin can access orders
+CREATE POLICY "Admins can read orders" ON public.orders 
+FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can insert orders" ON public.orders 
+FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can update orders" ON public.orders 
+FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- For order_bumps table - only admin can manage
+CREATE POLICY "Admins can read order bumps" ON public.order_bumps 
+FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can insert order bumps" ON public.order_bumps 
+FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can update order bumps" ON public.order_bumps 
+FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- For upsell_products table - admin only
+CREATE POLICY "Admins can read upsell products" ON public.upsell_products 
+FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can insert upsell products" ON public.upsell_products 
+FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can update upsell products" ON public.upsell_products 
+FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- For upsell_transactions table - admin only
+CREATE POLICY "Admins can read upsell transactions" ON public.upsell_transactions 
+FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can insert upsell transactions" ON public.upsell_transactions 
+FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can update upsell transactions" ON public.upsell_transactions 
+FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- For settings table - admin only
+CREATE POLICY "Admins can read settings" ON public.settings 
+FOR SELECT USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can insert settings" ON public.settings 
+FOR INSERT WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can update settings" ON public.settings 
+FOR UPDATE USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- For achievements, make publicly readable but admin writable
+CREATE POLICY "Anyone can view achievements" ON public.achievements 
+FOR SELECT USING (true);
+
+CREATE POLICY "Admins can manage achievements" ON public.achievements 
+FOR ALL USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+-- For client-facing tables - more restrictive
+CREATE POLICY "Admins can manage client data" ON public.client_onboarding 
+FOR ALL USING (public.has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Clients can view their own data" ON public.client_onboarding 
+FOR SELECT USING (auth.email() = email);
+
+CREATE POLICY "Clients can insert their own data" ON public.client_onboarding 
+FOR INSERT WITH CHECK (auth.email() = email);
+
+-- Fix the has_admin_role function which appears incomplete
+CREATE OR REPLACE FUNCTION public.has_admin_role()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM user_roles
+    WHERE user_id = auth.uid() AND role = 'admin'
+  );
+END;
+$$;
+
+-- Create a secure function to update user role without directly accessing auth.users
+CREATE OR REPLACE FUNCTION public.secure_update_user_role(user_email text, role_name text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  target_user_id uuid;
+BEGIN
+  -- Get user ID from email safely
+  SELECT id INTO target_user_id FROM auth.users WHERE email = user_email;
+  
+  IF target_user_id IS NULL THEN
+    RETURN false;
+  END IF;
+  
+  -- Insert or update role
+  INSERT INTO public.user_roles (user_id, role)
+  VALUES (target_user_id, role_name)
+  ON CONFLICT (user_id, role) DO NOTHING;
+  
+  RETURN true;
+END;
+$$;
+
+-- Add public access policy for payment functions
+CREATE POLICY "Allow public access to upsell products" ON public.upsell_products
+FOR SELECT USING (true);

@@ -1,0 +1,173 @@
+
+<!-- Tenera Holistic & Wellness Sales Page Integration -->
+<!-- Option 1: Modern version (ES modules, for newer browsers and frameworks) -->
+<script type="module" src="https://www.teneraholisticandwellness.com/salesPageScript.js"></script>
+
+<!-- Option 2: Legacy version (for older browsers) -->
+<!--
+<script src="https://www.teneraholisticandwellness.com/salesPageScript.legacy.js"></script>
+-->
+
+<!-- Product Configuration -->
+<script>
+window.config = {
+  orderFormUrl: "https://www.teneraholisticandwellness.com/order-payment",
+  dataPostUrl: "https://xjfkeblnxyjhxukqurvc.functions.supabase.co/orders",
+  currency: "₦", // Nigerian Naira symbol
+  debug: true,  // Set to true for console debugging
+  products: {
+    "blood-booster": { 
+      sku: "blood_booster",
+      name: "Blood Booster", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "immuno-guard-plus": { 
+      sku: "immuno_guard_plus",
+      name: "Immuno Guard Plus", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "vein-thrombus": { 
+      sku: "vein_thrombus",
+      name: "Vein Thrombus", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "cardio-tincture": {
+      sku: "cardio_tincture",
+      name: "Cardio Tincture", 
+      price: 10000,
+      defaultQuantity: 1
+    },
+    "cardio-sure": { 
+      sku: "cardio_sure", 
+      name: "Cardio Sure", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "hormone-harmony": { 
+      sku: "hormone_harmony", 
+      name: "Hormone Harmony", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "brain-booster": { 
+      sku: "brain_booster",
+      name: "Brain Booster", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "prostatitis": { 
+      sku: "prostatitis", 
+      name: "Prostatitis", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "prosta-vitality": { 
+      sku: "prosta_vitality", 
+      name: "Prosta Vitality", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "optifertile": { 
+      sku: "optifertile", 
+      name: "Optifertile", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "liver-tea": { 
+      sku: "liver_tea", 
+      name: "Liver Tea", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "eye-shield": { 
+      sku: "eye_shield", 
+      name: "Eye Shield", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "activated-charcoal": { 
+      sku: "activated_charcoal", 
+      name: "Activated Charcoal", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "thyro-plus": { 
+      sku: "thyro_plus", 
+      name: "Thyro Plus", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "thyro-max": { 
+      sku: "thyro_max",
+      name: "Thyro Max", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "sugar-shield-plus": { 
+      sku: "sugar_shield_plus", 
+      name: "Sugar Shield Plus", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "immuno-guard": { 
+      sku: "immuno_guard",
+      name: "Immuno Guard", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "soursop": { 
+      sku: "soursop",
+      name: "Soursop", 
+      price: 25000,
+      defaultQuantity: 1
+    },
+    "nephro-care": { 
+      sku: "nephro_care", 
+      name: "Nephro Care", 
+      price: 25000,
+      defaultQuantity: 1
+    }
+  }
+};
+</script>
+
+<!-- Usage examples:
+
+1. Simple checkout button:
+<button onclick="teneraCheckout.sendToCheckout([
+  {id: 'blood-booster', name: 'Blood Booster', price: 25000, quantity: 1}
+])">
+  Buy Now
+</button>
+
+2. Add to cart function:
+<script>
+function addToCart(productId, productName, price) {
+  // Create cart item
+  const item = {
+    id: productId,
+    name: productName,
+    price: price,
+    quantity: 1
+  };
+  
+  // Add to cart
+  let currentCart = teneraCheckout.getCartData() || [];
+  currentCart.push(item);
+  
+  // Save cart
+  localStorage.setItem('teneraCart', JSON.stringify(currentCart));
+  
+  // Show notification
+  teneraCheckout.showNotification('Item added to cart');
+}
+</script>
+
+3. Checkout button with existing cart:
+<button onclick="teneraCheckout.sendToCheckout()">
+  Proceed to Checkout
+</button>
+-->
