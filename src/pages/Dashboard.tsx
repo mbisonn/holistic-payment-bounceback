@@ -87,7 +87,7 @@ const DashboardContent = ({
       ) : (
         <>
           <button
-            className="fixed top-4 left-4 z-30 glass-button rounded-full shadow-lg p-3 border border-white/20 hover:bg-white/10 transition-all duration-300"
+            className="fixed top-4 left-4 z-30 bounce-back-consult-button rounded-full shadow-lg p-3 border border-white/20 hover:bg-white/10 transition-all duration-300"
             onClick={() => setSidebarOpen(true)}
             aria-label="Open sidebar"
           >
@@ -101,7 +101,7 @@ const DashboardContent = ({
                 className="fixed inset-0 bg-black/40 backdrop-blur-sm" 
                 onClick={() => setSidebarOpen(false)} 
               />
-              <div className="relative z-50 w-64 h-full glass-card border-r border-white/20 shadow-2xl">
+              <div className="relative z-50 w-64 h-full bounce-back-consult-card border-r border-white/20 shadow-2xl">
                 <DashboardSidebar
                   activeSection={activeSection}
                   setActiveSection={setActiveSection}
@@ -109,7 +109,7 @@ const DashboardContent = ({
                   setIsCollapsed={() => {}}
                 />
                 <button
-                  className="absolute top-4 right-4 glass-button rounded-full p-2 hover:bg-white/10 transition-all duration-300"
+                  className="absolute top-4 right-4 bounce-back-consult-button rounded-full p-2 hover:bg-white/10 transition-all duration-300"
                   onClick={() => setSidebarOpen(false)}
                   aria-label="Close sidebar"
                 >
@@ -135,7 +135,7 @@ const DashboardContent = ({
         </div>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 glass-surface">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 bounce-back-consult-surface">
           <div className="max-w-7xl mx-auto">
             {/* Always render content to avoid blank screens if auth is unavailable */}
             <>

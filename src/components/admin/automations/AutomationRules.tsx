@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -19,7 +18,6 @@ import {
   Edit,
   Trash2,
   ArrowRight,
-  Filter,
   Search
 } from 'lucide-react';
 
@@ -90,7 +88,10 @@ export default function AutomationRules() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setRules(data || []);
+        setRules((data || []).map(rule => ({
+          ...rule,
+          is_active: rule.is_active ?? false
+        })));
     } catch (error: any) {
       console.error('Error fetching rules:', error);
       toast({

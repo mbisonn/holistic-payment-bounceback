@@ -186,7 +186,7 @@ const CustomerInfoForm: React.FC<CustomerInfoFormProps> = ({
         {isAdmin && (
           <div className="flex justify-end">
             <Button asChild variant="outline" className="text-green-700">
-              <a href="/admin/dashboard" onClick={(e) => { e.preventDefault(); window.location.href = '/admin/dashboard'; }}>Manage Discount Codes</a>
+              <a href="/admin/" onClick={(e) => { e.preventDefault(); window.location.href = '/admin/'; }}>Manage Discount Codes</a>
             </Button>
           </div>
         )}

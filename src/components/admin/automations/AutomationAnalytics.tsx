@@ -7,28 +7,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   BarChart3, 
   TrendingUp, 
-  TrendingDown, 
   Activity, 
-  Clock, 
   CheckCircle, 
-  XCircle, 
-  AlertCircle,
   Users,
   Mail,
   MessageSquare,
   ShoppingCart,
-  Calendar,
   Download,
   RefreshCw,
-  Filter,
   Eye,
   MousePointer,
   Heart,
-  Star,
   Zap,
   Target,
-  DollarSign,
-  Percent
+  DollarSign
 } from 'lucide-react';
 import { ArrowRight, Settings } from 'lucide-react';
 

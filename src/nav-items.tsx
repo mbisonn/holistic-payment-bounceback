@@ -9,7 +9,7 @@ export const navItems = [
   },
   {
     title: "Admin Dashboard",
-    to: "/admin/dashboard",
+    to: "/admin/",
     icon: <Settings className="h-4 w-4" />,
   },
   {

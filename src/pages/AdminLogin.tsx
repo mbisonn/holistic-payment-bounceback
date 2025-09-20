@@ -42,12 +42,12 @@ export default function AdminLogin() {
       
       // Simple immediate redirect - let ProtectedRoute handle auth validation
       console.log('Redirecting to /admin/dashboard immediately...');
-      window.location.replace('/admin/dashboard');
+      window.location.replace('/admin/');
       
     } catch (error) {
       console.error('Login success error:', error);
       // Force redirect even on error
-      window.location.replace('/admin/dashboard');
+      window.location.replace('/admin/');
     }
   };
 
