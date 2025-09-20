@@ -21,29 +21,29 @@ export const AnalyticsExporter = () => {
 
       if (ordersError) throw ordersError;
 
-      // Export customer analytics
-      const { data: customerAnalytics, error: customerError } = await supabase
-        .from('customer_analytics')
+      // Export products data
+      const { data: products, error: productsError } = await supabase
+        .from('products')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (customerError) throw customerError;
+      if (productsError) throw productsError;
 
-      // Export product analytics
-      const { data: productAnalytics, error: productError } = await supabase
-        .from('product_analytics')
+      // Export email tracking data
+      const { data: emailTracking, error: emailError } = await supabase
+        .from('email_tracking')
         .select('*')
         .order('created_at', { ascending: false });
-
-      if (productError) throw productError;
-
-      // Export email analytics
-      const { data: emailAnalytics, error: emailError } = await supabase
-        .from('email_analytics')
-        .select('*')
-        .order('sent_at', { ascending: false });
 
       if (emailError) throw emailError;
+
+      // Export profiles data for customer info
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (profilesError) throw profilesError;
 
       // Create comprehensive CSV
       const csvSections = [];
@@ -58,32 +58,32 @@ export const AnalyticsExporter = () => {
         csvSections.push('');
       }
 
-      // Customer Analytics section
-      if (customerAnalytics && customerAnalytics.length > 0) {
-        csvSections.push('CUSTOMER ANALYTICS');
-        csvSections.push('Email,Total Orders,Total Spent,Lifetime Value,Average Order Value,Last Order Date');
-        csvSections.push(...customerAnalytics.map(ca => 
-          `${ca.customer_email},${ca.total_orders},${ca.total_spent},${ca.lifetime_value},${ca.avg_order_value},${ca.last_order_date}`
+      // Products section
+      if (products && products.length > 0) {
+        csvSections.push('PRODUCTS DATA');
+        csvSections.push('Product ID,Name,Description,Price,Category,Stock,Active,Created At');
+        csvSections.push(...products.map(product => 
+          `${product.id},${product.name},${product.description || ''},${product.price},${product.category || ''},${product.stock_quantity || 0},${product.is_active},${product.created_at}`
         ));
         csvSections.push('');
       }
 
-      // Product Analytics section
-      if (productAnalytics && productAnalytics.length > 0) {
-        csvSections.push('PRODUCT ANALYTICS');
-        csvSections.push('Product ID,Views,Cart Additions,Purchases,Revenue,Date');
-        csvSections.push(...productAnalytics.map(pa => 
-          `${pa.product_id},${pa.views},${pa.cart_additions},${pa.purchases},${pa.revenue},${pa.date_recorded}`
+      // Email Tracking section
+      if (emailTracking && emailTracking.length > 0) {
+        csvSections.push('EMAIL TRACKING DATA');
+        csvSections.push('Recipient Email,Event Type,Event Data,Created At');
+        csvSections.push(...emailTracking.map(et => 
+          `${et.recipient_email},${et.event_type},${JSON.stringify(et.event_data || {})},${et.created_at}`
         ));
         csvSections.push('');
       }
 
-      // Email Analytics section
-      if (emailAnalytics && emailAnalytics.length > 0) {
-        csvSections.push('EMAIL ANALYTICS');
-        csvSections.push('Email Address,Campaign ID,Sent At,Opened At,Clicked At,Bounced At');
-        csvSections.push(...emailAnalytics.map(ea => 
-          `${ea.email_address},${ea.campaign_id || 'N/A'},${ea.sent_at || 'N/A'},${ea.opened_at || 'N/A'},${ea.clicked_at || 'N/A'},${ea.bounced_at || 'N/A'}`
+      // Profiles section
+      if (profiles && profiles.length > 0) {
+        csvSections.push('CUSTOMER PROFILES DATA');
+        csvSections.push('User ID,Email,Full Name,Role,Created At');
+        csvSections.push(...profiles.map(profile => 
+          `${profile.id},${profile.email},${profile.full_name || ''},${profile.role || 'user'},${profile.created_at}`
         ));
       }
 
@@ -133,36 +133,36 @@ export const AnalyticsExporter = () => {
           break;
 
         case 'customers':
-          const { data: customersData, error: customersError } = await supabase
-            .from('customer_analytics')
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
             .select('*')
             .order('created_at', { ascending: false });
-          if (customersError) throw customersError;
-          data = customersData || [];
-          headers = ['Email', 'Total Orders', 'Total Spent', 'Lifetime Value', 'Average Order Value'];
-          filename = 'customer_analytics';
+          if (profilesError) throw profilesError;
+          data = profilesData || [];
+          headers = ['User ID', 'Email', 'Full Name', 'Role', 'Created At'];
+          filename = 'customer_profiles';
           break;
 
         case 'products':
           const { data: productsData, error: productsError } = await supabase
-            .from('product_analytics')
+            .from('products')
             .select('*')
             .order('created_at', { ascending: false });
           if (productsError) throw productsError;
           data = productsData || [];
-          headers = ['Product ID', 'Views', 'Cart Additions', 'Purchases', 'Revenue', 'Date'];
-          filename = 'product_analytics';
+          headers = ['Product ID', 'Name', 'Description', 'Price', 'Category', 'Stock', 'Active'];
+          filename = 'products_data';
           break;
 
         case 'emails':
           const { data: emailsData, error: emailsError } = await supabase
-            .from('email_analytics')
+            .from('email_tracking')
             .select('*')
-            .order('sent_at', { ascending: false });
+            .order('created_at', { ascending: false });
           if (emailsError) throw emailsError;
           data = emailsData || [];
-          headers = ['Email Address', 'Campaign ID', 'Sent At', 'Opened At', 'Clicked At'];
-          filename = 'email_analytics';
+          headers = ['Recipient Email', 'Event Type', 'Event Data', 'Created At'];
+          filename = 'email_tracking';
           break;
       }
 
