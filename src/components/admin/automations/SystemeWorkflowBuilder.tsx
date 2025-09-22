@@ -1,80 +1,30 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { 
+import {
   Plus, 
   Settings, 
-  Workflow, 
   Zap, 
-  Mail, 
-  ShoppingCart, 
   User, 
-  Calendar,
-  BarChart3,
   Target,
-  Bot,
   Filter,
-  MoreVertical,
   Eye,
   Edit,
   Trash2,
-  Copy,
-  Play,
-  Pause,
-  Search,
-  Users,
-  ArrowRight,
   Clock,
   Tag,
   MessageSquare,
-  Globe,
-  Smartphone,
   CreditCard,
   Gift,
-  Star,
-  TrendingUp,
-  AlertCircle,
   CheckCircle,
-  XCircle,
-  Activity,
   Database,
-  Webhook,
   Send,
-  Bell,
-  Heart,
-  ThumbsUp,
-  ThumbsDown,
-  RefreshCw,
-  Download,
-  Upload,
-  Link,
-  Unlink,
-  Settings2,
-  ChevronDown,
-  ChevronRight,
-  PlusCircle,
-  MinusCircle,
-  Info,
-  HelpCircle,
-  Save,
-  X,
-  MousePointer,
-  FileText,
-  Reply,
-  UserPlus,
-  LogIn,
-  Truck,
-  TrendingDown,
-  DollarSign,
-  UserMinus
+  Save
 } from 'lucide-react';
 
 interface WorkflowNode {
@@ -114,13 +64,10 @@ const NODE_TYPES = {
     icon: Zap,
     color: 'blue',
     nodes: [
-      { id: 'customer_signup', label: 'Customer Signup', icon: UserPlus, description: 'When a new customer signs up' },
+      { id: 'customer_signup', label: 'Customer Signup', icon: User, description: 'When a new customer signs up' },
       { id: 'purchase_paystack', label: 'Purchase (Paystack)', icon: CreditCard, description: 'When a purchase is made via Paystack' },
       { id: 'abandoned_cart', label: 'Cart Abandoned', icon: ShoppingCart, description: 'When a customer abandons their cart' },
       { id: 'email_opened', label: 'Email Opened', icon: Eye, description: 'When an email is opened' },
-      { id: 'email_clicked', label: 'Email Clicked', icon: MousePointer, description: 'When a link in an email is clicked' },
-      { id: 'page_visited', label: 'Page Visited', icon: Globe, description: 'When a specific page is visited' },
-      { id: 'form_submitted', label: 'Form Submitted', icon: FileText, description: 'When a form is submitted' },
       { id: 'birthday', label: 'Customer Birthday', icon: Gift, description: 'On a customer\'s birthday' },
     ]
   },
@@ -133,10 +80,7 @@ const NODE_TYPES = {
       { id: 'send_sms', label: 'Send SMS', icon: MessageSquare, description: 'Send an SMS to the customer' },
       { id: 'assign_tag', label: 'Assign Tag', icon: Tag, description: 'Assign a tag to the customer' },
       { id: 'create_task', label: 'Create Task', icon: CheckCircle, description: 'Create a task for the team' },
-      { id: 'webhook', label: 'Call Webhook', icon: Webhook, description: 'Call an external webhook' },
-      { id: 'add_note', label: 'Add Note', icon: FileText, description: 'Add a note to the customer' },
-      { id: 'update_customer', label: 'Update Customer', icon: Edit, description: 'Update customer information' },
-      { id: 'create_deal', label: 'Create Deal', icon: DollarSign, description: 'Create a new deal' },
+      { id: 'webhook', label: 'Call Webhook', icon: Database, description: 'Call an external webhook' },
     ]
   },
   condition: {
@@ -145,12 +89,8 @@ const NODE_TYPES = {
     color: 'yellow',
     nodes: [
       { id: 'has_tag', label: 'Has Tag', icon: Tag, description: 'Check if customer has a specific tag' },
-      { id: 'purchase_value', label: 'Purchase Value', icon: DollarSign, description: 'Check purchase value' },
-      { id: 'customer_segment', label: 'Customer Segment', icon: Users, description: 'Check customer segment' },
+      { id: 'purchase_value', label: 'Purchase Value', icon: Target, description: 'Check purchase value' },
       { id: 'time_of_day', label: 'Time of Day', icon: Clock, description: 'Check time of day' },
-      { id: 'day_of_week', label: 'Day of Week', icon: Calendar, description: 'Check day of week' },
-      { id: 'email_opened', label: 'Email Opened', icon: Eye, description: 'Check if email was opened' },
-      { id: 'custom_field', label: 'Custom Field', icon: Settings2, description: 'Check custom field value' },
     ]
   },
   delay: {
@@ -161,9 +101,6 @@ const NODE_TYPES = {
       { id: 'wait_minutes', label: 'Wait Minutes', icon: Clock, description: 'Wait for specified minutes' },
       { id: 'wait_hours', label: 'Wait Hours', icon: Clock, description: 'Wait for specified hours' },
       { id: 'wait_days', label: 'Wait Days', icon: Calendar, description: 'Wait for specified days' },
-      { id: 'wait_weeks', label: 'Wait Weeks', icon: Calendar, description: 'Wait for specified weeks' },
-      { id: 'wait_until_time', label: 'Wait Until Time', icon: Clock, description: 'Wait until specific time' },
-      { id: 'wait_until_date', label: 'Wait Until Date', icon: Calendar, description: 'Wait until specific date' },
     ]
   }
 };
@@ -176,46 +113,14 @@ const WORKFLOW_TEMPLATES = [
     icon: '👋',
     nodes: [
       { id: 'start', type: 'start', label: 'Start', position: { x: 100, y: 100 }, data: {}, connections: ['trigger1'] },
-      { id: 'trigger1', type: 'trigger', label: 'Customer Signup', position: { x: 300, y: 100 }, data: { trigger: 'customer_signup' }, connections: ['delay1'] },
-      { id: 'delay1', type: 'delay', label: 'Wait 1 Hour', position: { x: 500, y: 100 }, data: { delay: 60 }, connections: ['action1'] },
-      { id: 'action1', type: 'action', label: 'Send Welcome Email', position: { x: 700, y: 100 }, data: { action: 'send_email' }, connections: ['delay2'] },
-      { id: 'delay2', type: 'delay', label: 'Wait 1 Day', position: { x: 900, y: 100 }, data: { delay: 1440 }, connections: ['action2'] },
-      { id: 'action2', type: 'action', label: 'Send Follow-up', position: { x: 1100, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
-      { id: 'end', type: 'end', label: 'End', position: { x: 1300, y: 100 }, data: {}, connections: [] },
+      { id: 'trigger1', type: 'trigger', label: 'Customer Signup', position: { x: 300, y: 100 }, data: { trigger: 'customer_signup' }, connections: ['action1'] },
+      { id: 'action1', type: 'action', label: 'Send Welcome Email', position: { x: 500, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
+      { id: 'end', type: 'end', label: 'End', position: { x: 700, y: 100 }, data: {}, connections: [] },
     ],
     connections: [
       { id: 'c1', source: 'start', target: 'trigger1' },
-      { id: 'c2', source: 'trigger1', target: 'delay1' },
-      { id: 'c3', source: 'delay1', target: 'action1' },
-      { id: 'c4', source: 'action1', target: 'delay2' },
-      { id: 'c5', source: 'delay2', target: 'action2' },
-      { id: 'c6', source: 'action2', target: 'end' },
-    ]
-  },
-  {
-    id: 'abandoned_cart',
-    name: 'Abandoned Cart Recovery',
-    description: 'Recover abandoned carts with targeted emails',
-    icon: '🛒',
-    nodes: [
-      { id: 'start', type: 'start', label: 'Start', position: { x: 100, y: 100 }, data: {}, connections: ['trigger1'] },
-      { id: 'trigger1', type: 'trigger', label: 'Cart Abandoned', position: { x: 300, y: 100 }, data: { trigger: 'abandoned_cart' }, connections: ['delay1'] },
-      { id: 'delay1', type: 'delay', label: 'Wait 1 Hour', position: { x: 500, y: 100 }, data: { delay: 60 }, connections: ['action1'] },
-      { id: 'action1', type: 'action', label: 'Send Reminder Email', position: { x: 700, y: 100 }, data: { action: 'send_email' }, connections: ['delay2'] },
-      { id: 'delay2', type: 'delay', label: 'Wait 24 Hours', position: { x: 900, y: 100 }, data: { delay: 1440 }, connections: ['condition1'] },
-      { id: 'condition1', type: 'condition', label: 'Still Abandoned?', position: { x: 1100, y: 100 }, data: { condition: 'has_tag' }, connections: ['action2', 'end'] },
-      { id: 'action2', type: 'action', label: 'Send Discount Email', position: { x: 1100, y: 250 }, data: { action: 'send_email' }, connections: ['end'] },
-      { id: 'end', type: 'end', label: 'End', position: { x: 1300, y: 100 }, data: {}, connections: [] },
-    ],
-    connections: [
-      { id: 'c1', source: 'start', target: 'trigger1' },
-      { id: 'c2', source: 'trigger1', target: 'delay1' },
-      { id: 'c3', source: 'delay1', target: 'action1' },
-      { id: 'c4', source: 'action1', target: 'delay2' },
-      { id: 'c5', source: 'delay2', target: 'condition1' },
-      { id: 'c6', source: 'condition1', target: 'action2', label: 'Yes' },
-      { id: 'c7', source: 'condition1', target: 'end', label: 'No' },
-      { id: 'c8', source: 'action2', target: 'end' },
+      { id: 'c2', source: 'trigger1', target: 'action1' },
+      { id: 'c3', source: 'action1', target: 'end' },
     ]
   }
 ];
@@ -231,7 +136,6 @@ export default function SystemeWorkflowBuilder() {
   const [draggedNode, setDraggedNode] = useState<any>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   
@@ -312,10 +216,6 @@ export default function SystemeWorkflowBuilder() {
     setConnectionSource(null);
   };
 
-  const deleteConnection = (connectionId: string) => {
-    setConnections(prev => prev.filter(conn => conn.id !== connectionId));
-  };
-
   const loadTemplate = (template: any) => {
     setNodes(template.nodes);
     setConnections(template.connections);
@@ -384,15 +284,6 @@ export default function SystemeWorkflowBuilder() {
     });
   };
 
-  const getNodeIcon = (node: WorkflowNode) => {
-    const nodeType = NODE_TYPES[node.type as keyof typeof NODE_TYPES];
-    if (nodeType) {
-      const nodeData = nodeType.nodes.find(n => n.id === node.data?.trigger || n.id === node.data?.action || n.id === node.data?.condition || n.id === node.data?.delay);
-      return nodeData?.icon || '⚙️';
-    }
-    return '⚙️';
-  };
-
   const getNodeColor = (node: WorkflowNode) => {
     const colors = {
       start: 'bg-green-500',
@@ -414,21 +305,21 @@ export default function SystemeWorkflowBuilder() {
             placeholder="Workflow name..."
             value={workflowName}
             onChange={(e) => setWorkflowName(e.target.value)}
-            className="glass-input text-white border-white/20 w-64"
+            className="bounce-back-consult-input text-white border-white/20 w-64"
           />
           <Input
             placeholder="Description..."
             value={workflowDescription}
             onChange={(e) => setWorkflowDescription(e.target.value)}
-            className="glass-input text-white border-white/20 w-64"
+            className="bounce-back-consult-input text-white border-white/20 w-64"
           />
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setShowTemplates(true)} variant="outline" className="glass-button-outline">
+          <Button onClick={() => setShowTemplates(true)} variant="outline" className="bounce-back-consult-button-outline">
             <Plus className="h-4 w-4 mr-2" />
             Templates
           </Button>
-          <Button onClick={saveWorkflow} disabled={saving} className="glass-button">
+          <Button onClick={saveWorkflow} disabled={saving} className="bounce-back-consult-button">
             <Save className="h-4 w-4 mr-2" />
             {saving ? 'Saving...' : 'Save Workflow'}
           </Button>
@@ -440,7 +331,7 @@ export default function SystemeWorkflowBuilder() {
         <div className="w-80 border-r border-white/20 p-4 overflow-y-auto">
           <div className="space-y-4">
             {Object.entries(NODE_TYPES).map(([typeKey, typeData]) => (
-              <Card key={typeKey} className="glass-card border-white/20">
+              <Card key={typeKey} className="bounce-back-consult-card border-white/20">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-white text-sm flex items-center gap-2">
                     <typeData.icon className="h-4 w-4" />
@@ -459,7 +350,7 @@ export default function SystemeWorkflowBuilder() {
                       className="p-2 rounded cursor-move hover:bg-white/5 transition-colors"
                     >
                       <div className="flex items-center gap-2 text-sm">
-                        <span>{nodeData.icon}</span>
+                        <nodeData.icon className="h-4 w-4 text-white" />
                         <span className="text-white">{nodeData.label}</span>
                       </div>
                       <p className="text-xs text-gray-400 ml-6">{nodeData.description}</p>
@@ -474,13 +365,14 @@ export default function SystemeWorkflowBuilder() {
         {/* Canvas */}
         <div className="flex-1 relative overflow-hidden">
           <div 
-            className="w-full h-full relative"
+            className="w-full h-full relative bg-gray-800"
             onDrop={(e) => {
               e.preventDefault();
               if (draggedNode) {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
+                
                 addNode(draggedNode.type, {
                   ...draggedNode,
                   position: { x, y }
@@ -490,7 +382,7 @@ export default function SystemeWorkflowBuilder() {
             }}
             onDragOver={(e) => e.preventDefault()}
           >
-            {/* Grid Background */}
+            {/* Grid background */}
             <div className="absolute inset-0 opacity-10">
               <svg width="100%" height="100%">
                 <defs>
@@ -507,64 +399,62 @@ export default function SystemeWorkflowBuilder() {
               {connections.map((connection) => {
                 const sourceNode = nodes.find(n => n.id === connection.source);
                 const targetNode = nodes.find(n => n.id === connection.target);
+                
                 if (!sourceNode || !targetNode) return null;
-
-                const startX = sourceNode.position.x + 50;
-                const startY = sourceNode.position.y + 25;
-                const endX = targetNode.position.x;
-                const endY = targetNode.position.y + 25;
-
+                
+                const x1 = sourceNode.position.x + 60;
+                const y1 = sourceNode.position.y + 20;
+                const x2 = targetNode.position.x;
+                const y2 = targetNode.position.y + 20;
+                
+                const midX = (x1 + x2) / 2;
+                
                 return (
-                  <g key={connection.id}>
-                    <path
-                      d={`M ${startX} ${startY} Q ${(startX + endX) / 2} ${startY - 50} ${endX} ${endY}`}
-                      stroke={connection.animated ? "#10b981" : "#6b7280"}
-                      strokeWidth="2"
-                      fill="none"
-                      strokeDasharray={connection.animated ? "5,5" : "none"}
-                    />
-                    {connection.label && (
-                      <text
-                        x={(startX + endX) / 2}
-                        y={startY - 60}
-                        textAnchor="middle"
-                        className="text-xs fill-white"
-                      >
-                        {connection.label}
-                      </text>
-                    )}
-                    <circle
-                      cx={endX}
-                      cy={endY}
-                      r="4"
-                      fill={connection.animated ? "#10b981" : "#6b7280"}
-                    />
-                  </g>
+                  <path
+                    key={connection.id}
+                    d={`M ${x1} ${y1} C ${midX} ${y1} ${midX} ${y2} ${x2} ${y2}`}
+                    stroke="rgba(99, 102, 241, 0.6)"
+                    strokeWidth="2"
+                    fill="none"
+                    markerEnd="url(#arrowhead)"
+                  />
                 );
               })}
+              
+              <defs>
+                <marker
+                  id="arrowhead"
+                  markerWidth="10"
+                  markerHeight="7"
+                  refX="9"
+                  refY="3.5"
+                  orient="auto"
+                >
+                  <polygon
+                    points="0 0, 10 3.5, 0 7"
+                    fill="rgba(99, 102, 241, 0.6)"
+                  />
+                </marker>
+              </defs>
             </svg>
 
             {/* Nodes */}
             {nodes.map((node) => (
               <div
                 key={node.id}
-                className={`absolute w-24 h-12 rounded-lg border-2 cursor-move select-none ${
+                className={`absolute w-32 h-12 rounded-lg border-2 cursor-move transition-colors ${
                   getNodeColor(node)
                 } ${
-                  selectedNode?.id === node.id ? 'ring-2 ring-blue-400' : ''
-                } ${
-                  isConnecting && connectionSource === node.id ? 'ring-2 ring-yellow-400' : ''
-                }`}
+                  selectedNode?.id === node.id ? 'border-white' : 'border-gray-400'
+                } hover:border-white`}
                 style={{
                   left: node.position.x,
                   top: node.position.y,
                 }}
                 onClick={() => setSelectedNode(node)}
                 onMouseDown={(e) => {
-                  if (e.button === 0) {
-                    setIsDragging(true);
-                    setDragStart({ x: e.clientX, y: e.clientY });
-                  }
+                  setIsDragging(true);
+                  setDragStart({ x: e.clientX, y: e.clientY });
                 }}
                 onMouseMove={(e) => {
                   if (isDragging) {
@@ -575,122 +465,118 @@ export default function SystemeWorkflowBuilder() {
                   }
                 }}
                 onMouseUp={() => setIsDragging(false)}
-                onMouseLeave={() => setIsDragging(false)}
               >
-                <div className="flex items-center justify-center h-full text-white text-xs font-medium">
-                  <span className="mr-1">{getNodeIcon(node)}</span>
-                  <span className="truncate">{node.label}</span>
+                <div className="flex items-center justify-center h-full text-white text-xs font-medium px-2 text-center">
+                  {node.label}
                 </div>
                 
                 {/* Connection handles */}
-                <div className="absolute -right-2 top-1/2 transform -translate-y-1/2">
-                  <button
+                {node.type !== 'end' && (
+                  <div
+                    className="absolute -right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 rounded-full bg-blue-500 cursor-pointer hover:bg-blue-400"
                     onClick={(e) => {
                       e.stopPropagation();
                       startConnection(node.id);
                     }}
-                    className="w-4 h-4 bg-blue-500 rounded-full hover:bg-blue-400 transition-colors"
-                  >
-                    <Plus className="h-2 w-2 text-white mx-auto" />
-                  </button>
-                </div>
+                  />
+                )}
                 
-                <div className="absolute -left-2 top-1/2 transform -translate-y-1/2">
-                  <button
+                {node.type !== 'start' && (
+                  <div
+                    className="absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 rounded-full bg-green-500 cursor-pointer hover:bg-green-400"
                     onClick={(e) => {
                       e.stopPropagation();
                       completeConnection(node.id);
                     }}
-                    className="w-4 h-4 bg-green-500 rounded-full hover:bg-green-400 transition-colors"
-                  >
-                    <ArrowRight className="h-2 w-2 text-white mx-auto" />
-                  </button>
-                </div>
+                  />
+                )}
               </div>
             ))}
-
-            {/* Connection mode indicator */}
-            {isConnecting && (
-              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black px-4 py-2 rounded-lg text-sm font-medium">
-                Click on a node to connect
-              </div>
-            )}
           </div>
         </div>
       </div>
 
       {/* Templates Dialog */}
       <Dialog open={showTemplates} onOpenChange={setShowTemplates}>
-        <DialogContent className="glass-card border-white/20 text-white sm:max-w-4xl">
+        <DialogContent className="bounce-back-consult-card border-white/20 text-white sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Workflow Templates</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {WORKFLOW_TEMPLATES.map(template => (
-              <Card key={template.id} className="glass-card border-white/20 hover:border-white/30 transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="text-2xl">{template.icon}</div>
-                    <Badge variant="secondary">Template</Badge>
+          <div className="space-y-4">
+            <p className="text-gray-300">Choose from pre-built workflow templates:</p>
+            <div className="space-y-3">
+              {WORKFLOW_TEMPLATES.map((template) => (
+                <div
+                  key={template.id}
+                  className="p-4 rounded-lg border border-white/20 hover:border-white/30 transition-colors cursor-pointer"
+                  onClick={() => loadTemplate(template)}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">{template.icon}</span>
+                    <div>
+                      <h3 className="text-white font-medium">{template.name}</h3>
+                      <p className="text-sm text-gray-400">{template.description}</p>
+                    </div>
                   </div>
-                  <h3 className="text-white font-semibold mb-2">{template.name}</h3>
-                  <p className="text-gray-300 text-sm mb-4">{template.description}</p>
-                  <div className="text-xs text-gray-400 mb-4">
-                    {template.nodes.length} nodes, {template.connections.length} connections
-                  </div>
-                  <Button 
-                    onClick={() => loadTemplate(template)}
-                    className="w-full glass-button"
-                  >
-                    Use Template
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              ))}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Node Configuration Dialog */}
+      {/* Node Details Panel */}
       {selectedNode && (
-        <Dialog open={!!selectedNode} onOpenChange={() => setSelectedNode(null)}>
-          <DialogContent className="glass-card border-white/20 text-white">
-            <DialogHeader>
-              <DialogTitle>Configure {selectedNode.label}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-white">Label</Label>
-                <Input
-                  value={selectedNode.label}
-                  onChange={(e) => updateNode(selectedNode.id, { label: e.target.value })}
-                  className="glass-input text-white border-white/20"
-                />
-              </div>
-              <div>
-                <Label className="text-white">Description</Label>
-                <Textarea
-                  value={selectedNode.description}
-                  onChange={(e) => updateNode(selectedNode.id, { description: e.target.value })}
-                  className="glass-input text-white border-white/20"
-                />
-              </div>
-              <div className="flex justify-between">
-                <Button 
-                  onClick={() => deleteNode(selectedNode.id)}
-                  variant="destructive"
-                  className="glass-button-outline"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
-                <Button onClick={() => setSelectedNode(null)} className="glass-button">
-                  Close
-                </Button>
-              </div>
+        <div className="fixed right-4 top-20 w-80 bounce-back-consult-card border-white/20 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-white font-semibold">Node Details</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedNode(null)}
+              className="text-gray-400 hover:text-white"
+            >
+              ×
+            </Button>
+          </div>
+          
+          <div className="space-y-3">
+            <div>
+              <span className="text-sm font-medium text-white">Type:</span>
+              <p className="text-gray-300 capitalize">{selectedNode.type}</p>
             </div>
-          </DialogContent>
-        </Dialog>
+            
+            <div>
+              <span className="text-sm font-medium text-white">Label:</span>
+              <Input
+                value={selectedNode.label}
+                onChange={(e) => updateNode(selectedNode.id, { label: e.target.value })}
+                className="bounce-back-consult-input text-white border-white/20 mt-1"
+              />
+            </div>
+            
+            <div>
+              <span className="text-sm font-medium text-white">Description:</span>
+              <Input
+                value={selectedNode.description}
+                onChange={(e) => updateNode(selectedNode.id, { description: e.target.value })}
+                className="bounce-back-consult-input text-white border-white/20 mt-1"
+              />
+            </div>
+            
+            {selectedNode.type !== 'start' && selectedNode.type !== 'end' && (
+              <Button
+                onClick={() => deleteNode(selectedNode.id)}
+                variant="outline"
+                size="sm"
+                className="w-full text-red-400 border-red-400 hover:bg-red-400 hover:text-white"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Node
+              </Button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -75,8 +75,9 @@ export default function SystemeAutomationsRevamped() {
       if (rulesError) throw rulesError;
       setRules((rulesData || []).map(rule => ({
         ...rule,
-        action_data: rule.action_data || ''
-      })));
+        action_data: typeof rule.action_data === 'string' ? rule.action_data : JSON.stringify(rule.action_data || ''),
+        trigger_data: rule.trigger_data || {}
+      })) as AutomationRule[]);
 
       // Fetch workflows (using automation_rules as base for workflows)
       const workflowsData = (rulesData || []).filter(rule => rule.trigger === 'workflow');

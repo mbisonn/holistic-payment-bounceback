@@ -2,11 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -21,9 +18,9 @@ import {
   RefreshCw,
   Search,
   Info,
-  Terminal,
-  Database,
   AlertTriangle,
+  Minus,
+  Pause
 } from 'lucide-react';
 
 interface TestRun {
@@ -83,39 +80,6 @@ const TEST_SCENARIOS: TestScenario[] = [
       { action: 'create_task', status: 'success' }
     ],
     is_active: true
-  },
-  {
-    id: 'purchase_test',
-    name: 'Purchase Test',
-    description: 'Test automation for purchase flow',
-    trigger_data: {
-      customer_email: 'customer@example.com',
-      order_id: 'ORD-12345',
-      amount: 99.99,
-      products: ['Product A', 'Product B']
-    },
-    expected_results: [
-      { action: 'send_email', status: 'success' },
-      { action: 'assign_tag', tag: 'customer', status: 'success' },
-      { action: 'webhook', status: 'success' }
-    ],
-    is_active: true
-  },
-  {
-    id: 'abandoned_cart',
-    name: 'Abandoned Cart',
-    description: 'Test abandoned cart recovery flow',
-    trigger_data: {
-      customer_email: 'abandoned@example.com',
-      cart_items: ['Product X', 'Product Y'],
-      cart_value: 149.99,
-      abandoned_at: new Date().toISOString()
-    },
-    expected_results: [
-      { action: 'send_email', status: 'success' },
-      { action: 'assign_tag', tag: 'abandoned_cart', status: 'success' }
-    ],
-    is_active: true
   }
 ];
 
@@ -129,10 +93,8 @@ const LOG_LEVELS = {
 export default function AutomationTesting() {
   const [testRuns, setTestRuns] = useState<TestRun[]>([]);
   const [selectedRun, setSelectedRun] = useState<TestRun | null>(null);
-  const [runningTests, setRunningTests] = useState<Set<string>>(new Set());
   const [showTestDialog, setShowTestDialog] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState<TestScenario | null>(null);
-  const [customTestData, setCustomTestData] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -157,51 +119,10 @@ export default function AutomationTesting() {
           test_data: { customer_email: 'test@example.com' },
           results: [
             { step: 'Trigger validation', status: 'success', message: 'Customer signup trigger validated', timestamp: new Date().toISOString(), duration: 5 },
-            { step: 'Email sending', status: 'success', message: 'Welcome email sent successfully', timestamp: new Date().toISOString(), duration: 15 },
-            { step: 'Tag assignment', status: 'success', message: 'Tag "new_customer" assigned', timestamp: new Date().toISOString(), duration: 8 },
-            { step: 'Task creation', status: 'success', message: 'Follow-up task created', timestamp: new Date().toISOString(), duration: 2 }
+            { step: 'Email sending', status: 'success', message: 'Welcome email sent successfully', timestamp: new Date().toISOString(), duration: 15 }
           ],
           logs: [
-            { id: '1', timestamp: new Date().toISOString(), level: 'info', message: 'Test run started', source: 'automation_engine' },
-            { id: '2', timestamp: new Date().toISOString(), level: 'info', message: 'Trigger data validated', source: 'validation' },
-            { id: '3', timestamp: new Date().toISOString(), level: 'info', message: 'Email sent to test@example.com', source: 'email_service' },
-            { id: '4', timestamp: new Date().toISOString(), level: 'info', message: 'Test run completed successfully', source: 'automation_engine' }
-          ]
-        },
-        {
-          id: '2',
-          automation_id: 'auto_2',
-          automation_name: 'Abandoned Cart Recovery',
-          status: 'failed',
-          start_time: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-          end_time: new Date(Date.now() - 1 * 60 * 60 * 1000 + 15 * 1000).toISOString(),
-          duration: 15,
-          test_data: { customer_email: 'abandoned@example.com' },
-          results: [
-            { step: 'Trigger validation', status: 'success', message: 'Abandoned cart trigger validated', timestamp: new Date().toISOString(), duration: 3 },
-            { step: 'Email sending', status: 'error', message: 'Failed to send email: Invalid template', timestamp: new Date().toISOString(), duration: 12 }
-          ],
-          logs: [
-            { id: '1', timestamp: new Date().toISOString(), level: 'info', message: 'Test run started', source: 'automation_engine' },
-            { id: '2', timestamp: new Date().toISOString(), level: 'error', message: 'Email template not found', source: 'email_service' },
-            { id: '3', timestamp: new Date().toISOString(), level: 'error', message: 'Test run failed', source: 'automation_engine' }
-          ],
-          error: 'Email template not found'
-        },
-        {
-          id: '3',
-          automation_id: 'auto_3',
-          automation_name: 'Birthday Campaign',
-          status: 'running',
-          start_time: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-          test_data: { customer_email: 'birthday@example.com' },
-          results: [
-            { step: 'Trigger validation', status: 'success', message: 'Birthday trigger validated', timestamp: new Date().toISOString(), duration: 2 }
-          ],
-          logs: [
-            { id: '1', timestamp: new Date().toISOString(), level: 'info', message: 'Test run started', source: 'automation_engine' },
-            { id: '2', timestamp: new Date().toISOString(), level: 'info', message: 'Trigger data validated', source: 'validation' },
-            { id: '3', timestamp: new Date().toISOString(), level: 'info', message: 'Sending birthday email...', source: 'email_service' }
+            { id: '1', timestamp: new Date().toISOString(), level: 'info', message: 'Test run started', source: 'automation_engine' }
           ]
         }
       ];
@@ -348,11 +269,11 @@ export default function AutomationTesting() {
           <p className="text-gray-300">Test and debug your automations before going live</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setShowTestDialog(true)} className="glass-button">
+          <Button onClick={() => setShowTestDialog(true)} className="bounce-back-consult-button">
             <Play className="h-4 w-4 mr-2" />
             Run Test
           </Button>
-          <Button onClick={fetchTestRuns} variant="outline" className="glass-button-outline">
+          <Button onClick={fetchTestRuns} variant="outline" className="bounce-back-consult-button-outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -360,7 +281,7 @@ export default function AutomationTesting() {
       </div>
 
       {/* Filters */}
-      <Card className="glass-card border-white/20">
+      <Card className="bounce-back-consult-card border-white/20">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
@@ -370,16 +291,16 @@ export default function AutomationTesting() {
                   placeholder="Search test runs..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 glass-input text-white border-white/20"
+                  className="pl-10 bounce-back-consult-input text-white border-white/20"
                 />
               </div>
             </div>
             
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[150px] glass-input text-white border-white/20">
+              <SelectTrigger className="w-[150px] bounce-back-consult-input text-white border-white/20">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="glass-card border-white/20">
+              <SelectContent className="bounce-back-consult-card border-white/20">
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="running">Running</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
@@ -394,7 +315,7 @@ export default function AutomationTesting() {
       {/* Test Runs */}
       <div className="space-y-4">
         {filteredTestRuns.length === 0 ? (
-          <Card className="glass-card border-white/20">
+          <Card className="bounce-back-consult-card border-white/20">
             <CardContent className="text-center py-12">
               <Bug className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-300 mb-2">No test runs found</h3>
@@ -404,7 +325,7 @@ export default function AutomationTesting() {
                   : 'Run your first test to start debugging your automations.'
                 }
               </p>
-              <Button onClick={() => setShowTestDialog(true)} className="glass-button">
+              <Button onClick={() => setShowTestDialog(true)} className="bounce-back-consult-button">
                 <Play className="h-4 w-4 mr-2" />
                 Run Test
               </Button>
@@ -415,7 +336,7 @@ export default function AutomationTesting() {
             const StatusIcon = getStatusIcon(run.status);
             
             return (
-              <Card key={run.id} className="glass-card border-white/20 hover:border-white/30 transition-colors">
+              <Card key={run.id} className="bounce-back-consult-card border-white/20 hover:border-white/30 transition-colors">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
@@ -435,7 +356,7 @@ export default function AutomationTesting() {
                           onClick={() => stopTest(run.id)}
                           variant="outline"
                           size="sm"
-                          className="glass-button-outline"
+                          className="bounce-back-consult-button-outline"
                         >
                           <Square className="h-4 w-4 mr-2" />
                           Stop
@@ -445,7 +366,7 @@ export default function AutomationTesting() {
                         onClick={() => setSelectedRun(run)}
                         variant="outline"
                         size="sm"
-                        className="glass-button-outline"
+                        className="bounce-back-consult-button-outline"
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View Details
@@ -472,30 +393,32 @@ export default function AutomationTesting() {
                       </p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm text-gray-400">Warnings</p>
-                      <p className="text-yellow-400 font-semibold">
-                        {run.results.filter(r => r.status === 'warning').length}
-                      </p>
+                      <p className="text-sm text-gray-400">Status</p>
+                      <Badge 
+                        variant={run.status === 'completed' ? "default" : run.status === 'failed' ? "destructive" : "secondary"}
+                        className="capitalize"
+                      >
+                        {run.status}
+                      </Badge>
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  {run.status === 'running' && (
-                    <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
-                      <div 
-                        className="bg-blue-400 h-2 rounded-full transition-all duration-300 animate-pulse"
-                        style={{ width: '60%' }}
-                      ></div>
-                    </div>
-                  )}
-
-                  {/* Error Message */}
-                  {run.error && (
-                    <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 mb-4">
-                      <div className="flex items-center gap-2 text-red-300">
-                        <XCircle className="h-4 w-4" />
-                        <span className="font-medium">Error:</span>
-                        <span>{run.error}</span>
+                  {/* Latest Results */}
+                  {run.results.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-gray-300">Latest Results:</h4>
+                      <div className="space-y-1">
+                        {run.results.slice(0, 3).map((result, index) => {
+                          const ResultIcon = getResultIcon(result.status);
+                          return (
+                            <div key={index} className="flex items-center gap-2 text-sm">
+                              <ResultIcon className={`h-3 w-3 ${getResultColor(result.status)}`} />
+                              <span className="text-gray-300">{result.step}</span>
+                              <span className="text-gray-500">•</span>
+                              <span className={getResultColor(result.status)}>{result.message}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -506,51 +429,48 @@ export default function AutomationTesting() {
         )}
       </div>
 
-      {/* Test Dialog */}
+      {/* Test Scenario Dialog */}
       <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
-        <DialogContent className="glass-card border-white/20 text-white sm:max-w-2xl">
+        <DialogContent className="bounce-back-consult-card border-white/20 text-white sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Run Automation Test</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label className="text-white">Test Scenario</Label>
-              <Select value={selectedScenario?.id || ''} onValueChange={(value) => 
-                setSelectedScenario(TEST_SCENARIOS.find(s => s.id === value) || null)
-              }>
-                <SelectTrigger className="glass-input text-white border-white/20">
-                  <SelectValue placeholder="Select a test scenario" />
-                </SelectTrigger>
-                <SelectContent className="glass-card border-white/20">
-                  {TEST_SCENARIOS.map(scenario => (
-                    <SelectItem key={scenario.id} value={scenario.id}>
-                      {scenario.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <p className="text-gray-300">Select a test scenario to run:</p>
+            <div className="space-y-3">
+              {TEST_SCENARIOS.map((scenario) => (
+                <div
+                  key={scenario.id}
+                  className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                    selectedScenario?.id === scenario.id
+                      ? 'border-blue-400 bg-blue-500/10'
+                      : 'border-white/20 hover:border-white/30'
+                  }`}
+                  onClick={() => setSelectedScenario(scenario)}
+                >
+                  <h3 className="text-white font-medium mb-1">{scenario.name}</h3>
+                  <p className="text-sm text-gray-400">{scenario.description}</p>
+                </div>
+              ))}
             </div>
-
-            {selectedScenario && (
-              <div>
-                <Label className="text-white">Test Data (JSON)</Label>
-                <Textarea
-                  value={customTestData || JSON.stringify(selectedScenario.trigger_data, null, 2)}
-                  onChange={(e) => setCustomTestData(e.target.value)}
-                  className="glass-input text-white border-white/20 font-mono text-sm"
-                  rows={8}
-                />
-              </div>
-            )}
-
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowTestDialog(false)} className="glass-button-outline">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowTestDialog(false)} 
+                className="bounce-back-consult-button-outline"
+              >
                 Cancel
               </Button>
               <Button 
-                onClick={() => selectedScenario && runTest(selectedScenario)} 
+                onClick={() => {
+                  if (selectedScenario) {
+                    runTest(selectedScenario);
+                    setShowTestDialog(false);
+                    setSelectedScenario(null);
+                  }
+                }}
                 disabled={!selectedScenario}
-                className="glass-button"
+                className="bounce-back-consult-button"
               >
                 <Play className="h-4 w-4 mr-2" />
                 Run Test
@@ -560,93 +480,89 @@ export default function AutomationTesting() {
         </DialogContent>
       </Dialog>
 
-      {/* Test Run Details Dialog */}
-      {selectedRun && (
-        <Dialog open={!!selectedRun} onOpenChange={() => setSelectedRun(null)}>
-          <DialogContent className="glass-card border-white/20 text-white sm:max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Test Run Details</DialogTitle>
-            </DialogHeader>
-            <Tabs defaultValue="results" className="space-y-4">
-              <TabsList className="glass-card border-white/20 bg-transparent">
-                <TabsTrigger value="results" className="text-white data-[state=active]:bg-white/20">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Results
-                </TabsTrigger>
-                <TabsTrigger value="logs" className="text-white data-[state=active]:bg-white/20">
-                  <Terminal className="h-4 w-4 mr-2" />
-                  Logs
-                </TabsTrigger>
-                <TabsTrigger value="data" className="text-white data-[state=active]:bg-white/20">
-                  <Database className="h-4 w-4 mr-2" />
-                  Data
-                </TabsTrigger>
-              </TabsList>
+      {/* Test Details Dialog */}
+      <Dialog open={!!selectedRun} onOpenChange={() => setSelectedRun(null)}>
+        <DialogContent className="bounce-back-consult-card border-white/20 text-white sm:max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Test Run Details: {selectedRun?.automation_name}</DialogTitle>
+          </DialogHeader>
+          {selectedRun && (
+            <div className="space-y-6">
+              {/* Test Info */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-lg bg-white/5">
+                <div>
+                  <p className="text-sm text-gray-400">Status</p>
+                  <Badge variant={selectedRun.status === 'completed' ? "default" : "secondary"} className="capitalize">
+                    {selectedRun.status}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Duration</p>
+                  <p className="text-white">{selectedRun.duration ? `${selectedRun.duration}s` : 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Started</p>
+                  <p className="text-white">{new Date(selectedRun.start_time).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Completed</p>
+                  <p className="text-white">
+                    {selectedRun.end_time ? new Date(selectedRun.end_time).toLocaleString() : 'N/A'}
+                  </p>
+                </div>
+              </div>
 
-              <TabsContent value="results" className="space-y-4">
+              {/* Test Results */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Test Results</h3>
                 <div className="space-y-3">
                   {selectedRun.results.map((result, index) => {
                     const ResultIcon = getResultIcon(result.status);
-                    
                     return (
-                      <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                        <ResultIcon className={`h-5 w-5 ${getResultColor(result.status)}`} />
+                      <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-white/5">
+                        <ResultIcon className={`h-5 w-5 mt-0.5 ${getResultColor(result.status)}`} />
                         <div className="flex-1">
-                          <p className="text-white font-medium">{result.step}</p>
-                          <p className="text-sm text-gray-400">{result.message}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-400">{result.duration}ms</p>
-                          <Badge variant={result.status === 'success' ? 'default' : 'secondary'}>
-                            {result.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="logs" className="space-y-4">
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {selectedRun.logs.map((log) => {
-                    const LogLevel = LOG_LEVELS[log.level];
-                    
-                    return (
-                      <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg bg-white/5">
-                        <LogLevel.icon className={`h-4 w-4 mt-0.5 ${LogLevel.color}`} />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs text-gray-400">{log.timestamp}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {log.source}
-                            </Badge>
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="text-white font-medium">{result.step}</h4>
+                            <span className="text-sm text-gray-400">{result.duration}ms</span>
                           </div>
-                          <p className="text-white text-sm">{log.message}</p>
-                          {log.data && (
-                            <pre className="text-xs text-gray-400 mt-2 bg-black/20 p-2 rounded">
-                              {JSON.stringify(log.data, null, 2)}
-                            </pre>
-                          )}
+                          <p className="text-sm text-gray-300">{result.message}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(result.timestamp).toLocaleString()}
+                          </p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </TabsContent>
+              </div>
 
-              <TabsContent value="data" className="space-y-4">
-                <div>
-                  <h4 className="text-white font-semibold mb-2">Test Data</h4>
-                  <pre className="bg-black/20 p-4 rounded-lg text-sm text-gray-300 overflow-x-auto">
-                    {JSON.stringify(selectedRun.test_data, null, 2)}
-                  </pre>
+              {/* Logs */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Execution Logs</h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {selectedRun.logs.map((log) => {
+                    const LogIcon = LOG_LEVELS[log.level].icon;
+                    return (
+                      <div key={log.id} className="flex items-start gap-3 p-2 rounded text-sm">
+                        <LogIcon className={`h-4 w-4 mt-0.5 ${LOG_LEVELS[log.level].color}`} />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                            <span className={LOG_LEVELS[log.level].color}>[{log.level.toUpperCase()}]</span>
+                            <span className="text-gray-500">{log.source}</span>
+                          </div>
+                          <p className="text-white">{log.message}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </TabsContent>
-            </Tabs>
-          </DialogContent>
-        </Dialog>
-      )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
