@@ -55,14 +55,15 @@ export const OrdersManagement = () => {
 
       setOrders((data || []).map(order => ({
         ...order,
+        customer_name: order.customer_name || 'Unknown',
         customer_phone: order.customer_phone || '',
         delivery_address: order.delivery_address || '',
         delivery_city: order.delivery_city || '',
         delivery_state: order.delivery_state || '',
-        payment_reference: order.payment_reference || '',
-        notes: order.notes || '',
-        items: Array.isArray(order.items) ? order.items : []
-      })));
+        payment_reference: (order as any).payment_reference || '',
+        notes: (order as any).notes || '',
+        items: Array.isArray((order as any).items) ? (order as any).items : []
+      }) as Order));
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error('Failed to fetch orders');

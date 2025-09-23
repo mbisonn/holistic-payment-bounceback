@@ -20,33 +20,19 @@ import {
   Mail, 
   ShoppingCart, 
   User, 
-  Calendar,
   BarChart3,
-  Target,
   Bot,
   Eye,
-  Edit,
   Trash2,
   Copy,
-  Play,
   Search,
-  Users,
   ArrowRight,
-  Clock,
   Tag,
-  MessageSquare,
-  Globe,
   CreditCard,
   Gift,
-  TrendingUp,
   CheckCircle,
-  XCircle,
   Activity,
-  Database,
-  Send,
-  RefreshCw,
-  Save,
-  X
+  Database
 } from 'lucide-react';
 
 interface AutomationRule {
@@ -80,69 +66,7 @@ interface AutomationTemplate {
   is_premium: boolean;
 }
 
-const TRIGGER_CATEGORIES = [
-  {
-    id: 'ecommerce',
-    name: 'E-commerce',
-    icon: ShoppingCart,
-    triggers: [
-      { value: 'purchase_paystack', label: 'Purchase (Paystack)', icon: CreditCard },
-      { value: 'payment_on_delivery', label: 'Payment on Delivery', icon: ShoppingCart },
-      { value: 'upsell_purchase', label: 'Upsell Purchase', icon: TrendingUp },
-      { value: 'abandoned_cart', label: 'Cart Abandoned', icon: XCircle },
-    ]
-  },
-  {
-    id: 'customer',
-    name: 'Customer Behavior',
-    icon: User,
-    triggers: [
-      { value: 'customer_signup', label: 'Customer Signup', icon: User },
-      { value: 'profile_updated', label: 'Profile Updated', icon: Edit },
-      { value: 'birthday', label: 'Customer Birthday', icon: Gift },
-    ]
-  },
-  {
-    id: 'email',
-    name: 'Email & Communication',
-    icon: Mail,
-    triggers: [
-      { value: 'email_opened', label: 'Email Opened', icon: Eye },
-      { value: 'email_clicked', label: 'Email Link Clicked', icon: Target },
-      { value: 'email_bounced', label: 'Email Bounced', icon: XCircle },
-    ]
-  }
-];
 
-const ACTION_CATEGORIES = [
-  {
-    id: 'email',
-    name: 'Email Actions',
-    icon: Mail,
-    actions: [
-      { value: 'send_email', label: 'Send Email', icon: Send },
-      { value: 'send_email_campaign', label: 'Send Email Campaign', icon: Mail },
-    ]
-  },
-  {
-    id: 'tags',
-    name: 'Tag Management',
-    icon: Tag,
-    actions: [
-      { value: 'assign_tag', label: 'Assign Tag', icon: Tag },
-      { value: 'remove_tag', label: 'Remove Tag', icon: XCircle },
-    ]
-  },
-  {
-    id: 'tasks',
-    name: 'Tasks & Pipeline',
-    icon: CheckCircle,
-    actions: [
-      { value: 'create_task', label: 'Create Task', icon: Plus },
-      { value: 'assign_task', label: 'Assign Task', icon: User },
-    ]
-  }
-];
 
 const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
   {
@@ -178,7 +102,6 @@ export default function SystemeAutomationsComplete() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('automations');
   
   const [newRule, setNewRule] = useState({

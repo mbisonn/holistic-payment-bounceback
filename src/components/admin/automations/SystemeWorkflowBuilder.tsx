@@ -2,19 +2,18 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Plus, 
+  Plus,
   Settings, 
   Zap, 
   User, 
   Target,
   Filter,
   Eye,
-  Edit,
   Trash2,
   Clock,
   Tag,
@@ -24,7 +23,9 @@ import {
   CheckCircle,
   Database,
   Send,
-  Save
+  Save,
+  ShoppingCart,
+  Calendar
 } from 'lucide-react';
 
 interface WorkflowNode {

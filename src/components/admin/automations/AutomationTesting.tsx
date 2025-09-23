@@ -98,6 +98,7 @@ export default function AutomationTesting() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -135,7 +136,6 @@ export default function AutomationTesting() {
 
   const runTest = async (scenario: TestScenario) => {
     const testRunId = `test_${Date.now()}`;
-    setRunningTests(prev => new Set([...prev, testRunId]));
     
     try {
       // Mock test execution
@@ -176,11 +176,6 @@ export default function AutomationTesting() {
         };
 
         setTestRuns(prev => prev.map(run => run.id === testRunId ? completedRun : run));
-        setRunningTests(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(testRunId);
-          return newSet;
-        });
 
         toast({
           title: 'Test Completed',
@@ -190,11 +185,6 @@ export default function AutomationTesting() {
 
     } catch (error) {
       console.error('Error running test:', error);
-      setRunningTests(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(testRunId);
-        return newSet;
-      });
       toast({
         title: 'Test Failed',
         description: 'Failed to run automation test',
@@ -207,11 +197,6 @@ export default function AutomationTesting() {
     setTestRuns(prev => prev.map(run => 
       run.id === testRunId ? { ...run, status: 'paused' as const } : run
     ));
-    setRunningTests(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(testRunId);
-      return newSet;
-    });
   };
 
   const getStatusIcon = (status: string) => {

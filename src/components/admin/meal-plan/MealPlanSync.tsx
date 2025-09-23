@@ -41,7 +41,20 @@ const MealPlanSync = () => {
         .order('synced_at', { ascending: false });
 
       if (error) throw error;
-      setSyncData(data || []);
+      
+      // Transform the data to match the expected interface
+      const transformedData = (data || []).map(item => ({
+        id: item.id,
+        customer_name: 'Unknown Customer',
+        customer_email: item.customer_email,
+        customer_phone: null,
+        external_user_id: item.id,
+        meal_plan_data: item.meal_plan_data,
+        synced_at: item.last_synced_at,
+        created_at: item.created_at || new Date().toISOString()
+      }) as MealPlanData);
+      
+      setSyncData(transformedData);
     } catch (error) {
       toast({
         title: "Error",

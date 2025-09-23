@@ -63,8 +63,8 @@ const CRMDashboard = () => {
           existing.total_orders += 1;
           existing.total_spent += order.total_amount || 0;
           
-          if (!existing.last_order_date || order.created_at > existing.last_order_date) {
-            existing.last_order_date = order.created_at;
+          if (!existing.last_order_date || (order.created_at && order.created_at > existing.last_order_date)) {
+            existing.last_order_date = order.created_at || undefined;
           }
         } else {
           customerMap.set(email, {
@@ -77,8 +77,8 @@ const CRMDashboard = () => {
             delivery_state: order.delivery_state || undefined,
             total_orders: 1,
             total_spent: order.total_amount || 0,
-            last_order_date: order.created_at,
-            created_at: order.created_at
+            last_order_date: order.created_at || undefined,
+            created_at: order.created_at || undefined
           });
         }
       });
