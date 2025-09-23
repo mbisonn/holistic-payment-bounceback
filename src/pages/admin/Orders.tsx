@@ -15,8 +15,12 @@ import { Database } from '@/integrations/supabase/types';
 import { withTimeout, startLoadingGuard } from '@/utils/asyncGuards';
 import { useAuth } from '@/hooks/useAuth';
 
-type Order = Database['public']['Tables']['orders']['Row'];
-type OrderStatus = Database['public']['Enums']['order_status'];
+type Order = Database['public']['Tables']['orders']['Row'] & {
+  shipping_fee?: number;
+  discount_amount?: number;
+  notes?: string;
+};
+type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -141,16 +145,16 @@ const Orders = () => {
   const openEditDialog = (order: Order) => {
     setSelectedOrder(order);
     setFormData({
-      customer_name: order.customer_name,
+      customer_name: order.customer_name || '',
       customer_email: order.customer_email,
       delivery_address: order.delivery_address || '',
       delivery_city: order.delivery_city || '',
       delivery_state: order.delivery_state || '',
       customer_phone: order.customer_phone || '',
       total_amount: order.total_amount,
-      shipping_fee: order.shipping_fee,
-      discount_amount: order.discount_amount,
-      status: order.status,
+      shipping_fee: order.shipping_fee || 0,
+      discount_amount: order.discount_amount || 0,
+      status: order.status as OrderStatus,
       notes: order.notes || ''
     });
     setShowOrderDialog(true);
@@ -194,7 +198,7 @@ const Orders = () => {
                   order.customer_email,
                   order.status,
                   order.total_amount.toString(),
-                  new Date(order.created_at).toLocaleDateString()
+                  order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'
                 ])
               ].map(row => row.join(',')).join('\n');
               

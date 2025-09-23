@@ -200,7 +200,7 @@ const Products = () => {
       price: product.price,
       category: product.category || '',
       description: product.description || '',
-      is_active: product.is_active
+      is_active: product.is_active ?? true
     });
     setShowProductDialog(true);
   };
@@ -213,7 +213,7 @@ const Products = () => {
         product.price.toString(),
         product.category || '',
         product.description || '',
-        product.is_active.toString()
+        (product.is_active ?? true).toString()
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -294,7 +294,7 @@ const Products = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Status:</span>
                   <Badge variant={(product.is_active ?? true) ? "default" : "secondary"}>
-                    {product.is_active ? 'Active' : 'Inactive'}
+                    {(product.is_active ?? true) ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>
               </div>
