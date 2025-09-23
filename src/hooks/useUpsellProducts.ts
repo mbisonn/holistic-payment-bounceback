@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -35,9 +34,9 @@ export const useUpsellProducts = () => {
         name: product.name,
         description: product.description || '',
         price: product.price,
-        type: (product.type === 'lite' ? 'lite' : 'full') as 'full' | 'lite',
-        duration_months: product.duration_months,
-        is_active: product.is_active,
+        type: 'full' as 'full' | 'lite', // Default type since table doesn't have this field
+        duration_months: null, // Default since table doesn't have this field
+        is_active: product.is_active ?? true,
         created_at: product.created_at || '',
         updated_at: product.updated_at || ''
       }));
@@ -59,8 +58,6 @@ export const useUpsellProducts = () => {
           name: productData.name,
           description: productData.description,
           price: productData.price,
-          type: productData.type,
-          duration_months: productData.duration_months,
           is_active: productData.is_active
         })
         .select()
@@ -73,17 +70,17 @@ export const useUpsellProducts = () => {
         name: data.name,
         description: data.description || '',
         price: data.price,
-        type: (data.type === 'lite' ? 'lite' : 'full') as 'full' | 'lite',
-        duration_months: data.duration_months,
-        is_active: data.is_active,
+        type: 'full',
+        duration_months: null,
+        is_active: data.is_active ?? true,
         created_at: data.created_at || '',
         updated_at: data.updated_at || ''
       };
 
-      setProducts(prev => [...prev, newProduct]);
+      setProducts(prev => [newProduct, ...prev]);
       return newProduct;
     } catch (err: any) {
-      console.error('Error creating upsell product:', err);
+      console.error('Error creating product:', err);
       throw err;
     }
   };
@@ -96,8 +93,6 @@ export const useUpsellProducts = () => {
           name: updates.name,
           description: updates.description,
           price: updates.price,
-          type: updates.type,
-          duration_months: updates.duration_months,
           is_active: updates.is_active
         })
         .eq('id', id)
@@ -111,9 +106,9 @@ export const useUpsellProducts = () => {
         name: data.name,
         description: data.description || '',
         price: data.price,
-        type: (data.type === 'lite' ? 'lite' : 'full') as 'full' | 'lite',
-        duration_months: data.duration_months,
-        is_active: data.is_active,
+        type: 'full',
+        duration_months: null,
+        is_active: data.is_active ?? true,
         created_at: data.created_at || '',
         updated_at: data.updated_at || ''
       };
@@ -121,7 +116,7 @@ export const useUpsellProducts = () => {
       setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
       return updatedProduct;
     } catch (err: any) {
-      console.error('Error updating upsell product:', err);
+      console.error('Error updating product:', err);
       throw err;
     }
   };
@@ -137,7 +132,7 @@ export const useUpsellProducts = () => {
 
       setProducts(prev => prev.filter(p => p.id !== id));
     } catch (err: any) {
-      console.error('Error deleting upsell product:', err);
+      console.error('Error deleting product:', err);
       throw err;
     }
   };
@@ -150,9 +145,9 @@ export const useUpsellProducts = () => {
     products,
     loading,
     error,
+    fetchProducts,
     createProduct,
     updateProduct,
     deleteProduct,
-    refetch: fetchProducts
   };
 };

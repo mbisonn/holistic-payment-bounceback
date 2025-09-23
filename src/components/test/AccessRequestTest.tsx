@@ -54,8 +54,8 @@ export default function AccessRequestTest() {
       // Test 2: Check if functions exist
       try {
         const { error } = await supabase.rpc('create_access_request', {
-          requested_role: 'verified',
-          message: 'Test request'
+          user_email: 'test@example.com',
+          request_reason: 'Test request'
         });
         
         if (error && error.message.includes('Could not find the function')) {
