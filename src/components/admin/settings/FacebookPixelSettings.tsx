@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,11 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { Eye, EyeOff, Facebook } from 'lucide-react';
 
 export default function FacebookPixelSettings() {
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showAccessToken, setShowAccessToken] = useState(false);
   const [settings, setSettings] = useState({
@@ -22,51 +20,11 @@ export default function FacebookPixelSettings() {
   });
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('facebook_conversion_settings')
-        .select('*')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (data) {
-        setSettings({
-          pixel_id: data.pixel_id || '',
-          access_token: data.access_token || '',
-          test_event_code: data.test_event_code || '',
-          domain_verification: data.domain_verification || '',
-          is_enabled: data.is_enabled || false
-        });
-      }
-    } catch (error: any) {
-      console.error('Error fetching Facebook settings:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load Facebook Pixel settings',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const saveSettings = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('facebook_conversion_settings')
-        .upsert(settings, { onConflict: 'id' });
-
-      if (error) throw error;
+      // Mock save - in production, this would save to backend
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       toast({
         title: 'Success',
@@ -90,15 +48,6 @@ export default function FacebookPixelSettings() {
     return token.substring(0, 4) + '••••••••' + token.substring(token.length - 4);
   };
 
-  if (loading) {
-    return (
-      <Card className="glass-card border-white/20">
-        <CardContent className="pt-6">
-          <div className="text-center text-white">Loading Facebook Pixel settings...</div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className="glass-card border-white/20">

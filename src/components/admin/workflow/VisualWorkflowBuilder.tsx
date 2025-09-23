@@ -23,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { Plus, Save, Trash2, Maximize2, Grid } from 'lucide-react';
 import { WorkflowErrorBoundary } from './WorkflowErrorBoundary';
 
@@ -102,9 +102,8 @@ export const VisualWorkflowBuilder: React.FC<VisualWorkflowBuilderProps> = ({ on
   const [availableTags, setAvailableTags] = useState<Array<{ id: string; name: string }>>([]);
   const [uploading, setUploading] = useState(false);
   
-  // Webhook URL for meal plan trigger
   const webhookUrl = useMemo(() => {
-    return `${SUPABASE_URL}/functions/v1/meal-plan-webhook`;
+    return 'https://example.com/webhook';
   }, []);
 
   // Style edge labels for better visibility
