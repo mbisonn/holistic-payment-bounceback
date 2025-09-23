@@ -16,12 +16,12 @@ interface Product {
   name: string;
   description: string | null;
   price: number;
-  discount_price: number | null;
   image_url: string | null;
   category: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  is_active: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+  stock_quantity: number | null;
 }
 
 const ProductsManagement = () => {
@@ -122,7 +122,7 @@ const ProductsManagement = () => {
       price: String(product.price || ''),
       image_url: product.image_url || '',
       category: product.category || '',
-      is_active: product.is_active,
+      is_active: product.is_active ?? true,
     });
     setIsDialogOpen(true);
   };
@@ -153,7 +153,7 @@ const ProductsManagement = () => {
         price: priceNumber,
         image_url: formData.image_url.trim() || null,
         category: formData.category.trim() || null,
-        is_active: formData.is_active,
+        is_active: formData.is_active ?? true,
         updated_at: new Date().toISOString(),
       };
       if (editingProduct) {
@@ -232,7 +232,6 @@ const ProductsManagement = () => {
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-3 gap-2">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-lg text-white">₦{product.price.toLocaleString()}</span>
-                    {product.discount_price && <span className="text-sm text-gray-400 line-through">₦{product.discount_price.toLocaleString()}</span>}
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { withTimeout, startLoadingGuard } from '@/utils/asyncGuards';
+import { startLoadingGuard } from '@/utils/asyncGuards';
 import { OrderBump } from '@/types/order-bump-types';
 
 const OrderBumpsEnhanced = () => {
@@ -213,11 +213,11 @@ const OrderBumpsEnhanced = () => {
               <div className="flex justify-between items-center">
                 <div className="flex flex-col items-start">
                   <span className="text-2xl font-bold text-yellow-900 bg-yellow-200 px-3 py-1 rounded-lg shadow-md">
-                    {orderBump.priceDisplay}
+                    ₦{(orderBump.discounted_price || orderBump.original_price).toLocaleString()}
                   </span>
-                  {orderBump.hasDiscount && (
+                  {orderBump.discounted_price && (
                     <span className="text-lg text-yellow-700 line-through mt-1">
-                      {orderBump.originalPriceDisplay}
+                      ₦{orderBump.original_price.toLocaleString()}
                     </span>
                   )}
                 </div>

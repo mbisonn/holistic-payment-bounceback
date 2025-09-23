@@ -293,7 +293,7 @@ const Products = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Status:</span>
-                  <Badge variant={product.is_active ? "default" : "secondary"}>
+                  <Badge variant={(product.is_active ?? true) ? "default" : "secondary"}>
                     {product.is_active ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>
