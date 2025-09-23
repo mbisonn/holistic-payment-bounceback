@@ -1,39 +1,31 @@
 
 import { useEffect, useState } from 'react';
 import AdminLoginCard from '@/components/admin/auth/AdminLoginCard';
-import { supabase } from '@/integrations/supabase/client';
-
-// Clear authentication storage
-const clearAuthStorage = () => {
-  localStorage.removeItem('supabase.auth.token');
-  sessionStorage.clear();
-};
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 export default function AdminLogin() {
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
+  const { user, loading, isAdmin } = useAuth();
+  const navigate = useNavigate();
   
-  // Initialize component - clear any stale auth state
+  // Check if user is already authenticated and redirect if admin
   useEffect(() => {
-    const initialize = async () => {
-      try {
-        setError(null);
-        // Clear any existing auth state
-        await supabase.auth.signOut({ scope: 'global' });
-        clearAuthStorage();
-      } catch (error) {
-        console.error('Initialization error:', error);
-        setError('Failed to initialize login. Please refresh the page.');
-      } finally {
-        // Always set initialized to true, even if there's an error
-        setIsInitialized(true);
-      }
-    };
-
-    if (!isInitialized) {
-      initialize();
+    if (loading || hasRedirected) return;
+    
+    if (user && isAdmin) {
+      console.log('User already authenticated as admin, redirecting...');
+      setHasRedirected(true);
+      navigate('/admin/', { replace: true });
+      return;
     }
-  }, [isInitialized]);
+    
+    if (!loading && !isInitialized) {
+      setIsInitialized(true);
+    }
+  }, [user, isAdmin, loading, isInitialized, hasRedirected, navigate]);
 
   // Handle login success
   const handleLoginSuccess = async () => {
@@ -41,13 +33,15 @@ export default function AdminLogin() {
       console.log('=== LOGIN SUCCESS HANDLER CALLED ===');
       
       // Simple immediate redirect - let ProtectedRoute handle auth validation
-      console.log('Redirecting to /admin/dashboard immediately...');
-      window.location.replace('/admin/');
+      console.log('Redirecting to /admin/ immediately...');
+      setHasRedirected(true);
+      navigate('/admin/', { replace: true });
       
     } catch (error) {
       console.error('Login success error:', error);
       // Force redirect even on error
-      window.location.replace('/admin/');
+      setHasRedirected(true);
+      navigate('/admin/', { replace: true });
     }
   };
 
@@ -61,39 +55,12 @@ export default function AdminLogin() {
     setError(errMsg);
   };
 
-  // Auto-send magic link to the admin email on visit (optional, gated by env)
-  useEffect(() => {
-    const flag = import.meta.env.VITE_AUTO_MAGIC_LINK as string | undefined;
-    if (!flag || flag.toString() !== 'true') return;
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) return;
-      
-      const sent = (window as any).__AUTO_MAGIC_LINK_SENT__;
-      if (sent) return;
-      (window as any).__AUTO_MAGIC_LINK_SENT__ = true;
-
-      const email = 'ebuchenna1@gmail.com';
-      const redirectTo = `${window.location.origin}/admin/login`;
-
-      (async () => {
-        try {
-          await supabase.auth.signInWithOtp({
-            email,
-            options: { emailRedirectTo: redirectTo },
-          });
-          console.log('Magic link sent to', email);
-        } catch (e) {
-          console.warn('Failed to send magic link:', e);
-        }
-      })();
-    });
-  }, []);
+  // Removed auto-magic link to prevent conflicts
 
   // Handle redirect after successful login - removed conflicting logic
 
   // Show loading state during initialization
-  if (!isInitialized) {
+  if (loading || !isInitialized) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="glass-card p-8 text-center">

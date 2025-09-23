@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +10,16 @@ export const useAuthState = () => {
 
   const checkAdminStatus = async (userId: string) => {
     try {
+      // Check cache first to avoid repeated API calls
+      const cacheKey = `isAdmin:${userId}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      
+      if (cached !== null) {
+        const isAdminCached = cached === 'true';
+        setIsAdmin(isAdminCached);
+        return;
+      }
+
       console.log('Checking admin status for user:', userId);
 
       // Check user_roles table for admin role
@@ -29,6 +38,8 @@ export const useAuthState = () => {
       const hasAdminRole = userRoles && userRoles.length > 0;
       console.log('Admin check result:', hasAdminRole, 'Roles found:', userRoles);
       
+      // Cache the result to prevent repeated calls
+      sessionStorage.setItem(cacheKey, hasAdminRole.toString());
       setIsAdmin(hasAdminRole);
     } catch (error) {
       console.error('Error in checkAdminStatus:', error);
@@ -38,6 +49,7 @@ export const useAuthState = () => {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     // Get initial session with retry logic
     const getInitialSession = async (retryCount = 0) => {
@@ -48,7 +60,7 @@ export const useAuthState = () => {
           console.error('Error getting session:', error);
           // Retry once on network errors
           if (retryCount === 0 && error.message.includes('network')) {
-            setTimeout(() => getInitialSession(1), 1000);
+            timeoutId = setTimeout(() => getInitialSession(1), 1000);
             return;
           }
           if (mounted) {
@@ -61,7 +73,10 @@ export const useAuthState = () => {
         if (session?.user && mounted) {
           setUser(session.user);
           setError(null);
-          await checkAdminStatus(session.user.id);
+          // Small delay to ensure UI is ready
+          timeoutId = setTimeout(() => {
+            if (mounted) checkAdminStatus(session.user.id);
+          }, 100);
         } else if (mounted) {
           setUser(null);
           setIsAdmin(false);
@@ -90,7 +105,15 @@ export const useAuthState = () => {
           if (session?.user) {
             setUser(session.user);
             setError(null);
-            await checkAdminStatus(session.user.id);
+            
+            // Only check admin status if we don't already have it cached or if user changed
+            const currentUserId = user?.id;
+            if (currentUserId !== session.user.id) {
+              // Small delay to ensure state is consistent
+              timeoutId = setTimeout(() => {
+                if (mounted) checkAdminStatus(session.user.id);
+              }, 100);
+            }
             
             // Store session persistence flag
             localStorage.setItem('supabase.auth.token', 'persisted');
@@ -99,8 +122,14 @@ export const useAuthState = () => {
             setIsAdmin(false);
             setError(null);
             
-            // Clear persistence flag on logout
+            // Clear cache and persistence flag on logout
             localStorage.removeItem('supabase.auth.token');
+            const keys = Object.keys(sessionStorage);
+            keys.forEach(key => {
+              if (key.startsWith('isAdmin:')) {
+                sessionStorage.removeItem(key);
+              }
+            });
           }
         } catch (error) {
           console.error('Error in auth state change:', error);
@@ -118,6 +147,7 @@ export const useAuthState = () => {
 
     return () => {
       mounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
