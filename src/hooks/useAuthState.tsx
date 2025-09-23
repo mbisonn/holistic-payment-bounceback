@@ -10,19 +10,9 @@ export const useAuthState = () => {
 
   const checkAdminStatus = async (userId: string) => {
     try {
-      // Check cache first to avoid repeated API calls
-      const cacheKey = `isAdmin:${userId}`;
-      const cached = sessionStorage.getItem(cacheKey);
-      
-      if (cached !== null) {
-        const isAdminCached = cached === 'true';
-        setIsAdmin(isAdminCached);
-        return;
-      }
-
       console.log('Checking admin status for user:', userId);
 
-      // Check user_roles table for admin role
+      // Check user_roles table for admin role - don't use cache during debugging
       const { data: userRoles, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -38,8 +28,6 @@ export const useAuthState = () => {
       const hasAdminRole = userRoles && userRoles.length > 0;
       console.log('Admin check result:', hasAdminRole, 'Roles found:', userRoles);
       
-      // Cache the result to prevent repeated calls
-      sessionStorage.setItem(cacheKey, hasAdminRole.toString());
       setIsAdmin(hasAdminRole);
     } catch (error) {
       console.error('Error in checkAdminStatus:', error);
@@ -106,14 +94,10 @@ export const useAuthState = () => {
             setUser(session.user);
             setError(null);
             
-            // Only check admin status if we don't already have it cached or if user changed
-            const currentUserId = user?.id;
-            if (currentUserId !== session.user.id) {
-              // Small delay to ensure state is consistent
-              timeoutId = setTimeout(() => {
-                if (mounted) checkAdminStatus(session.user.id);
-              }, 100);
-            }
+            // Always check admin status after login to ensure fresh data
+            timeoutId = setTimeout(() => {
+              if (mounted) checkAdminStatus(session.user.id);
+            }, 500);
             
             // Store session persistence flag
             localStorage.setItem('supabase.auth.token', 'persisted');
