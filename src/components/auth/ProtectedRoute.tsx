@@ -23,15 +23,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         return;
       }
       
-      if (!isAdmin) {
-        console.log('User is not admin, redirecting to login');
-        navigate('/admin/login', { replace: true });
-        return;
-      }
-      
-      console.log('User is authenticated and admin, allowing access');
+      console.log('User is authenticated, allowing access to dashboard');
     }
-  }, [user, loading, isAdmin, navigate]);
+  }, [user, loading, navigate]);
 
   // Show loading while checking authentication
   if (loading) {
@@ -46,7 +40,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // Don't render content if not authenticated
-  if (!user || !isAdmin) {
+  if (!user) {
     return null;
   }
 

@@ -8,15 +8,15 @@ export default function AdminLogin() {
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [hasRedirected, setHasRedirected] = useState(false);
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   
-  // Check if user is already authenticated and redirect if admin
+  // Check if user is already authenticated and redirect
   useEffect(() => {
     if (loading || hasRedirected) return;
     
-    if (user && isAdmin) {
-      console.log('User already authenticated as admin, redirecting...');
+    if (user) {
+      console.log('User already authenticated, redirecting...');
       setHasRedirected(true);
       navigate('/admin/', { replace: true });
       return;
@@ -25,7 +25,7 @@ export default function AdminLogin() {
     if (!loading && !isInitialized) {
       setIsInitialized(true);
     }
-  }, [user, isAdmin, loading, isInitialized, hasRedirected, navigate]);
+  }, [user, loading, isInitialized, hasRedirected, navigate]);
 
   // Handle login success
   const handleLoginSuccess = async () => {
