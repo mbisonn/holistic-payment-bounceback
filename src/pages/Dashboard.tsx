@@ -17,6 +17,8 @@ import MealPlanSync from '@/pages/admin/MealPlanSync';
 import DiscountCodes from '@/pages/admin/DiscountCodes';
 import { useMediaQuery } from 'react-responsive';
 import UserCenter from '@/pages/admin/UserCenter';
+import ReputationManagement from '@/components/admin/reputation/ReputationManagement';
+import WhatsAppIntegration from '@/components/admin/whatsapp/WhatsAppIntegration';
 import { X } from 'lucide-react';
 
 export type DashboardSection =
@@ -28,6 +30,8 @@ export type DashboardSection =
   | 'order-bumps'
   | 'tags'
   | 'automations'
+  | 'reputation'
+  | 'whatsapp'
   | 'analytics'
   | 'email-campaigns'
   | 'email-outbox'
@@ -147,6 +151,8 @@ const DashboardContent = ({
               {activeSection === 'order-bumps' && <OrderBumpsEnhanced />}
               {activeSection === 'tags' && <TagsSection />}
               {activeSection === 'automations' && <AutomationsSection />}
+              {activeSection === 'reputation' && <ReputationManagement />}
+              {activeSection === 'whatsapp' && <WhatsAppIntegration />}
               {activeSection === 'analytics' && <AnalyticsSection />}
               {activeSection === 'email-campaigns' && <EmailCampaigns />}
               {activeSection === 'email-outbox' && <EmailOutbox />}

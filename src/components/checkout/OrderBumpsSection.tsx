@@ -76,11 +76,11 @@ const OrderBumpsSection = ({ cart, updateCart }: OrderBumpsSectionProps) => {
           : 0;
 
         return (
-          <Card key={orderBump.id} className="bg-white/5 backdrop-blur-xl border-white/20 text-white">
+          <Card key={orderBump.id} className="bg-gradient-to-r from-yellow-400 to-yellow-500 border-yellow-300 shadow-lg shadow-yellow-500/25 text-black">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
                 {orderBump.image_url && (
-                  <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-white/10">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-black/10">
                     <img 
                       src={orderBump.image_url} 
                       alt={orderBump.title}
@@ -95,7 +95,7 @@ const OrderBumpsSection = ({ cart, updateCart }: OrderBumpsSectionProps) => {
                 <div className="flex-1">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h4 className="font-bold text-lg text-white leading-tight">
+                      <h4 className="font-bold text-lg text-black leading-tight">
                         {orderBump.title}
                       </h4>
                       
@@ -127,17 +127,17 @@ const OrderBumpsSection = ({ cart, updateCart }: OrderBumpsSectionProps) => {
                   </div>
                   
                   {orderBump.description && (
-                    <p className="text-sm text-white/70 mt-2 leading-relaxed">
+                    <p className="text-sm text-black/80 mt-2 leading-relaxed">
                       {orderBump.description}
                     </p>
                   )}
                   
                   <div className="flex items-center gap-3 mt-3">
-                    <span className="text-xl font-bold text-primary">
+                    <span className="text-xl font-bold text-black">
                       {formatCurrency(finalPrice)}
                     </span>
                     {hasDiscount && (
-                      <span className="text-lg text-white/50 line-through">
+                      <span className="text-lg text-black/60 line-through">
                         {formatCurrency(orderBump.original_price)}
                       </span>
                     )}

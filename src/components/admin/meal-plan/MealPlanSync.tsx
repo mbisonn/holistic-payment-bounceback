@@ -41,7 +41,13 @@ const MealPlanSync = () => {
         .order('synced_at', { ascending: false });
 
       if (error) throw error;
-      setSyncData(data || []);
+      setSyncData((data || []).map(item => ({
+        ...item,
+        customer_name: item.customer_name || 'Unknown',
+        customer_phone: item.customer_phone || null,
+        external_user_id: item.external_user_id || '',
+        synced_at: item.synced_at || null
+      })));
     } catch (error) {
       toast({
         title: "Error",

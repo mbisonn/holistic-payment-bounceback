@@ -55,6 +55,7 @@ export const OrdersManagement = () => {
 
       setOrders((data || []).map(order => ({
         ...order,
+        customer_name: order.customer_name || 'Unknown',
         customer_phone: order.customer_phone || '',
         delivery_address: order.delivery_address || '',
         delivery_city: order.delivery_city || '',
@@ -116,7 +117,7 @@ export const OrdersManagement = () => {
         order.id,
         order.customer_name,
         order.customer_email,
-        order.customer_phone,
+        order.customer_phone || '',
         order.total_amount,
         order.status,
         format(new Date(order.created_at), 'yyyy-MM-dd HH:mm')
@@ -250,7 +251,7 @@ export const OrdersManagement = () => {
                                     <h4 className="font-semibold mb-2">Customer Information</h4>
                                     <p>Name: {selectedOrder.customer_name}</p>
                                     <p>Email: {selectedOrder.customer_email}</p>
-                                    <p>Phone: {selectedOrder.customer_phone}</p>
+                                    <p>Phone: {selectedOrder.customer_phone || 'N/A'}</p>
                                   </div>
                                   <div>
                                     <h4 className="font-semibold mb-2">Order Information</h4>
@@ -261,8 +262,8 @@ export const OrdersManagement = () => {
                                 </div>
                                 <div>
                                   <h4 className="font-semibold mb-2">Delivery Address</h4>
-                                  <p>{selectedOrder.delivery_address}</p>
-                                  <p>{selectedOrder.delivery_city}, {selectedOrder.delivery_state}</p>
+                                  <p>{selectedOrder.delivery_address || 'N/A'}</p>
+                                  <p>{selectedOrder.delivery_city || 'N/A'}, {selectedOrder.delivery_state || 'N/A'}</p>
                                 </div>
                                 <div>
                                   <h4 className="font-semibold mb-2">Items</h4>

@@ -39,7 +39,7 @@ const OrderBumpItem: React.FC<OrderBumpItemProps> = ({
   
   return (
     <div className={`border rounded-lg overflow-hidden transition-all duration-300 ${
-      isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'
+      isSelected ? 'border-yellow-500 bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-lg shadow-yellow-500/25' : 'border-gray-200 bg-white'
     }`}>
       <div className="flex items-start gap-4 p-4">
         {imageSource && (
@@ -54,7 +54,7 @@ const OrderBumpItem: React.FC<OrderBumpItemProps> = ({
         
         <div className="flex-1">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-green-800">{title}</h4>
+            <h4 className="font-medium text-black">{title}</h4>
             {discount_percentage > 0 && (
               <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                 {discount_percentage}% OFF
@@ -65,7 +65,7 @@ const OrderBumpItem: React.FC<OrderBumpItemProps> = ({
           <p className="text-sm text-gray-600 mt-1">{description || ''}</p>
           
           <div className="flex items-baseline mt-2">
-            <span className="font-semibold text-green-700">{formatCurrency(discountedPrice)}</span>
+            <span className="font-semibold text-black">{formatCurrency(discountedPrice)}</span>
             {discount_percentage > 0 && (
               <span className="text-sm text-gray-500 line-through ml-2">{formatCurrency(price)}</span>
             )}

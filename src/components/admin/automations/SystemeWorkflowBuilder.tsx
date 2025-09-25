@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+// Removed unused Badge import
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +14,6 @@ import {
   Target,
   Filter,
   Eye,
-  Edit,
   Trash2,
   Clock,
   Tag,
@@ -24,6 +23,8 @@ import {
   CheckCircle,
   Database,
   Send,
+  Mail,
+  XCircle,
   Save
 } from 'lucide-react';
 
@@ -66,9 +67,12 @@ const NODE_TYPES = {
     nodes: [
       { id: 'customer_signup', label: 'Customer Signup', icon: User, description: 'When a new customer signs up' },
       { id: 'purchase_paystack', label: 'Purchase (Paystack)', icon: CreditCard, description: 'When a purchase is made via Paystack' },
-      { id: 'abandoned_cart', label: 'Cart Abandoned', icon: ShoppingCart, description: 'When a customer abandons their cart' },
+      { id: 'abandoned_cart', label: 'Cart Abandoned', icon: CreditCard, description: 'When a customer abandons their cart' },
       { id: 'email_opened', label: 'Email Opened', icon: Eye, description: 'When an email is opened' },
+      { id: 'email_clicked', label: 'Email Clicked', icon: Target, description: 'When an email link is clicked' },
       { id: 'birthday', label: 'Customer Birthday', icon: Gift, description: 'On a customer\'s birthday' },
+      { id: 'order_delivered', label: 'Order Delivered', icon: CheckCircle, description: 'When an order is delivered' },
+      { id: 'payment_failed', label: 'Payment Failed', icon: XCircle, description: 'When a payment fails' },
     ]
   },
   action: {
@@ -77,10 +81,14 @@ const NODE_TYPES = {
     color: 'green',
     nodes: [
       { id: 'send_email', label: 'Send Email', icon: Send, description: 'Send an email to the customer' },
+      { id: 'send_whatsapp', label: 'Send WhatsApp', icon: MessageSquare, description: 'Send a WhatsApp message' },
+      { id: 'send_email_campaign', label: 'Send Email Campaign', icon: Mail, description: 'Send an email campaign' },
       { id: 'send_sms', label: 'Send SMS', icon: MessageSquare, description: 'Send an SMS to the customer' },
       { id: 'assign_tag', label: 'Assign Tag', icon: Tag, description: 'Assign a tag to the customer' },
+      { id: 'remove_tag', label: 'Remove Tag', icon: XCircle, description: 'Remove a tag from the customer' },
       { id: 'create_task', label: 'Create Task', icon: CheckCircle, description: 'Create a task for the team' },
       { id: 'webhook', label: 'Call Webhook', icon: Database, description: 'Call an external webhook' },
+      { id: 'update_customer', label: 'Update Customer', icon: User, description: 'Update customer information' },
     ]
   },
   condition: {
@@ -91,6 +99,8 @@ const NODE_TYPES = {
       { id: 'has_tag', label: 'Has Tag', icon: Tag, description: 'Check if customer has a specific tag' },
       { id: 'purchase_value', label: 'Purchase Value', icon: Target, description: 'Check purchase value' },
       { id: 'time_of_day', label: 'Time of Day', icon: Clock, description: 'Check time of day' },
+      { id: 'customer_segment', label: 'Customer Segment', icon: User, description: 'Check customer segment' },
+      { id: 'order_count', label: 'Order Count', icon: CheckCircle, description: 'Check number of orders' },
     ]
   },
   delay: {
@@ -100,7 +110,8 @@ const NODE_TYPES = {
     nodes: [
       { id: 'wait_minutes', label: 'Wait Minutes', icon: Clock, description: 'Wait for specified minutes' },
       { id: 'wait_hours', label: 'Wait Hours', icon: Clock, description: 'Wait for specified hours' },
-      { id: 'wait_days', label: 'Wait Days', icon: Calendar, description: 'Wait for specified days' },
+      { id: 'wait_days', label: 'Wait Days', icon: Clock, description: 'Wait for specified days' },
+      { id: 'wait_until', label: 'Wait Until', icon: Clock, description: 'Wait until specific time' },
     ]
   }
 };
@@ -114,13 +125,61 @@ const WORKFLOW_TEMPLATES = [
     nodes: [
       { id: 'start', type: 'start', label: 'Start', position: { x: 100, y: 100 }, data: {}, connections: ['trigger1'] },
       { id: 'trigger1', type: 'trigger', label: 'Customer Signup', position: { x: 300, y: 100 }, data: { trigger: 'customer_signup' }, connections: ['action1'] },
-      { id: 'action1', type: 'action', label: 'Send Welcome Email', position: { x: 500, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
-      { id: 'end', type: 'end', label: 'End', position: { x: 700, y: 100 }, data: {}, connections: [] },
+      { id: 'action1', type: 'action', label: 'Send Welcome Email', position: { x: 500, y: 100 }, data: { action: 'send_email' }, connections: ['delay1'] },
+      { id: 'delay1', type: 'delay', label: 'Wait 1 Day', position: { x: 700, y: 100 }, data: { delay: 'wait_days', value: 1 }, connections: ['action2'] },
+      { id: 'action2', type: 'action', label: 'Send Follow-up', position: { x: 900, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
+      { id: 'end', type: 'end', label: 'End', position: { x: 1100, y: 100 }, data: {}, connections: [] },
     ],
     connections: [
       { id: 'c1', source: 'start', target: 'trigger1' },
       { id: 'c2', source: 'trigger1', target: 'action1' },
-      { id: 'c3', source: 'action1', target: 'end' },
+      { id: 'c3', source: 'action1', target: 'delay1' },
+      { id: 'c4', source: 'delay1', target: 'action2' },
+      { id: 'c5', source: 'action2', target: 'end' },
+    ]
+  },
+  {
+    id: 'abandoned_cart_recovery',
+    name: 'Abandoned Cart Recovery',
+    description: 'Recover abandoned carts with targeted emails',
+    icon: '🛒',
+    nodes: [
+      { id: 'start', type: 'start', label: 'Start', position: { x: 100, y: 100 }, data: {}, connections: ['trigger1'] },
+      { id: 'trigger1', type: 'trigger', label: 'Cart Abandoned', position: { x: 300, y: 100 }, data: { trigger: 'abandoned_cart' }, connections: ['delay1'] },
+      { id: 'delay1', type: 'delay', label: 'Wait 1 Hour', position: { x: 500, y: 100 }, data: { delay: 'wait_hours', value: 1 }, connections: ['action1'] },
+      { id: 'action1', type: 'action', label: 'Send Recovery Email', position: { x: 700, y: 100 }, data: { action: 'send_email' }, connections: ['delay2'] },
+      { id: 'delay2', type: 'delay', label: 'Wait 24 Hours', position: { x: 900, y: 100 }, data: { delay: 'wait_hours', value: 24 }, connections: ['action2'] },
+      { id: 'action2', type: 'action', label: 'Send Final Email', position: { x: 1100, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
+      { id: 'end', type: 'end', label: 'End', position: { x: 1300, y: 100 }, data: {}, connections: [] },
+    ],
+    connections: [
+      { id: 'c1', source: 'start', target: 'trigger1' },
+      { id: 'c2', source: 'trigger1', target: 'delay1' },
+      { id: 'c3', source: 'delay1', target: 'action1' },
+      { id: 'c4', source: 'action1', target: 'delay2' },
+      { id: 'c5', source: 'delay2', target: 'action2' },
+      { id: 'c6', source: 'action2', target: 'end' },
+    ]
+  },
+  {
+    id: 'post_purchase_sequence',
+    name: 'Post-Purchase Sequence',
+    description: 'Follow up after successful purchase',
+    icon: '🎉',
+    nodes: [
+      { id: 'start', type: 'start', label: 'Start', position: { x: 100, y: 100 }, data: {}, connections: ['trigger1'] },
+      { id: 'trigger1', type: 'trigger', label: 'Purchase Complete', position: { x: 300, y: 100 }, data: { trigger: 'purchase_paystack' }, connections: ['action1'] },
+      { id: 'action1', type: 'action', label: 'Send Thank You', position: { x: 500, y: 100 }, data: { action: 'send_email' }, connections: ['delay1'] },
+      { id: 'delay1', type: 'delay', label: 'Wait 3 Days', position: { x: 700, y: 100 }, data: { delay: 'wait_days', value: 3 }, connections: ['action2'] },
+      { id: 'action2', type: 'action', label: 'Request Review', position: { x: 900, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
+      { id: 'end', type: 'end', label: 'End', position: { x: 1100, y: 100 }, data: {}, connections: [] },
+    ],
+    connections: [
+      { id: 'c1', source: 'start', target: 'trigger1' },
+      { id: 'c2', source: 'trigger1', target: 'action1' },
+      { id: 'c3', source: 'action1', target: 'delay1' },
+      { id: 'c4', source: 'delay1', target: 'action2' },
+      { id: 'c5', source: 'action2', target: 'end' },
     ]
   }
 ];

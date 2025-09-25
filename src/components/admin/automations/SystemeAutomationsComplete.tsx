@@ -20,7 +20,6 @@ import {
   Mail, 
   ShoppingCart, 
   User, 
-  Calendar,
   BarChart3,
   Target,
   Bot,
@@ -30,12 +29,8 @@ import {
   Copy,
   Play,
   Search,
-  Users,
   ArrowRight,
-  Clock,
   Tag,
-  MessageSquare,
-  Globe,
   CreditCard,
   Gift,
   TrendingUp,
@@ -44,9 +39,7 @@ import {
   Activity,
   Database,
   Send,
-  RefreshCw,
-  Save,
-  X
+  MessageSquare
 } from 'lucide-react';
 
 interface AutomationRule {
@@ -80,69 +73,7 @@ interface AutomationTemplate {
   is_premium: boolean;
 }
 
-const TRIGGER_CATEGORIES = [
-  {
-    id: 'ecommerce',
-    name: 'E-commerce',
-    icon: ShoppingCart,
-    triggers: [
-      { value: 'purchase_paystack', label: 'Purchase (Paystack)', icon: CreditCard },
-      { value: 'payment_on_delivery', label: 'Payment on Delivery', icon: ShoppingCart },
-      { value: 'upsell_purchase', label: 'Upsell Purchase', icon: TrendingUp },
-      { value: 'abandoned_cart', label: 'Cart Abandoned', icon: XCircle },
-    ]
-  },
-  {
-    id: 'customer',
-    name: 'Customer Behavior',
-    icon: User,
-    triggers: [
-      { value: 'customer_signup', label: 'Customer Signup', icon: User },
-      { value: 'profile_updated', label: 'Profile Updated', icon: Edit },
-      { value: 'birthday', label: 'Customer Birthday', icon: Gift },
-    ]
-  },
-  {
-    id: 'email',
-    name: 'Email & Communication',
-    icon: Mail,
-    triggers: [
-      { value: 'email_opened', label: 'Email Opened', icon: Eye },
-      { value: 'email_clicked', label: 'Email Link Clicked', icon: Target },
-      { value: 'email_bounced', label: 'Email Bounced', icon: XCircle },
-    ]
-  }
-];
-
-const ACTION_CATEGORIES = [
-  {
-    id: 'email',
-    name: 'Email Actions',
-    icon: Mail,
-    actions: [
-      { value: 'send_email', label: 'Send Email', icon: Send },
-      { value: 'send_email_campaign', label: 'Send Email Campaign', icon: Mail },
-    ]
-  },
-  {
-    id: 'tags',
-    name: 'Tag Management',
-    icon: Tag,
-    actions: [
-      { value: 'assign_tag', label: 'Assign Tag', icon: Tag },
-      { value: 'remove_tag', label: 'Remove Tag', icon: XCircle },
-    ]
-  },
-  {
-    id: 'tasks',
-    name: 'Tasks & Pipeline',
-    icon: CheckCircle,
-    actions: [
-      { value: 'create_task', label: 'Create Task', icon: Plus },
-      { value: 'assign_task', label: 'Assign Task', icon: User },
-    ]
-  }
-];
+// Removed unused constants to fix TypeScript warnings
 
 const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
   {
@@ -168,6 +99,78 @@ const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
     trigger_data: { delay_hours: 1 },
     action_data: 'abandoned_cart_campaign',
     is_premium: false
+  },
+  {
+    id: 'post_purchase_review',
+    name: 'Post-Purchase Review Request',
+    description: 'Request reviews after successful purchase',
+    category: 'Customer Experience',
+    icon: '⭐',
+    trigger: 'purchase_paystack',
+    action: 'send_email',
+    trigger_data: { delay_days: 3 },
+    action_data: 'review_request_campaign',
+    is_premium: false
+  },
+  {
+    id: 'birthday_campaign',
+    name: 'Birthday Campaign',
+    description: 'Send birthday wishes and special offers',
+    category: 'Customer Engagement',
+    icon: '🎂',
+    trigger: 'birthday',
+    action: 'send_email',
+    trigger_data: { delay: 0 },
+    action_data: 'birthday_campaign',
+    is_premium: false
+  },
+  {
+    id: 'high_value_customer',
+    name: 'High-Value Customer Tag',
+    description: 'Tag customers who make large purchases',
+    category: 'Customer Segmentation',
+    icon: '💎',
+    trigger: 'purchase_paystack',
+    action: 'assign_tag',
+    trigger_data: { min_amount: 50000 },
+    action_data: 'high_value_customer',
+    is_premium: false
+  },
+  {
+    id: 'payment_failed_followup',
+    name: 'Payment Failed Follow-up',
+    description: 'Follow up when payment fails',
+    category: 'Revenue Recovery',
+    icon: '💳',
+    trigger: 'payment_failed',
+    action: 'send_email',
+    trigger_data: { delay_hours: 2 },
+    action_data: 'payment_failed_campaign',
+    is_premium: false
+  },
+  {
+    id: 'order_delivered_survey',
+    name: 'Order Delivered Survey',
+    description: 'Send satisfaction survey after delivery',
+    category: 'Customer Feedback',
+    icon: '📋',
+    trigger: 'order_delivered',
+    action: 'send_email',
+    trigger_data: { delay_days: 1 },
+    action_data: 'delivery_survey_campaign',
+    is_premium: false
+  },
+  {
+    id: 'purchase_whatsapp_notification',
+    name: 'Purchase WhatsApp Notification',
+    description: 'Send a WhatsApp notification when a purchase is made',
+    category: 'Messaging',
+    icon: '📱',
+    trigger: 'purchase_paystack',
+    action: 'send_whatsapp',
+    trigger_data: { delay: 0 },
+    action_data: 'purchase_notification_template',
+    is_premium: false
   }
 ];
 
@@ -178,7 +181,7 @@ export default function SystemeAutomationsComplete() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
+  // Removed unused filterCategory state
   const [activeTab, setActiveTab] = useState('automations');
   
   const [newRule, setNewRule] = useState({
@@ -383,6 +386,7 @@ export default function SystemeAutomationsComplete() {
     const iconMap: { [key: string]: any } = {
       'send_email': Mail,
       'send_email_campaign': Mail,
+      'send_whatsapp': MessageSquare,
       'assign_tag': Tag,
       'create_task': CheckCircle,
       'webhook': Database,
@@ -604,6 +608,18 @@ export default function SystemeAutomationsComplete() {
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Description (Optional)
+              </label>
+              <Input
+                value={newRule.description}
+                onChange={(e) => setNewRule(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Describe what this automation does"
+                className="bounce-back-consult-input text-white border-white/20"
+              />
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-white mb-2">
@@ -620,7 +636,10 @@ export default function SystemeAutomationsComplete() {
                     <SelectItem value="purchase_paystack">Purchase (Paystack)</SelectItem>
                     <SelectItem value="abandoned_cart">Cart Abandoned</SelectItem>
                     <SelectItem value="email_opened">Email Opened</SelectItem>
+                    <SelectItem value="email_clicked">Email Clicked</SelectItem>
                     <SelectItem value="birthday">Customer Birthday</SelectItem>
+                    <SelectItem value="order_delivered">Order Delivered</SelectItem>
+                    <SelectItem value="payment_failed">Payment Failed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -638,8 +657,12 @@ export default function SystemeAutomationsComplete() {
                   <SelectContent className="bounce-back-consult-card border-white/20">
                     <SelectItem value="send_email">Send Email</SelectItem>
                     <SelectItem value="send_email_campaign">Send Email Campaign</SelectItem>
+                    <SelectItem value="send_sms">Send SMS</SelectItem>
+                    <SelectItem value="send_whatsapp">Send WhatsApp</SelectItem>
                     <SelectItem value="assign_tag">Assign Tag</SelectItem>
+                    <SelectItem value="remove_tag">Remove Tag</SelectItem>
                     <SelectItem value="create_task">Create Task</SelectItem>
+                    <SelectItem value="update_customer">Update Customer</SelectItem>
                     <SelectItem value="webhook">Call Webhook</SelectItem>
                   </SelectContent>
                 </Select>

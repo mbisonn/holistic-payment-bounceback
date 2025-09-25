@@ -51,8 +51,8 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
       transition={{ duration: 0.3 }}
       className={`relative border-2 rounded-xl overflow-hidden transition-all duration-300 ${
         isSelected 
-          ? 'border-green-500 bg-gradient-to-br from-green-50 to-green-100 shadow-lg' 
-          : 'border-gray-200 bg-white hover:border-green-300 hover:shadow-md'
+          ? 'border-yellow-500 bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg shadow-yellow-500/25' 
+          : 'border-gray-200 bg-white hover:border-yellow-300 hover:shadow-md'
       }`}
     >
       <Card className="border-0 bg-transparent">
@@ -74,7 +74,7 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
-                  <h4 className="font-bold text-lg text-green-800 leading-tight">
+                  <h4 className="font-bold text-lg text-black leading-tight">
                     {title}
                   </h4>
                   
@@ -93,7 +93,7 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
                     id={`order-bump-${product_id || 'unknown'}`}
                     checked={isSelected}
                     onCheckedChange={handleChange}
-                    className="w-6 h-6 border-2 border-green-500 data-[state=checked]:bg-green-500 data-[state=checked]:text-white rounded-md"
+                    className="w-6 h-6 border-2 border-yellow-500 data-[state=checked]:bg-yellow-500 data-[state=checked]:text-black rounded-md"
                   />
                 </div>
               </div>
@@ -122,11 +122,11 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
               </div>
               
               <div className="flex items-center gap-3 mt-4">
-                <span className="text-2xl font-bold text-green-700">
+                <span className="text-2xl font-bold text-black">
                   {formatCurrency(finalPrice)}
                 </span>
                 {hasDiscount && (
-                  <span className="text-lg text-gray-500 line-through">
+                  <span className="text-lg text-black/60 line-through">
                     {formatCurrency(original_price)}
                   </span>
                 )}

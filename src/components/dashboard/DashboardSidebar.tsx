@@ -13,7 +13,9 @@ import {
   Zap,
   Tag,
   TrendingUp,
-  Plus
+  Plus,
+  Star,
+  MessageSquare
 } from 'lucide-react';
 import { DashboardSection } from '@/pages/Dashboard';
 
@@ -33,6 +35,8 @@ const sidebarItems = [
   { id: 'order-bumps', label: 'Order Bumps', icon: Plus },
   { id: 'tags', label: 'Tags', icon: Tag },
   { id: 'automations', label: 'Automations', icon: Zap },
+  { id: 'reputation', label: 'Reputation', icon: Star },
+  { id: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'email-campaigns', label: 'Email Campaigns', icon: Mail },
   { id: 'email-outbox', label: 'Email Outbox', icon: Mail },

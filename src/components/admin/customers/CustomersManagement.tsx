@@ -73,7 +73,7 @@ export const CustomersManagement = () => {
         customer.total_spent += order.total_amount;
         customer.orders.push(order);
         
-        if (new Date(order.created_at) > new Date(customer.last_order_date)) {
+        if (order.created_at && new Date(order.created_at) > new Date(customer.last_order_date)) {
           customer.last_order_date = order.created_at;
         }
       });
@@ -109,15 +109,17 @@ export const CustomersManagement = () => {
 
   const addCustomer = async () => {
     try {
-      // Add to customer_analytics table
+      // Add to orders table with a placeholder order
       const { error } = await supabase
-        .from('customer_analytics')
+        .from('orders')
         .insert({
           customer_email: newCustomer.email,
-          total_orders: 0,
-          total_spent: 0,
-          avg_order_value: 0,
-          lifetime_value: 0
+          customer_name: newCustomer.name,
+          customer_phone: newCustomer.phone,
+          total_amount: 0,
+          status: 'pending',
+          payment_status: 'pending',
+          items: []
         });
 
       if (error) throw error;

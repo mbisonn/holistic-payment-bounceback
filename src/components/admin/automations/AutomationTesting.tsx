@@ -97,6 +97,7 @@ export default function AutomationTesting() {
   const [selectedScenario, setSelectedScenario] = useState<TestScenario | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [runningTests, setRunningTests] = useState<Set<string>>(new Set());
   
   const { toast } = useToast();
 
@@ -135,7 +136,7 @@ export default function AutomationTesting() {
 
   const runTest = async (scenario: TestScenario) => {
     const testRunId = `test_${Date.now()}`;
-    setRunningTests(prev => new Set([...prev, testRunId]));
+    setRunningTests((prev: Set<string>) => new Set([...prev, testRunId]));
     
     try {
       // Mock test execution
@@ -176,7 +177,7 @@ export default function AutomationTesting() {
         };
 
         setTestRuns(prev => prev.map(run => run.id === testRunId ? completedRun : run));
-        setRunningTests(prev => {
+        setRunningTests((prev: Set<string>) => {
           const newSet = new Set(prev);
           newSet.delete(testRunId);
           return newSet;
@@ -190,7 +191,7 @@ export default function AutomationTesting() {
 
     } catch (error) {
       console.error('Error running test:', error);
-      setRunningTests(prev => {
+      setRunningTests((prev: Set<string>) => {
         const newSet = new Set(prev);
         newSet.delete(testRunId);
         return newSet;
@@ -207,7 +208,7 @@ export default function AutomationTesting() {
     setTestRuns(prev => prev.map(run => 
       run.id === testRunId ? { ...run, status: 'paused' as const } : run
     ));
-    setRunningTests(prev => {
+    setRunningTests((prev: Set<string>) => {
       const newSet = new Set(prev);
       newSet.delete(testRunId);
       return newSet;

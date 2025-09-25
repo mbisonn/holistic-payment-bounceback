@@ -75,7 +75,7 @@ const AutoMealPlanSync = () => {
 
         setAutoSyncSettings({
           id: data.id,
-          is_enabled: data.is_active,
+          is_enabled: data.is_active || false,
           sync_frequency: triggerData.frequency_hours || 24,
           last_sync: triggerData.last_sync || null,
           total_synced: actionData.total_synced || 0
