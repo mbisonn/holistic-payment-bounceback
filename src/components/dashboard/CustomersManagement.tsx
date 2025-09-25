@@ -40,6 +40,8 @@ const CustomersManagement = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [customersPerPage] = useState(10);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +69,14 @@ const CustomersManagement = () => {
   useEffect(() => {
     const filtered = customers.filter(customer => customer.name.toLowerCase().includes(searchTerm.toLowerCase()) || customer.email.toLowerCase().includes(searchTerm.toLowerCase()));
     setFilteredCustomers(filtered);
+    setCurrentPage(1); // Reset to first page when filtering
   }, [customers, searchTerm]);
+
+  // Calculate pagination
+  const indexOfLastCustomer = currentPage * customersPerPage;
+  const indexOfFirstCustomer = indexOfLastCustomer - customersPerPage;
+  const currentCustomers = filteredCustomers.slice(indexOfFirstCustomer, indexOfLastCustomer);
+  const totalPages = Math.ceil(filteredCustomers.length / customersPerPage);
 
   const fetchCustomers = async () => {
     try {
@@ -248,12 +257,13 @@ const CustomersManagement = () => {
                   <th className="text-left p-4 font-medium text-white">Orders</th>
                   <th className="text-left p-4 font-medium text-white">Total Spent</th>
                   <th className="text-left p-4 font-medium text-white">Last Order</th>
+                  <th className="text-left p-4 font-medium text-white">Date of Purchase</th>
                   <th className="text-left p-4 font-medium text-white">Tags</th>
                   <th className="text-left p-4 font-medium text-white">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredCustomers.map((customer, index) => <motion.tr key={customer.id} initial={{
+                {currentCustomers.map((customer, index) => <motion.tr key={customer.id} initial={{
                 opacity: 0,
                 y: 20
               }} animate={{
@@ -297,10 +307,15 @@ const CustomersManagement = () => {
                         ₦{customer.totalSpent.toLocaleString()}
                       </span>
                     </td>
-                    <td className="p-4">
+                     <td className="p-4">
                       {customer.lastOrderDate ? <span className="text-sm text-gray-300">
                           {new Date(customer.lastOrderDate).toLocaleDateString()}
                         </span> : <span className="text-sm text-gray-400">Never</span>}
+                    </td>
+                    <td className="p-4">
+                      {customer.lastOrderDate ? <span className="text-sm text-gray-300">
+                          {new Date(customer.lastOrderDate).toLocaleDateString()}
+                        </span> : <span className="text-sm text-gray-400">No purchases</span>}
                     </td>
                     <td className="p-4">
                       <div className="flex flex-wrap gap-1 mb-2">
@@ -357,6 +372,31 @@ const CustomersManagement = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center space-x-2">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="glass-button-outline"
+          >
+            Previous
+          </Button>
+          <span className="text-white px-4">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="glass-button-outline"
+          >
+            Next
+          </Button>
+        </div>
+      )}
 
       {filteredCustomers.length === 0 && !loading && <div className="text-center py-12">
           <p className="text-gray-500 text-lg">No customers found</p>

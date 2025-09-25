@@ -51,8 +51,8 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
       transition={{ duration: 0.3 }}
       className={`relative border-2 rounded-xl overflow-hidden transition-all duration-300 ${
         isSelected 
-          ? 'border-green-500 bg-gradient-to-br from-green-50 to-green-100 shadow-lg' 
-          : 'border-gray-200 bg-white hover:border-green-300 hover:shadow-md'
+          ? 'border-yellow-400 bg-gradient-to-br from-yellow-50 to-yellow-100 shadow-lg shadow-yellow-500/50 glow-yellow' 
+          : 'border-yellow-300 bg-gradient-to-br from-yellow-50/50 to-yellow-100/50 hover:border-yellow-400 hover:shadow-md hover:shadow-yellow-300/30 hover:glow-yellow-soft'
       }`}
     >
       <Card className="border-0 bg-transparent">
@@ -74,14 +74,14 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
-                  <h4 className="font-bold text-lg text-green-800 leading-tight">
+                  <h4 className="font-bold text-lg text-yellow-800 leading-tight glow-text-yellow">
                     {title}
                   </h4>
                   
                   {hasDiscount && (
                     <Badge 
                       variant="outline" 
-                      className="mt-2 bg-red-100 text-red-800 border-red-200 font-semibold"
+                      className="mt-2 bg-yellow-100 text-yellow-800 border-yellow-200 font-semibold glow-soft"
                     >
                       {discountPercentage}% OFF - Limited Time!
                     </Badge>
@@ -93,7 +93,7 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
                     id={`order-bump-${product_id || 'unknown'}`}
                     checked={isSelected}
                     onCheckedChange={handleChange}
-                    className="w-6 h-6 border-2 border-green-500 data-[state=checked]:bg-green-500 data-[state=checked]:text-white rounded-md"
+                    className="w-6 h-6 border-2 border-yellow-500 data-[state=checked]:bg-yellow-500 data-[state=checked]:text-white rounded-md glow-checkbox"
                   />
                 </div>
               </div>
@@ -108,7 +108,7 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
                       }
                       <button
                         onClick={toggleExpanded}
-                        className="ml-2 text-green-600 hover:text-green-800 font-medium text-sm underline"
+                        className="ml-2 text-yellow-600 hover:text-yellow-800 font-medium text-sm underline"
                       >
                         {isExpanded ? 'Show Less' : 'Read More'}
                       </button>
@@ -122,7 +122,7 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
               </div>
               
               <div className="flex items-center gap-3 mt-4">
-                <span className="text-2xl font-bold text-green-700">
+                <span className="text-2xl font-bold text-yellow-700 glow-text-yellow">
                   {formatCurrency(finalPrice)}
                 </span>
                 {hasDiscount && (
@@ -142,7 +142,7 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
           animate={{ opacity: 1 }}
           className="absolute top-3 right-3"
         >
-          <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
+          <div className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-semibold glow-badge">
             Added ✓
           </div>
         </motion.div>
