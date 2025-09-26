@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Plus, 
+  Plus,
   Settings, 
   Zap, 
   User, 
@@ -25,7 +25,9 @@ import {
   Send,
   Mail,
   XCircle,
-  Save
+  Save,
+  ShoppingCart,
+  Calendar
 } from 'lucide-react';
 
 interface WorkflowNode {

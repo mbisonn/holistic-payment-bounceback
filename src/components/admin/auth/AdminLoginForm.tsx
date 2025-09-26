@@ -123,18 +123,6 @@ const AdminLoginForm: React.FC<AdminLoginFormProps> = ({ onSuccess, onStart, onE
           description: 'Welcome to the admin dashboard!',
         });
         
-        // Clear any stale cached admin flag to force a fresh re-check
-        try {
-          const keysToRemove: string[] = [];
-          for (let i = 0; i < sessionStorage.length; i++) {
-            const k = sessionStorage.key(i);
-            if (k && k.startsWith('isAdmin:')) keysToRemove.push(k);
-          }
-          keysToRemove.forEach((k) => sessionStorage.removeItem(k));
-        } catch (e) {
-          console.warn('Failed to clear cached admin flag:', e);
-        }
-        
         // Call onSuccess immediately
         console.log('=== CALLING onSuccess CALLBACK ===');
         onSuccess();

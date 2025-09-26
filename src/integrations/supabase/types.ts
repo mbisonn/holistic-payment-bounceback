@@ -881,6 +881,7 @@ export type Database = {
           created_at: string | null
           id: string
           message: string | null
+          reason: string | null
           requested_role: string
           reviewed_at: string | null
           reviewed_by: string | null
@@ -894,6 +895,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           message?: string | null
+          reason?: string | null
           requested_role: string
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -907,6 +909,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           message?: string | null
+          reason?: string | null
           requested_role?: string
           reviewed_at?: string | null
           reviewed_by?: string | null

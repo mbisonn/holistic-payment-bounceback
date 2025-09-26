@@ -13,10 +13,11 @@ interface UpsellProduct {
   name: string;
   description: string | null;
   price: number;
-  discount_price: number | null;
+  original_price: number | null;
   image_url: string | null;
-  type: string | null;
-  duration_months: number | null;
+  is_active: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 const UpsellPayment = () => {
@@ -28,7 +29,6 @@ const UpsellPayment = () => {
 
   const customerEmail = searchParams.get('email') || '';
   const customerName = searchParams.get('name') || '';
-  const reference = searchParams.get('ref') || '';
 
   useEffect(() => {
     if (productId) {
@@ -52,10 +52,7 @@ const UpsellPayment = () => {
       setProduct({
         ...data,
         description: data.description || '',
-        discount_price: data.discount_price || null,
-        image_url: data.image_url || null,
-        type: data.type || 'product',
-        duration_months: data.duration_months || 1
+        image_url: data.image_url || null
       });
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -67,18 +64,6 @@ const UpsellPayment = () => {
 
   const handlePaymentSuccess = async () => {
     try {
-      // Update transaction status
-      if (reference) {
-        const { error } = await supabase
-          .from('upsell_transactions')
-          .update({ status: 'completed' })
-          .eq('payment_reference', reference);
-
-        if (error) {
-          console.error('Error updating transaction:', error);
-        }
-      }
-
       toast.success('Payment successful! Thank you for your purchase.');
       
       // Redirect to success page
@@ -91,13 +76,13 @@ const UpsellPayment = () => {
   };
 
   const calculateSavings = () => {
-    if (!product || !product.discount_price) return 0;
-    return product.price - product.discount_price;
+    if (!product || !product.original_price) return 0;
+    return product.original_price - product.price;
   };
 
   const getDiscountPercentage = () => {
-    if (!product || !product.discount_price) return 0;
-    return Math.round(((product.price - product.discount_price) / product.price) * 100);
+    if (!product || !product.original_price) return 0;
+    return Math.round(((product.original_price - product.price) / product.original_price) * 100);
   };
 
   if (loading) {
@@ -124,7 +109,7 @@ const UpsellPayment = () => {
     );
   }
 
-  const finalPrice = product.discount_price || product.price;
+  const finalPrice = product.price;
   const customerInfo = {
     name: customerName || 'Guest Customer',
     email: customerEmail || 'guest@example.com',
@@ -172,7 +157,7 @@ const UpsellPayment = () => {
                   <div>
                     <h2 className="text-2xl font-bold text-glass-text mb-2">{product.name}</h2>
                     <Badge className="mb-3 bg-green-500/20 text-green-400 border-green-500/30">
-                      {product.type} • {product.duration_months} months
+                      Premium Product
                     </Badge>
                   </div>
 
@@ -216,14 +201,14 @@ const UpsellPayment = () => {
                 <div className="space-y-6">
                   {/* Pricing */}
                   <div className="text-center space-y-4">
-                    {product.discount_price && (
+                    {product.original_price && product.original_price > product.price && (
                       <div>
                         <div className="text-4xl font-bold text-glass-text">
                           ₦{finalPrice.toLocaleString()}
                         </div>
                         <div className="flex items-center justify-center space-x-2">
                           <span className="text-lg text-glass-text-secondary line-through">
-                            ₦{product.price.toLocaleString()}
+                            ₦{product.original_price.toLocaleString()}
                           </span>
                           <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
                             {getDiscountPercentage()}% OFF
@@ -235,7 +220,7 @@ const UpsellPayment = () => {
                       </div>
                     )}
                     
-                    {!product.discount_price && (
+                    {!product.original_price || product.original_price <= product.price && (
                       <div className="text-4xl font-bold text-glass-text">
                         ₦{product.price.toLocaleString()}
                       </div>

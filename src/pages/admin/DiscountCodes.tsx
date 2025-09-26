@@ -21,11 +21,11 @@ interface DiscountCode {
   value: number;
   minimum_amount: number | null;
   usage_limit: number | null;
-  used_count: number;
-  is_active: boolean;
+  used_count: number | null;
+  is_active: boolean | null;
   expires_at: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 const DiscountCodes = () => {
@@ -70,7 +70,9 @@ const DiscountCodes = () => {
       
       setCodes((data || []).map(code => ({
         ...code,
-        type: code.type as 'fixed' | 'percentage'
+        type: code.type as 'fixed' | 'percentage',
+        used_count: code.used_count || 0,
+        is_active: code.is_active ?? true
       })));
     } catch (error) {
       console.error('Error fetching discount codes:', error);
@@ -232,7 +234,7 @@ const DiscountCodes = () => {
       value: code.value,
       minimum_amount: code.minimum_amount?.toString() || '',
       usage_limit: code.usage_limit?.toString() || '',
-      is_active: code.is_active,
+      is_active: code.is_active ?? true,
       expires_at: code.expires_at ? code.expires_at.split('T')[0] : ''
     });
     setIsCreateDialogOpen(true);
@@ -440,7 +442,7 @@ const DiscountCodes = () => {
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Used:</span>
                     <span>
-                      {code.used_count}{code.usage_limit ? `/${code.usage_limit}` : ''}
+                      {code.used_count || 0}{code.usage_limit ? `/${code.usage_limit}` : ''}
                     </span>
                   </div>
                   

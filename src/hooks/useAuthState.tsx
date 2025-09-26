@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +12,7 @@ export const useAuthState = () => {
     try {
       console.log('Checking admin status for user:', userId);
 
-      // Check user_roles table for admin role
+      // Check user_roles table for admin role - don't use cache during debugging
       const { data: userRoles, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -38,6 +37,7 @@ export const useAuthState = () => {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     // Get initial session with retry logic
     const getInitialSession = async (retryCount = 0) => {
@@ -48,7 +48,7 @@ export const useAuthState = () => {
           console.error('Error getting session:', error);
           // Retry once on network errors
           if (retryCount === 0 && error.message.includes('network')) {
-            setTimeout(() => getInitialSession(1), 1000);
+            timeoutId = setTimeout(() => getInitialSession(1), 1000);
             return;
           }
           if (mounted) {
@@ -61,7 +61,10 @@ export const useAuthState = () => {
         if (session?.user && mounted) {
           setUser(session.user);
           setError(null);
-          await checkAdminStatus(session.user.id);
+          // Small delay to ensure UI is ready
+          timeoutId = setTimeout(() => {
+            if (mounted) checkAdminStatus(session.user.id);
+          }, 100);
         } else if (mounted) {
           setUser(null);
           setIsAdmin(false);
@@ -90,7 +93,11 @@ export const useAuthState = () => {
           if (session?.user) {
             setUser(session.user);
             setError(null);
-            await checkAdminStatus(session.user.id);
+            
+            // Always check admin status after login to ensure fresh data
+            timeoutId = setTimeout(() => {
+              if (mounted) checkAdminStatus(session.user.id);
+            }, 500);
             
             // Store session persistence flag
             localStorage.setItem('supabase.auth.token', 'persisted');
@@ -99,8 +106,14 @@ export const useAuthState = () => {
             setIsAdmin(false);
             setError(null);
             
-            // Clear persistence flag on logout
+            // Clear cache and persistence flag on logout
             localStorage.removeItem('supabase.auth.token');
+            const keys = Object.keys(sessionStorage);
+            keys.forEach(key => {
+              if (key.startsWith('isAdmin:')) {
+                sessionStorage.removeItem(key);
+              }
+            });
           }
         } catch (error) {
           console.error('Error in auth state change:', error);
@@ -118,6 +131,7 @@ export const useAuthState = () => {
 
     return () => {
       mounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);

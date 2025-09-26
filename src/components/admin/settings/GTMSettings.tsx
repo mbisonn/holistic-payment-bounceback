@@ -65,7 +65,10 @@ const GTMSettings = () => {
         updated_at: item.updated_at
       }));
 
-      setGtmSettings(gtmData);
+      setGtmSettings(gtmData.map(item => ({
+        ...item,
+        is_active: item.is_active || false
+      })));
     } catch (error) {
       console.error('Error fetching GTM settings:', error);
       toast({

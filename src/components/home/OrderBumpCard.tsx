@@ -81,7 +81,7 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
                   {hasDiscount && (
                     <Badge 
                       variant="outline" 
-                      className="mt-2 bg-red-100 text-red-800 border-red-200 font-semibold"
+                      className="mt-2 bg-yellow-100 text-yellow-800 border-yellow-200 font-semibold glow-soft"
                     >
                       {discountPercentage}% OFF - Limited Time!
                     </Badge>
@@ -108,7 +108,7 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
                       }
                       <button
                         onClick={toggleExpanded}
-                        className="ml-2 text-green-600 hover:text-green-800 font-medium text-sm underline"
+                        className="ml-2 text-yellow-600 hover:text-yellow-800 font-medium text-sm underline"
                       >
                         {isExpanded ? 'Show Less' : 'Read More'}
                       </button>
@@ -142,7 +142,7 @@ const OrderBumpCard: React.FC<OrderBumpCardProps> = ({
           animate={{ opacity: 1 }}
           className="absolute top-3 right-3"
         >
-          <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
+          <div className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-semibold glow-badge">
             Added ✓
           </div>
         </motion.div>

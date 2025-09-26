@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,8 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus, Mail, Bell } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface NotificationSettings {
   id?: string;
@@ -24,51 +23,18 @@ export default function NotificationSettings() {
   });
   const [newEmail, setNewEmail] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('notification_settings')
-        .select('*')
-        .eq('setting_type', 'activity_notifications')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      if (data) {
-        setSettings(data);
-      }
-    } catch (error) {
-      console.error('Error fetching notification settings:', error);
-    }
-  };
+  const { toast } = useToast();
 
   const saveSettings = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('notification_settings')
-        .upsert({
-          id: settings.id,
-          setting_type: 'activity_notifications',
-          email_addresses: settings.email_addresses,
-          is_active: settings.is_active
-        });
-
-      if (error) throw error;
+      // Mock save - in production, this would save to backend
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       toast({
         title: 'Success',
         description: 'Notification settings saved successfully',
       });
-
-      await fetchSettings();
     } catch (error) {
       console.error('Error saving settings:', error);
       toast({

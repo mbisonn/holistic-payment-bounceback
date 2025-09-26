@@ -4,12 +4,12 @@ interface ShippingSettings {
   id: string;
   name: string;
   description?: string | null;
-  base_fee: number;
-  lagos_delivery_fee: number;
-  other_states_delivery_fee: number;
-  free_shipping_threshold: number;
-  enable_free_shipping: boolean;
-  is_active: boolean;
+  base_fee: number | null;
+  lagos_delivery_fee: number | null;
+  other_states_delivery_fee: number | null;
+  free_shipping_threshold: number | null;
+  enable_free_shipping: boolean | null;
+  is_active: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -33,13 +33,13 @@ export const getShippingFee = async (state: string, cartItems: any[] = []): Prom
     // Use settings for calculation
     const isLagos = state?.toLowerCase().includes('lagos');
     const orderTotal = Array.isArray(cartItems) && cartItems.length > 0 ? cartItems.reduce((sum, v) => sum + (typeof v === 'number' ? v : 0), 0) : 0;
-    if (activeSetting.enable_free_shipping && orderTotal >= activeSetting.free_shipping_threshold) {
+    if ((activeSetting.enable_free_shipping ?? false) && orderTotal >= (activeSetting.free_shipping_threshold ?? 0)) {
       return 0;
     }
     if (isLagos) {
-      return activeSetting.lagos_delivery_fee;
+      return activeSetting.lagos_delivery_fee ?? 2000;
     } else {
-      return activeSetting.other_states_delivery_fee;
+      return activeSetting.other_states_delivery_fee ?? 4000;
     }
   } catch (error) {
     console.error('Error calculating shipping fee:', error);
@@ -56,7 +56,7 @@ export const getShippingSettings = async (): Promise<ShippingSettings[]> => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as ShippingSettings[];
   } catch (error) {
     console.error('Error fetching shipping settings:', error);
     return [];
