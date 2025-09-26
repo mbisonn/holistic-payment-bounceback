@@ -64,6 +64,11 @@
     --chart-4: 300 80% 60%;
     --chart-5: 320 70% 50%;
     
+    /* Bright yellow order bump colors */
+    --yellow-bright: 45 100% 60%;
+    --yellow-glow: 45 100% 70%;
+    --yellow-shadow: 45 100% 50%;
+    
     --radius: 0.75rem;
     
     /* Transitions */
@@ -446,6 +451,30 @@
 @keyframes scale-in {
   0% { opacity: 0; transform: scale(0.9); }
   100% { opacity: 1; transform: scale(1); }
+}
+
+/* Bright Yellow Order Bump Styles */
+.order-bump-card {
+  background: linear-gradient(135deg, hsl(var(--yellow-bright)), hsl(var(--yellow-glow))) !important;
+  border: 2px solid hsl(var(--yellow-glow)) !important;
+  box-shadow: 0 0 30px hsl(var(--yellow-shadow) / 0.6), 0 8px 32px hsl(var(--yellow-shadow) / 0.4) !important;
+  animation: yellow-pulse 3s ease-in-out infinite !important;
+  transform: translateY(0px) !important;
+  transition: all 0.3s ease !important;
+}
+
+.order-bump-card:hover {
+  box-shadow: 0 0 40px hsl(var(--yellow-shadow) / 0.8), 0 12px 40px hsl(var(--yellow-shadow) / 0.5) !important;
+  transform: translateY(-4px) scale(1.02) !important;
+}
+
+@keyframes yellow-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 30px hsl(var(--yellow-shadow) / 0.6), 0 8px 32px hsl(var(--yellow-shadow) / 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 45px hsl(var(--yellow-shadow) / 0.8), 0 12px 40px hsl(var(--yellow-shadow) / 0.6);
+  }
 }
 
 /* Glass Morphism */
