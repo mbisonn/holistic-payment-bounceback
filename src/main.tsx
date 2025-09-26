@@ -3,7 +3,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { AuthProvider } from '@/contexts/auth/AuthProvider'
+import { AuthProvider } from '@/contexts/auth/AuthContext'
 import { initGTMErrorPrevention } from './utils/gtmErrorPrevention'
 
 // Initialize GTM error prevention

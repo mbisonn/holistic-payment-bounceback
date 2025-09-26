@@ -7,17 +7,16 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, loading, isAdmin } = useAuth();
+  const { currentUser, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     console.log('=== PROTECTED ROUTE CHECK ===');
     console.log('Loading:', loading);
-    console.log('User:', user?.email || 'No user');
-    console.log('IsAdmin:', isAdmin);
+    console.log('User:', currentUser?.email || 'No user');
     
     if (!loading) {
-      if (!user) {
+      if (!currentUser) {
         console.log('No user found, redirecting to login');
         navigate('/admin/login', { replace: true });
         return;
@@ -25,7 +24,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       
       console.log('User is authenticated, allowing access to dashboard');
     }
-  }, [user, loading, navigate]);
+  }, [currentUser, loading, navigate]);
 
   // Show loading while checking authentication
   if (loading) {
@@ -40,7 +39,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // Don't render content if not authenticated
-  if (!user) {
+  if (!currentUser) {
     return null;
   }
 
