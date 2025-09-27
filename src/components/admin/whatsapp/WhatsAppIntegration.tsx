@@ -56,7 +56,7 @@ interface WhatsAppTemplate {
 interface WhatsAppMessage {
   id: string;
   customer_phone: string;
-  customer_name?: string;
+  customer_name?: string | null;
   template_id: string;
   content: string;
   status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
@@ -651,10 +651,10 @@ const WhatsAppIntegration = () => {
 
           {/* Messages List */}
           <div className="space-y-4">
-            {messages
+            {(messages || [])
               .filter(msg => 
                 (searchTerm === '' || 
-                 (msg.customer_name && msg.customer_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                 (msg.customer_name && typeof msg.customer_name === 'string' && msg.customer_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
                  msg.customer_phone.includes(searchTerm)) &&
                 (statusFilter === 'all' || msg.status === statusFilter)
               )
