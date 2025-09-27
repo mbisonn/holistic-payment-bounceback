@@ -27,7 +27,10 @@ import {
   User, 
   Zap,
   X,
-  Trash2
+  Trash2,
+  Eye,
+  Target,
+  Filter
 } from 'lucide-react';
 
 interface WorkflowNode {
