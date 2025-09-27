@@ -160,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const value: AuthContextType = {
+    user: currentUser,
     currentUser,
     session,
     loading,
@@ -167,7 +168,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signUp,
     signOut,
+    logout,
     resetPassword,
+    resendVerification,
+    hasRole,
   };
 
   return (

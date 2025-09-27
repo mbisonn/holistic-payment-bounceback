@@ -34,7 +34,7 @@ export default function AccessRequestForm({ onRequestSubmitted }: AccessRequestF
     setIsSubmitting(true);
     try {
       const { error } = await supabase.rpc('create_access_request', {
-        user_email: 'user@example.com', // Mock email since user context isn't available
+        user_email: '', // Will use current user's email from function
         request_reason: message || 'Access request'
       });
 

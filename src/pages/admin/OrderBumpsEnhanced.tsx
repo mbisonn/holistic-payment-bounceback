@@ -188,8 +188,8 @@ const OrderBumpsEnhanced = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {orderBumps.map((orderBump) => (
-          <Card key={orderBump.id} className="overflow-hidden bg-yellow-50 border-yellow-300 shadow-lg shadow-yellow-200/50">
-            <div className="aspect-video bg-gradient-to-br from-yellow-100 to-yellow-200 relative">
+          <Card key={orderBump.id} className="overflow-hidden order-bump-card">
+            <div className="aspect-video bg-gradient-to-br from-yellow-300 to-yellow-400 relative">
               {orderBump.image ? (
                 <img
                   src={orderBump.image}
@@ -197,26 +197,26 @@ const OrderBumpsEnhanced = () => {
                   className="w-full h-full object-cover rounded-t-lg"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-yellow-600">
+                <div className="w-full h-full flex items-center justify-center text-yellow-800">
                   <Package className="w-12 h-12" />
                 </div>
               )}
             </div>
-            <CardContent className="p-4 bg-yellow-50">
+            <CardContent className="p-4 bg-gradient-to-br from-yellow-400 to-yellow-500">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-semibold text-lg truncate text-yellow-900">{orderBump.title}</h3>
-                <Badge variant={orderBump.is_active ? "default" : "secondary"} className="bg-yellow-400 text-yellow-900 hover:bg-yellow-500">
+                <Badge variant={orderBump.is_active ? "default" : "secondary"} className="bg-yellow-600 text-white hover:bg-yellow-700 shadow-lg">
                   {orderBump.is_active ? "Active" : "Inactive"}
                 </Badge>
               </div>
-              <p className="text-yellow-800 text-sm mb-3 line-clamp-2">{orderBump.description}</p>
+              <p className="text-yellow-900 text-sm mb-3 line-clamp-2 font-medium">{orderBump.description}</p>
               <div className="flex justify-between items-center">
                 <div className="flex flex-col items-start">
-                  <span className="text-2xl font-bold text-yellow-900 bg-yellow-200 px-3 py-1 rounded-lg shadow-md">
+                  <span className="text-2xl font-bold text-white bg-yellow-600 px-3 py-1 rounded-lg shadow-lg border-2 border-yellow-700">
                     ₦{(orderBump.discounted_price || orderBump.original_price).toLocaleString()}
                   </span>
                   {orderBump.discounted_price && (
-                    <span className="text-lg text-yellow-700 line-through mt-1">
+                    <span className="text-lg text-yellow-800 line-through mt-1 font-medium">
                       ₦{orderBump.original_price.toLocaleString()}
                     </span>
                   )}
@@ -226,7 +226,7 @@ const OrderBumpsEnhanced = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => openEditDialog(orderBump)}
-                    className="border-yellow-400 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-800 shadow-md"
+                    className="border-2 border-yellow-700 text-yellow-900 bg-yellow-200 hover:bg-yellow-300 hover:text-yellow-900 shadow-lg font-medium"
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
@@ -234,7 +234,7 @@ const OrderBumpsEnhanced = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => handleDeleteOrderBump(orderBump.id)}
-                    className="border-red-400 text-red-600 hover:bg-red-50 hover:text-red-700 shadow-md"
+                    className="border-2 border-red-600 text-red-700 bg-red-100 hover:bg-red-200 hover:text-red-800 shadow-lg font-medium"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
