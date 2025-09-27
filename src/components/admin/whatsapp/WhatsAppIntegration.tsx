@@ -56,7 +56,7 @@ interface WhatsAppTemplate {
 interface WhatsAppMessage {
   id: string;
   customer_phone: string;
-  customer_name: string;
+  customer_name?: string;
   template_id: string;
   content: string;
   status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
@@ -654,7 +654,7 @@ const WhatsAppIntegration = () => {
             {messages
               .filter(msg => 
                 (searchTerm === '' || 
-                 msg.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                 (msg.customer_name && msg.customer_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
                  msg.customer_phone.includes(searchTerm)) &&
                 (statusFilter === 'all' || msg.status === statusFilter)
               )
@@ -664,7 +664,7 @@ const WhatsAppIntegration = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
-                        <h3 className="text-white font-semibold">{message.customer_name}</h3>
+                        <h3 className="text-white font-semibold">{message.customer_name || 'Unknown Customer'}</h3>
                         <Badge className={getStatusColor(message.status)}>
                           {message.status}
                         </Badge>
