@@ -235,8 +235,8 @@ export default function SystemeWorkflowBuilder() {
       const workflowData = {
         name: selectedWorkflow.name,
         description: selectedWorkflow.description,
-        trigger_type: selectedWorkflow.nodes.find(n => n.type === 'trigger')?.name || 'manual',
-        trigger_config: JSON.stringify({ nodes: selectedWorkflow.nodes }),
+        trigger_type: (selectedWorkflow.nodes || []).find(n => n.type === 'trigger')?.name || 'manual',
+        trigger_config: JSON.stringify({ nodes: selectedWorkflow.nodes || [] }),
         is_active: selectedWorkflow.is_active
       };
 
@@ -317,7 +317,7 @@ export default function SystemeWorkflowBuilder() {
 
     setSelectedWorkflow({
       ...selectedWorkflow,
-      nodes: [...selectedWorkflow.nodes, newNode]
+      nodes: [...(selectedWorkflow.nodes || []), newNode]
     });
     setIsEditing(true);
   };
@@ -327,7 +327,7 @@ export default function SystemeWorkflowBuilder() {
 
     setSelectedWorkflow({
       ...selectedWorkflow,
-      nodes: selectedWorkflow.nodes.filter(node => node.id !== nodeId)
+      nodes: (selectedWorkflow.nodes || []).filter(node => node.id !== nodeId)
     });
     setIsEditing(true);
   };
@@ -451,7 +451,7 @@ export default function SystemeWorkflowBuilder() {
                 onDrop={handleCanvasDrop}
             onDragOver={(e) => e.preventDefault()}
           >
-                {selectedWorkflow.nodes.map((node, index) => (
+                {(selectedWorkflow.nodes || []).map((node, index) => (
               <div
                 key={node.id}
                     className="absolute bg-gray-700 border border-gray-600 rounded-lg p-3 cursor-pointer hover:border-purple-500"
@@ -486,7 +486,7 @@ export default function SystemeWorkflowBuilder() {
               </div>
             ))}
                 
-                {selectedWorkflow.nodes.length === 0 && (
+                {(selectedWorkflow.nodes || []).length === 0 && (
                   <div className="flex items-center justify-center h-full text-gray-400">
                     <div className="text-center">
                       <Zap className="w-12 h-12 mx-auto mb-2" />
