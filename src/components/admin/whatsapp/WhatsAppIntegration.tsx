@@ -867,7 +867,7 @@ const WhatsAppIntegration = () => {
                 className="w-full h-32 p-3 bounce-back-consult-input text-white border-white/20 rounded-lg resize-none"
               />
               <p className="text-xs text-gray-400 mt-1">
-                Use variables like {'{{customer_name}}'}, {'{{product_name}}'}, {'{{amount}}'}, {'{{order_id}}'}
+                Use variables like {{customer_name}}, {{product_name}}, {{amount}}, {{order_id}}
               </p>
             </div>
 

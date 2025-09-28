@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+// Removed unused Badge import
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +22,8 @@ import {
   Database,
   Send,
   XCircle,
+  ShoppingCart,
+  Calendar,
   User, 
   Zap,
   X,
@@ -103,6 +106,74 @@ const NODE_TYPES = {
     ]
   }
 };
+
+const WORKFLOW_TEMPLATES = [
+  {
+    id: 'welcome_series',
+    name: 'Welcome Series',
+    description: 'Complete welcome series for new customers',
+    icon: '👋',
+    nodes: [
+      { id: 'start', type: 'start', label: 'Start', position: { x: 100, y: 100 }, data: {}, connections: ['trigger1'] },
+      { id: 'trigger1', type: 'trigger', label: 'Customer Signup', position: { x: 300, y: 100 }, data: { trigger: 'customer_signup' }, connections: ['action1'] },
+      { id: 'action1', type: 'action', label: 'Send Welcome Email', position: { x: 500, y: 100 }, data: { action: 'send_email' }, connections: ['delay1'] },
+      { id: 'delay1', type: 'delay', label: 'Wait 1 Day', position: { x: 700, y: 100 }, data: { delay: 'wait_days', value: 1 }, connections: ['action2'] },
+      { id: 'action2', type: 'action', label: 'Send Follow-up', position: { x: 900, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
+      { id: 'end', type: 'end', label: 'End', position: { x: 1100, y: 100 }, data: {}, connections: [] },
+    ],
+    connections: [
+      { id: 'c1', source: 'start', target: 'trigger1' },
+      { id: 'c2', source: 'trigger1', target: 'action1' },
+      { id: 'c3', source: 'action1', target: 'delay1' },
+      { id: 'c4', source: 'delay1', target: 'action2' },
+      { id: 'c5', source: 'action2', target: 'end' },
+    ]
+  },
+  {
+    id: 'abandoned_cart_recovery',
+    name: 'Abandoned Cart Recovery',
+    description: 'Recover abandoned carts with targeted emails',
+    icon: '🛒',
+    nodes: [
+      { id: 'start', type: 'start', label: 'Start', position: { x: 100, y: 100 }, data: {}, connections: ['trigger1'] },
+      { id: 'trigger1', type: 'trigger', label: 'Cart Abandoned', position: { x: 300, y: 100 }, data: { trigger: 'abandoned_cart' }, connections: ['delay1'] },
+      { id: 'delay1', type: 'delay', label: 'Wait 1 Hour', position: { x: 500, y: 100 }, data: { delay: 'wait_hours', value: 1 }, connections: ['action1'] },
+      { id: 'action1', type: 'action', label: 'Send Recovery Email', position: { x: 700, y: 100 }, data: { action: 'send_email' }, connections: ['delay2'] },
+      { id: 'delay2', type: 'delay', label: 'Wait 24 Hours', position: { x: 900, y: 100 }, data: { delay: 'wait_hours', value: 24 }, connections: ['action2'] },
+      { id: 'action2', type: 'action', label: 'Send Final Email', position: { x: 1100, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
+      { id: 'end', type: 'end', label: 'End', position: { x: 1300, y: 100 }, data: {}, connections: [] },
+    ],
+    connections: [
+      { id: 'c1', source: 'start', target: 'trigger1' },
+      { id: 'c2', source: 'trigger1', target: 'delay1' },
+      { id: 'c3', source: 'delay1', target: 'action1' },
+      { id: 'c4', source: 'action1', target: 'delay2' },
+      { id: 'c5', source: 'delay2', target: 'action2' },
+      { id: 'c6', source: 'action2', target: 'end' },
+    ]
+  },
+  {
+    id: 'post_purchase_sequence',
+    name: 'Post-Purchase Sequence',
+    description: 'Follow up after successful purchase',
+    icon: '🎉',
+    nodes: [
+      { id: 'start', type: 'start', label: 'Start', position: { x: 100, y: 100 }, data: {}, connections: ['trigger1'] },
+      { id: 'trigger1', type: 'trigger', label: 'Purchase Complete', position: { x: 300, y: 100 }, data: { trigger: 'purchase_paystack' }, connections: ['action1'] },
+      { id: 'action1', type: 'action', label: 'Send Thank You', position: { x: 500, y: 100 }, data: { action: 'send_email' }, connections: ['delay1'] },
+      { id: 'delay1', type: 'delay', label: 'Wait 3 Days', position: { x: 700, y: 100 }, data: { delay: 'wait_days', value: 3 }, connections: ['action2'] },
+      { id: 'action2', type: 'action', label: 'Request Review', position: { x: 900, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
+      { id: 'end', type: 'end', label: 'End', position: { x: 1100, y: 100 }, data: {}, connections: [] },
+    ],
+    connections: [
+      { id: 'c1', source: 'start', target: 'trigger1' },
+      { id: 'c2', source: 'trigger1', target: 'action1' },
+      { id: 'c3', source: 'action1', target: 'delay1' },
+      { id: 'c4', source: 'delay1', target: 'action2' },
+      { id: 'c5', source: 'action2', target: 'end' },
+    ]
+  }
+];
 export default function SystemeWorkflowBuilder() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
@@ -130,9 +201,7 @@ export default function SystemeWorkflowBuilder() {
 
       const formattedWorkflows = (data || []).map(workflow => ({
         ...workflow,
-        nodes: Array.isArray((workflow as any)?.trigger_config?.nodes)
-          ? (workflow as any).trigger_config.nodes
-          : []
+        nodes: (workflow.trigger_config as any)?.nodes || []
       }));
       
       setWorkflows(formattedWorkflows);
@@ -240,7 +309,7 @@ export default function SystemeWorkflowBuilder() {
     const newNode: WorkflowNode = {
       id: `node_${Date.now()}`,
       type: nodeType.type,
-      name: nodeType.label,
+      name: nodeType.name,
       config: {},
       position,
       connections: []
@@ -319,7 +388,7 @@ export default function SystemeWorkflowBuilder() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-white font-medium">{workflow.name}</h3>
-                    <p className="text-sm text-gray-400">{Array.isArray(workflow.nodes) ? workflow.nodes.length : 0} steps</p>
+                    <p className="text-sm text-gray-400">{workflow.nodes.length} steps</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant={workflow.is_active ? "default" : "secondary"}>
@@ -393,20 +462,20 @@ export default function SystemeWorkflowBuilder() {
                 onClick={() => setSelectedNode(node)}
                   >
                     <div className="flex items-center gap-2">
-                      {NODE_TYPES[node.type as keyof typeof NODE_TYPES]?.nodes.find(t => t.label === node.name)?.icon && (
+                      {NODE_TYPES[node.type as keyof typeof NODE_TYPES]?.find(t => t.name === node.name)?.icon && (
                         <div className="text-white">
                           {React.createElement(
-                            NODE_TYPES[node.type as keyof typeof NODE_TYPES]?.nodes.find(t => t.label === node.name)?.icon!,
+                            NODE_TYPES[node.type as keyof typeof NODE_TYPES]?.find(t => t.name === node.name)?.icon!,
                             { className: "w-4 h-4" }
                           )}
-                        </div>
+                </div>
                       )}
                       <span className="text-white text-sm">{node.name}</span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                    onClick={(e) => {
+                      e.stopPropagation();
                           deleteNode(node.id);
                         }}
                         className="text-red-400 hover:text-red-300 p-1 h-auto"
@@ -443,32 +512,31 @@ export default function SystemeWorkflowBuilder() {
             <CardTitle className="text-white">Node Palette</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {Object.entries(NODE_TYPES).map(([type, def]) => (
+            {Object.entries(NODE_TYPES).map(([type, nodes]) => (
               <div key={type}>
                 <h4 className="text-sm font-medium text-gray-300 mb-2 capitalize">{type}s</h4>
                 <div className="space-y-2">
-                  {def.nodes.map((node) => {
-            const Icon = node.icon;
-            return (
-              <div
-                key={node.id}
-                className="flex items-center gap-2 p-2 bg-gray-700 rounded-lg cursor-move hover:bg-gray-600"
-                draggable
-                onDragStart={() => setDraggedNodeType({ ...node, type })}
-              >
-                <Icon className="w-4 h-4 text-white" />
-                <span className="text-white text-sm">{node.label}</span>
-              </div>
-            );
-          })}
+                  {nodes.map((node) => {
+                    const Icon = node.icon;
+                    return (
+                      <div
+                        key={node.id}
+                        className="flex items-center gap-2 p-2 bg-gray-700 rounded-lg cursor-move hover:bg-gray-600"
+                        draggable
+                        onDragStart={() => setDraggedNodeType({ ...node, type })}
+                      >
+                        <Icon className="w-4 h-4 text-white" />
+                        <span className="text-white text-sm">{node.name}</span>
+                    </div>
+                    );
+                  })}
                   </div>
                 </div>
               ))}
           </CardContent>
         </Card>
-
-        </div>
-
+          </div>
+          
       {/* Node Configuration Panel */}
       {selectedNode && (
         <Card className="bg-gray-800 border-gray-700">
@@ -478,7 +546,7 @@ export default function SystemeWorkflowBuilder() {
           <CardContent className="space-y-4">
             {selectedNode.type === 'action' && selectedNode.name === 'Send Email' && (
               <div className="space-y-4">
-                <div>
+            <div>
                   <Label className="text-white">Email Template</Label>
                   <Select>
                     <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
