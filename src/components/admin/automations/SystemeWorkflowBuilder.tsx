@@ -462,12 +462,19 @@ export default function SystemeWorkflowBuilder() {
                 onClick={() => setSelectedNode(node)}
                   >
                     <div className="flex items-center gap-2">
-                      {NODE_TYPES[node.type as keyof typeof NODE_TYPES]?.find(t => t.name === node.name)?.icon && (
+                      {(() => {
+                        const group = NODE_TYPES[node.type as keyof typeof NODE_TYPES] as any;
+                        const list = Array.isArray(group) ? group : group?.nodes;
+                        const match = Array.isArray(list) ? list.find((t: any) => t.name === node.name) : undefined;
+                        return match?.icon;
+                      })() && (
                         <div className="text-white">
-                          {React.createElement(
-                            NODE_TYPES[node.type as keyof typeof NODE_TYPES]?.find(t => t.name === node.name)?.icon!,
-                            { className: "w-4 h-4" }
-                          )}
+                          {(() => {
+                            const group = NODE_TYPES[node.type as keyof typeof NODE_TYPES] as any;
+                            const list = Array.isArray(group) ? group : group?.nodes;
+                            const match = Array.isArray(list) ? list.find((t: any) => t.name === node.name) : undefined;
+                            return match?.icon ? React.createElement(match.icon, { className: "w-4 h-4" }) : null;
+                          })()}
                 </div>
                       )}
                       <span className="text-white text-sm">{node.name}</span>
