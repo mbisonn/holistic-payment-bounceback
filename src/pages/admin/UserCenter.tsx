@@ -140,37 +140,37 @@ export default function UserCenter() {
         const rpcResult = await supabase.rpc('get_all_users' as any);
         usersError = rpcResult.error;
         authUsers = rpcResult.data || [];
-        
-        if (usersError) {
+      
+      if (usersError) {
           console.warn('RPC also failed:', usersError.message);
-          
-          // If user is not admin, show appropriate message
-          if (usersError.message?.includes('Only admins can view all users')) {
-            setInlineError('Admin access required to view all users. Please ensure you have admin privileges.');
-            setUsers([]);
-            setRolesByUser({});
-            setAccessRequests([]);
-            setLoading(false);
-            return;
-          }
-          
-          // For other errors, try fallback to current user
-          console.log('Falling back to current user only');
-          const { data: { user: currentUser } } = await supabase.auth.getUser();
-          
-          if (!currentUser) {
-            throw new Error('No authenticated user found');
-          }
+        
+        // If user is not admin, show appropriate message
+        if (usersError.message?.includes('Only admins can view all users')) {
+          setInlineError('Admin access required to view all users. Please ensure you have admin privileges.');
+          setUsers([]);
+          setRolesByUser({});
+          setAccessRequests([]);
+          setLoading(false);
+          return;
+        }
+        
+        // For other errors, try fallback to current user
+        console.log('Falling back to current user only');
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        
+        if (!currentUser) {
+          throw new Error('No authenticated user found');
+        }
 
-          authUsers = [{
-            id: currentUser.id,
-            email: currentUser.email,
-            created_at: currentUser.created_at,
-            user_metadata: currentUser.user_metadata || {}
-          }] as any[];
-          
-          setInlineError('Limited view: Only showing your user account. Admin access required to see all users.');
-        } else {
+        authUsers = [{
+          id: currentUser.id,
+          email: currentUser.email,
+          created_at: currentUser.created_at,
+          user_metadata: currentUser.user_metadata || {}
+        }] as any[];
+        
+        setInlineError('Limited view: Only showing your user account. Admin access required to see all users.');
+      } else {
           console.log(`Successfully retrieved ${authUsers.length} users via RPC fallback`);
         }
       }
