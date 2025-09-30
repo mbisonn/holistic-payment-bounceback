@@ -37,7 +37,8 @@ import {
   MapPin,
   Phone,
   Send,
-  Edit
+  Edit,
+  AlertCircle
 } from 'lucide-react';
 
 interface Review {

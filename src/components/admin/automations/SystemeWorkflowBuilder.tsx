@@ -516,7 +516,7 @@ export default function SystemeWorkflowBuilder() {
               <div key={type}>
                 <h4 className="text-sm font-medium text-gray-300 mb-2 capitalize">{type}s</h4>
                 <div className="space-y-2">
-                  {nodes.map((node) => {
+                  {(Array.isArray(nodes) ? nodes : (nodes as any)?.nodes || []).map((node) => {
                     const Icon = node.icon;
                     return (
                       <div
