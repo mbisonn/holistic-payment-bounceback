@@ -27,7 +27,17 @@ import {
   Calendar,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Building,
+  Bell,
+  BellOff,
+  Link2,
+  Unlink,
+  RefreshCw,
+  MapPin,
+  Phone,
+  Send,
+  Edit
 } from 'lucide-react';
 
 interface Review {
@@ -58,6 +68,36 @@ interface ReputationStats {
   flagged_reviews: number;
 }
 
+interface GoogleReview {
+  id: string;
+  reviewer: {
+    displayName: string;
+    profilePhotoUrl?: string;
+    isAnonymous: boolean;
+  };
+  starRating: 'ONE' | 'TWO' | 'THREE' | 'FOUR' | 'FIVE';
+  comment?: string;
+  createTime: string;
+  updateTime: string;
+  reviewReply?: {
+    comment: string;
+    updateTime: string;
+  };
+}
+
+interface BusinessLocation {
+  name: string;
+  locationName: string;
+  address: string;
+  phone?: string;
+  websiteUrl?: string;
+  averageRating: number;
+  totalReviewCount: number;
+  newReviewCount: number;
+  locationId: string;
+  isConnected: boolean;
+}
+
 const ReputationManagement = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [filteredReviews, setFilteredReviews] = useState<Review[]>([]);
@@ -71,12 +111,25 @@ const ReputationManagement = () => {
   const [responseDialog, setResponseDialog] = useState(false);
   const [responseText, setResponseText] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Google My Business state
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleConnecting, setGoogleConnecting] = useState(false);
+  const [businessLocations, setBusinessLocations] = useState<BusinessLocation[]>([]);
+  const [selectedLocation, setSelectedLocation] = useState<BusinessLocation | null>(null);
+  const [googleReviews, setGoogleReviews] = useState<GoogleReview[]>([]);
+  const [loadingGoogleReviews, setLoadingGoogleReviews] = useState(false);
+  const [googleReplyDialog, setGoogleReplyDialog] = useState(false);
+  const [selectedGoogleReview, setSelectedGoogleReview] = useState<GoogleReview | null>(null);
+  const [googleReplyText, setGoogleReplyText] = useState('');
+  const [googleNotifications, setGoogleNotifications] = useState(true);
 
   const { toast } = useToast();
 
   useEffect(() => {
     fetchReviews();
     fetchStats();
+    checkGoogleConnection();
   }, []);
 
   useEffect(() => {
@@ -102,6 +155,162 @@ const ReputationManagement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const checkGoogleConnection = async () => {
+    // Check if Google My Business is connected (mock implementation)
+    const connected = localStorage.getItem('google_my_business_connected') === 'true';
+    if (connected) {
+      setGoogleConnected(true);
+      // Load mock business locations
+      const mockLocation: BusinessLocation = {
+        name: 'Bounce Back to Life Consult',
+        locationName: 'Main Office',
+        address: '123 Business St, City, State 12345',
+        phone: '(555) 123-4567',
+        websiteUrl: 'https://www.bouncebacktolifeconsult.pro',
+        averageRating: 4.7,
+        totalReviewCount: 156,
+        newReviewCount: 3,
+        locationId: 'loc_123456',
+        isConnected: true
+      };
+      setBusinessLocations([mockLocation]);
+      setSelectedLocation(mockLocation);
+      fetchGoogleReviews();
+    }
+  };
+
+  const connectGoogleAccount = () => {
+    setGoogleConnecting(true);
+    
+    // Mock connection process
+    setTimeout(() => {
+      localStorage.setItem('google_my_business_connected', 'true');
+      setGoogleConnected(true);
+      
+      const mockLocation: BusinessLocation = {
+        name: 'Bounce Back to Life Consult',
+        locationName: 'Main Office',
+        address: '123 Business St, City, State 12345',
+        phone: '(555) 123-4567',
+        websiteUrl: 'https://www.bouncebacktolifeconsult.pro',
+        averageRating: 4.7,
+        totalReviewCount: 156,
+        newReviewCount: 3,
+        locationId: 'loc_123456',
+        isConnected: true
+      };
+      setBusinessLocations([mockLocation]);
+      setSelectedLocation(mockLocation);
+      setGoogleConnecting(false);
+      fetchGoogleReviews();
+      
+      toast({
+        title: 'Success!',
+        description: 'Google My Business account connected successfully'
+      });
+    }, 2000);
+  };
+
+  const disconnectGoogle = () => {
+    localStorage.removeItem('google_my_business_connected');
+    setGoogleConnected(false);
+    setBusinessLocations([]);
+    setGoogleReviews([]);
+    setSelectedLocation(null);
+    
+    toast({
+      title: 'Disconnected',
+      description: 'Google My Business account disconnected'
+    });
+  };
+
+  const fetchGoogleReviews = () => {
+    setLoadingGoogleReviews(true);
+    // Mock Google reviews
+    const mockReviews: GoogleReview[] = [
+      {
+        id: 'google_review_1',
+        reviewer: {
+          displayName: 'John Smith',
+          isAnonymous: false
+        },
+        starRating: 'FIVE',
+        comment: 'Excellent service! The team was very professional and helped me through every step of the process.',
+        createTime: '2024-01-15T10:30:00Z',
+        updateTime: '2024-01-15T10:30:00Z',
+        reviewReply: {
+          comment: 'Thank you so much for your kind words! We are thrilled to hear about your positive experience.',
+          updateTime: '2024-01-15T14:00:00Z'
+        }
+      },
+      {
+        id: 'google_review_2',
+        reviewer: {
+          displayName: 'Sarah Johnson',
+          isAnonymous: false
+        },
+        starRating: 'FOUR',
+        comment: 'Good experience overall. Quick response times and helpful staff.',
+        createTime: '2024-01-14T15:45:00Z',
+        updateTime: '2024-01-14T15:45:00Z'
+      },
+      {
+        id: 'google_review_3',
+        reviewer: {
+          displayName: 'Mike Wilson',
+          isAnonymous: false
+        },
+        starRating: 'FIVE',
+        comment: 'Outstanding! Exceeded all my expectations. Highly recommend!',
+        createTime: '2024-01-13T09:20:00Z',
+        updateTime: '2024-01-13T09:20:00Z'
+      },
+      {
+        id: 'google_review_4',
+        reviewer: {
+          displayName: 'Anonymous',
+          isAnonymous: true
+        },
+        starRating: 'THREE',
+        comment: 'Service was okay but could be improved in some areas.',
+        createTime: '2024-01-12T11:00:00Z',
+        updateTime: '2024-01-12T11:00:00Z'
+      }
+    ];
+    
+    setTimeout(() => {
+      setGoogleReviews(mockReviews);
+      setLoadingGoogleReviews(false);
+    }, 1000);
+  };
+
+  const sendGoogleReply = () => {
+    if (!selectedGoogleReview || !googleReplyText.trim()) return;
+
+    // Mock sending reply
+    const updatedReviews = googleReviews.map(r => 
+      r.id === selectedGoogleReview.id 
+        ? { ...r, reviewReply: { comment: googleReplyText, updateTime: new Date().toISOString() } }
+        : r
+    );
+    
+    setGoogleReviews(updatedReviews);
+    setGoogleReplyDialog(false);
+    setGoogleReplyText('');
+    
+    toast({
+      title: 'Reply Sent!',
+      description: 'Your reply has been posted to Google'
+    });
+  };
+
+  const getGoogleStarValue = (rating: string): number => {
+    const ratingMap: Record<string, number> = {
+      'ONE': 1, 'TWO': 2, 'THREE': 3, 'FOUR': 4, 'FIVE': 5
+    };
+    return ratingMap[rating] || 0;
   };
 
   const fetchStats = async () => {
@@ -301,6 +510,10 @@ const ReputationManagement = () => {
           <TabsTrigger value="responses" className="text-white data-[state=active]:bg-white/20">
             <Reply className="h-4 w-4 mr-2" />
             Responses
+          </TabsTrigger>
+          <TabsTrigger value="google" className="text-white data-[state=active]:bg-white/20">
+            <Building className="h-4 w-4 mr-2" />
+            Google My Business
           </TabsTrigger>
         </TabsList>
 
@@ -627,6 +840,242 @@ const ReputationManagement = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="google" className="space-y-6">
+          {/* Google My Business Integration */}
+          <Card className="bounce-back-consult-card border-white/20">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Building className="h-6 w-6 text-blue-500" />
+                  <div>
+                    <CardTitle className="text-white">Google My Business Integration</CardTitle>
+                    <p className="text-gray-400 text-sm">Manage reviews and respond directly from your dashboard</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {googleConnected && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setGoogleNotifications(!googleNotifications)}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      {googleNotifications ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                    </Button>
+                  )}
+                  {googleConnected ? (
+                    <Badge className="bg-green-500 text-white">
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Connected
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-gray-600 text-gray-300">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      Not Connected
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!googleConnected ? (
+                <div className="space-y-4">
+                  <p className="text-gray-400">
+                    Connect your Google My Business account to:
+                  </p>
+                  <ul className="space-y-2 text-gray-400">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                      View all your Google reviews in one place
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                      Get instant notifications for new reviews
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                      Respond to reviews directly from this dashboard
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                      Track review trends and analytics
+                    </li>
+                  </ul>
+                  <Button 
+                    onClick={connectGoogleAccount}
+                    disabled={googleConnecting}
+                    className="bounce-back-consult-button"
+                  >
+                    {googleConnecting ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="h-4 w-4 mr-2" />
+                        Connect Google My Business
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Business Location */}
+                  {selectedLocation && (
+                    <Card className="bg-white/5 border-white/10">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="text-white font-medium">{selectedLocation.locationName}</h3>
+                          {selectedLocation.newReviewCount > 0 && (
+                            <Badge className="bg-red-500 text-white">
+                              {selectedLocation.newReviewCount} new
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="space-y-2 text-sm text-gray-400">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            {selectedLocation.address}
+                          </div>
+                          {selectedLocation.phone && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4" />
+                              {selectedLocation.phone}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Star className="h-4 w-4 text-yellow-400" />
+                            <span className="text-white font-medium">{selectedLocation.averageRating.toFixed(1)}</span>
+                            <span>({selectedLocation.totalReviewCount} reviews)</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <div className="flex justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fetchGoogleReviews()}
+                      className="bounce-back-consult-button-outline"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      Refresh
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={disconnectGoogle}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-950"
+                    >
+                      <Unlink className="h-4 w-4 mr-1" />
+                      Disconnect
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Google Reviews List */}
+          {googleConnected && selectedLocation && (
+            <Card className="bounce-back-consult-card border-white/20">
+              <CardHeader>
+                <CardTitle className="text-white">Google Reviews</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingGoogleReviews ? (
+                  <div className="flex items-center justify-center h-64">
+                    <RefreshCw className="h-8 w-8 text-gray-400 animate-spin" />
+                  </div>
+                ) : googleReviews.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>No reviews found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {googleReviews.map((review) => (
+                      <Card key={review.id} className="bg-white/5 border-white/10">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-start gap-3">
+                              <div>
+                                <p className="text-white font-medium">
+                                  {review.reviewer.isAnonymous ? 'Anonymous' : review.reviewer.displayName}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`h-4 w-4 ${
+                                          i < getGoogleStarValue(review.starRating)
+                                            ? 'text-yellow-400 fill-current'
+                                            : 'text-gray-600'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="text-sm text-gray-400">
+                                    {new Date(review.createTime).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedGoogleReview(review);
+                                setGoogleReplyDialog(true);
+                                setGoogleReplyText(review.reviewReply?.comment || '');
+                              }}
+                              className="text-gray-400 hover:text-white"
+                            >
+                              {review.reviewReply ? (
+                                <>
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Edit Reply
+                                </>
+                              ) : (
+                                <>
+                                  <Reply className="h-4 w-4 mr-1" />
+                                  Reply
+                                </>
+                              )}
+                            </Button>
+                          </div>
+
+                          {review.comment && (
+                            <p className="text-gray-300 mb-3">{review.comment}</p>
+                          )}
+
+                          {review.reviewReply && (
+                            <div className="bg-white/5 rounded-lg p-3 mt-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge className="bg-blue-500 text-white text-xs">
+                                  Your Reply
+                                </Badge>
+                                <span className="text-xs text-gray-400">
+                                  {new Date(review.reviewReply.updateTime).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-gray-300 text-sm">{review.reviewReply.comment}</p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Response Dialog */}
@@ -683,6 +1132,72 @@ const ReputationManagement = () => {
                   className="bounce-back-consult-button"
                 >
                   Post Response
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Google Reply Dialog */}
+      <Dialog open={googleReplyDialog} onOpenChange={setGoogleReplyDialog}>
+        <DialogContent className="bounce-back-consult-card border-white/20 text-white sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedGoogleReview?.reviewReply ? 'Edit Google Reply' : 'Reply to Google Review'}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedGoogleReview && (
+            <div className="space-y-4">
+              <div className="p-4 bg-white/5 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${
+                          i < getGoogleStarValue(selectedGoogleReview.starRating)
+                            ? 'text-yellow-400 fill-current'
+                            : 'text-gray-400'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm text-gray-400">by {selectedGoogleReview.reviewer.displayName}</span>
+                </div>
+                <p className="text-gray-300 text-sm">{selectedGoogleReview.comment}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Your Reply
+                </label>
+                <textarea
+                  value={googleReplyText}
+                  onChange={(e) => setGoogleReplyText(e.target.value)}
+                  placeholder="Thank you for your review..."
+                  className="w-full h-32 p-3 bounce-back-consult-input text-white border-white/20 rounded-lg resize-none"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Tip: Be professional, acknowledge their feedback, and address any concerns
+                </p>
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setGoogleReplyDialog(false)}
+                  className="bounce-back-consult-button-outline"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={sendGoogleReply}
+                  disabled={!googleReplyText.trim()}
+                  className="bounce-back-consult-button"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  {selectedGoogleReview?.reviewReply ? 'Update Reply' : 'Send Reply'}
                 </Button>
               </div>
             </div>
