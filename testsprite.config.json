@@ -1,0 +1,13 @@
+{
+  "projectRoot": ".",
+  "startUrl": "http://localhost:8080",
+  "runner": {
+    "browser": "chromium",
+    "timeout": 60000
+  },
+  "output": {
+    "reportsDir": "tests/e2e/reports"
+  }
+}
+
+

@@ -36,6 +36,55 @@ npm i
 npm run dev
 ```
 
+## Running TestSprite end-to-end tests
+
+1. Make sure TestSprite MCP/CLI is installed and running on your machine.
+2. Install project dependencies and start the dev server:
+
+```sh
+npm install
+npm run dev
+```
+
+3. In a separate terminal run the TestSprite E2E tests:
+
+```sh
+npm run test:e2e
+```
+
+Test reports will be written to `tests/e2e/reports` by default.
+
+### CI setup
+
+This repo includes a GitHub Actions workflow at `.github/workflows/testsprite-e2e.yml` which:
+
+- Checks out the code and installs dependencies
+- Starts the dev server and waits for `http://localhost:8080`
+- Installs the TestSprite CLI (assumes an npm package named `testsprite`)
+- Runs `npm run test:e2e`
+
+You must add the following secret to your repository for tests to run in CI:
+
+- `TESTSPRITE_API_KEY`: your TestSprite API key
+
+If your CI environment requires a different way to install TestSprite (not via npm), edit the workflow accordingly.
+
+### GitLab CI setup
+
+To run TestSprite E2E in GitLab CI, this repository includes a `.gitlab-ci.yml` pipeline that:
+
+- Uses Node.js 18 image
+- Installs dependencies with `npm ci`
+- Starts the dev server and waits for `http://localhost:8080`
+- Attempts to install the TestSprite CLI via `npm install -g testsprite`
+- Runs `npm run test:e2e`
+
+Add the following CI/CD variables in your GitLab project settings if required:
+
+- `TESTSPRITE_API_KEY`: your TestSprite API key
+
+If your organization installs TestSprite on runners differently, update `.gitlab-ci.yml` to match your runner's setup.
+
 **Edit a file directly in GitHub**
 
 - Navigate to the desired file(s).

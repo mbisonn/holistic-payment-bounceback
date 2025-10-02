@@ -1,0 +1,40 @@
+name: TestSprite E2E
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start dev server
+        run: |
+          npm run dev &
+          npx wait-on http://localhost:5173 -t 60000
+
+      - name: Install TestSprite CLI
+        run: |
+          # Assumes TestSprite CLI is installable via npm as `testsprite`
+          # If your environment uses a different installer, update this step.
+          npm install -g testsprite
+
+      - name: Run TestSprite E2E
+        env:
+          TESTSPRITE_API_KEY: ${{ secrets.TESTSPRITE_API_KEY }}
+        run: npm run test:e2e
+
+

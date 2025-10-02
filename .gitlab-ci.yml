@@ -1,0 +1,28 @@
+stages:
+  - test
+
+variables:
+  NODE_VERSION: "18"
+  START_URL: "http://localhost:8080"
+
+e2e_tests:
+  image: node:${NODE_VERSION}
+  stage: test
+  services: []
+  before_script:
+    - npm ci
+
+  script:
+    - npm run dev &
+    - npx wait-on $START_URL -t 60000
+    - npm install -g testsprite || true
+    - npm run test:e2e
+
+  artifacts:
+    when: always
+    paths:
+      - tests/e2e/reports
+    reports:
+      junit: tests/e2e/reports/junit.xml
+
+
