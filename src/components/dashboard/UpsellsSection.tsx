@@ -14,7 +14,6 @@ interface UpsellProduct {
   name: string;
   details: string;
   price: number;
-  type: 'upsell' | 'downsell';
   paystack_link?: string;
   created_at?: string;
 }
@@ -27,7 +26,7 @@ const UpsellsSection = () => {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', details: '', price: '', type: 'upsell' });
+  const [form, setForm] = useState({ name: '', details: '', price: '' });
   const [saving, setSaving] = useState(false);
   
   const [paystackDialogOpen, setPaystackDialogOpen] = useState(false);
@@ -50,7 +49,6 @@ const UpsellsSection = () => {
         name: item.name,
         details: item.description || '',
         price: item.price,
-        type: item.type === 'downsell' ? 'downsell' : 'upsell',
         paystack_link: '',
         is_active: item.is_active
       })));
@@ -65,10 +63,10 @@ const UpsellsSection = () => {
   const openForm = (product?: UpsellProduct) => {
     if (product) {
       setEditId(product.id);
-      setForm({ name: product.name, details: product.details, price: product.price.toString(), type: product.type });
+      setForm({ name: product.name, details: product.details, price: product.price.toString() });
     } else {
       setEditId(null);
-      setForm({ name: '', details: '', price: '', type: 'upsell' });
+      setForm({ name: '', details: '', price: '' });
     }
     setFormOpen(true);
   };
@@ -89,8 +87,7 @@ const UpsellsSection = () => {
         const { error } = await supabase.from('upsell_products').update({ 
           name: form.name, 
           description: form.details, 
-          price,
-          type: form.type
+          price
         }).eq('id', editId);
         if (error) throw error;
         toast({ title: 'Success', description: 'Product updated.' });
@@ -99,8 +96,7 @@ const UpsellsSection = () => {
         const { error } = await supabase.from('upsell_products').insert([{ 
           name: form.name, 
           description: form.details, 
-          price,
-          type: form.type
+          price
         }]);
         if (error) throw error;
         toast({ title: 'Success', description: 'Product created.' });
@@ -154,13 +150,6 @@ const UpsellsSection = () => {
                 <div className="flex justify-between items-center">
                   <div className="flex flex-col">
                     <h3 className="font-semibold text-lg text-white">{product.name}</h3>
-                    <span className={`text-xs px-2 py-1 rounded w-fit ${
-                      product.type === 'upsell' 
-                        ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
-                        : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                    }`}>
-                      {product.type.toUpperCase()}
-                    </span>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => openForm(product)} className="glass-button-outline">
@@ -236,19 +225,6 @@ const UpsellsSection = () => {
                   rows={3} 
                   className="glass-input text-white border-white/20"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 text-white">Type</label>
-                <select 
-                  name="type" 
-                  value={form.type} 
-                  onChange={handleFormChange} 
-                  className="glass-input w-full px-3 py-2 text-white border-white/20"
-                  required
-                >
-                  <option value="upsell">Upsell</option>
-                  <option value="downsell">Downsell</option>
-                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1 text-white">Price (₦)</label>

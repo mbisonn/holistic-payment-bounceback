@@ -36,8 +36,7 @@ export const AddCustomerDialog = ({ open, onOpenChange, onCustomerAdded }: AddCu
           customer_phone: formData.phone,
           delivery_address: formData.address,
           total_amount: 0,
-          status: 'pending',
-          items: []
+          status: 'pending'
         }]);
 
       if (error) throw error;

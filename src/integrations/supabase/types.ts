@@ -896,7 +896,7 @@ export type Database = {
           id?: string
           message?: string | null
           reason?: string | null
-          requested_role: string
+          requested_role?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string | null
@@ -1026,7 +1026,13 @@ export type Database = {
         }[]
       }
       create_access_request: {
-        Args: { request_reason?: string; user_email: string }
+        Args:
+          | {
+              request_reason?: string
+              requested_role?: string
+              user_email: string
+            }
+          | { request_reason?: string; user_email: string }
         Returns: string
       }
       current_user_has_role: {

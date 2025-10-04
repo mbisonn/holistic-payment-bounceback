@@ -8,8 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, Eye, Download } from 'lucide-react';
+import { Search, Eye, Download, Plus } from 'lucide-react';
 import { format } from 'date-fns';
+import { CreateOrderDialog } from './CreateOrderDialog';
 
 interface Order {
   id: string;
@@ -35,6 +36,7 @@ export const OrdersManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [createOrderOpen, setCreateOrderOpen] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -186,6 +188,10 @@ export const OrdersManagement = () => {
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
+            <Button onClick={() => setCreateOrderOpen(true)} className="glass-button">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Order
+            </Button>
             <Button onClick={exportOrders} className="glass-button">
               <Download className="w-4 h-4 mr-2" />
               Export
@@ -306,6 +312,12 @@ export const OrdersManagement = () => {
           </div>
         </CardContent>
       </Card>
+      
+      <CreateOrderDialog
+        open={createOrderOpen}
+        onOpenChange={setCreateOrderOpen}
+        onOrderCreated={fetchOrders}
+      />
     </div>
   );
 };

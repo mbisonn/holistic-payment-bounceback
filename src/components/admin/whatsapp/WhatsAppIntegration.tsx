@@ -864,7 +864,7 @@ const WhatsAppIntegration = () => {
                 value={newTemplate.content}
                 onChange={(e) => setNewTemplate(prev => ({ ...prev, content: e.target.value }))}
                 placeholder="Hello {{customer_name}}, thank you for your purchase of {{product_name}} for {{amount}}. Your order #{{order_id}} is being processed."
-                className="w-full h-32 p-3 bounce-back-consult-input text-white border-white/20 rounded-lg resize-none"
+                className="w-full h-32 p-3 bg-white/10 text-white border border-white/20 rounded-lg resize-none placeholder:text-gray-400 focus:border-white/40 focus:ring-2 focus:ring-white/20"
               />
               <p className="text-xs text-gray-400 mt-1">
                 Use variables like {'{{customer_name}}'}, {'{{product_name}}'}, {'{{amount}}'}, {'{{order_id}}'}
