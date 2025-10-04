@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import SystemeWorkflowBuilder from './SystemeWorkflowBuilder';
@@ -33,7 +32,6 @@ import {
   CheckCircle,
   Activity,
   Database,
-  Send,
   MessageSquare
 } from 'lucide-react';
 

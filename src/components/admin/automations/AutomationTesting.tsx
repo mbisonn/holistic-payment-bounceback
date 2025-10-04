@@ -6,21 +6,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Play, 
-  Square, 
-  Bug, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  Eye, 
-  Activity,
+import {
+  Bug,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertTriangle,
+  Minus,
+  Pause,
+  Play,
+  Square,
+  Eye,
   RefreshCw,
   Search,
   Info,
-  AlertTriangle,
-  Minus,
-  Pause
 } from 'lucide-react';
 
 interface TestRun {
@@ -90,15 +89,13 @@ const LOG_LEVELS = {
   debug: { icon: Bug, color: 'text-purple-400', bgColor: 'bg-purple-500/20' }
 };
 
-export default function AutomationTesting() {
+const AutomationTesting = () => {
   const [testRuns, setTestRuns] = useState<TestRun[]>([]);
   const [selectedRun, setSelectedRun] = useState<TestRun | null>(null);
   const [showTestDialog, setShowTestDialog] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState<TestScenario | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [runningTests, setRunningTests] = useState<Set<string>>(new Set());
-  
+  const [filterStatus, setFilterStatus] = useState('all');
   
   const { toast } = useToast();
 
@@ -108,7 +105,6 @@ export default function AutomationTesting() {
 
   const fetchTestRuns = async () => {
     try {
-      // Mock data - replace with actual API calls
       const mockTestRuns: TestRun[] = [
         {
           id: '1',
@@ -128,7 +124,6 @@ export default function AutomationTesting() {
           ]
         }
       ];
-
       setTestRuns(mockTestRuns);
     } catch (error) {
       console.error('Error fetching test runs:', error);
@@ -137,92 +132,56 @@ export default function AutomationTesting() {
 
   const runTest = async (scenario: TestScenario) => {
     const testRunId = `test_${Date.now()}`;
-    setRunningTests((prev: Set<string>) => new Set([...prev, testRunId]));
-    
-    try {
-      // Mock test execution
-      const testRun: TestRun = {
-        id: testRunId,
-        automation_id: 'auto_1',
-        automation_name: scenario.name,
-        status: 'running',
-        start_time: new Date().toISOString(),
-        test_data: scenario.trigger_data,
-        results: [],
+    const testRun: TestRun = {
+      id: testRunId,
+      automation_id: 'auto_1',
+      automation_name: scenario.name,
+      status: 'running',
+      start_time: new Date().toISOString(),
+      test_data: scenario.trigger_data,
+      results: [],
+      logs: [
+        { id: '1', timestamp: new Date().toISOString(), level: 'info', message: 'Test run started', source: 'automation_engine' }
+      ]
+    };
+    setTestRuns(prev => [testRun, ...prev]);
+    setTimeout(() => {
+      const completedRun: TestRun = {
+        ...testRun,
+        status: 'completed',
+        end_time: new Date().toISOString(),
+        duration: Math.floor(Math.random() * 30) + 10,
+        results: (scenario.expected_results || []).map((result: any, index: number) => ({
+          step: `Step ${index + 1}`,
+          status: result.status as any,
+          message: `${result.action} executed successfully`,
+          timestamp: new Date().toISOString(),
+          duration: Math.floor(Math.random() * 10) + 1,
+          data: result
+        })),
         logs: [
-          { id: '1', timestamp: new Date().toISOString(), level: 'info', message: 'Test run started', source: 'automation_engine' }
+          ...testRun.logs,
+          { id: '2', timestamp: new Date().toISOString(), level: 'info', message: 'All steps completed successfully', source: 'automation_engine' }
         ]
       };
-
-      setTestRuns(prev => [testRun, ...prev]);
-
-      // Simulate test execution
-      setTimeout(() => {
-        const completedRun: TestRun = {
-          ...testRun,
-          status: 'completed',
-          end_time: new Date().toISOString(),
-          duration: Math.floor(Math.random() * 30) + 10,
-          results: scenario.expected_results.map((result, index) => ({
-            step: `Step ${index + 1}`,
-            status: result.status as any,
-            message: `${result.action} executed successfully`,
-            timestamp: new Date().toISOString(),
-            duration: Math.floor(Math.random() * 10) + 1,
-            data: result
-          })),
-          logs: [
-            ...testRun.logs,
-            { id: '2', timestamp: new Date().toISOString(), level: 'info', message: 'All steps completed successfully', source: 'automation_engine' }
-          ]
-        };
-
-        setTestRuns(prev => prev.map(run => run.id === testRunId ? completedRun : run));
-        setRunningTests((prev: Set<string>) => {
-          const newSet = new Set(prev);
-          newSet.delete(testRunId);
-          return newSet;
-        });
-
-        toast({
-          title: 'Test Completed',
-          description: 'Automation test completed successfully'
-        });
-      }, 3000);
-
-    } catch (error) {
-      console.error('Error running test:', error);
-      setRunningTests((prev: Set<string>) => {
-        const newSet = new Set(prev);
-        newSet.delete(testRunId);
-        return newSet;
-      });
-      toast({
-        title: 'Test Failed',
-        description: 'Failed to run automation test',
-        variant: 'destructive'
-      });
-    }
+      setTestRuns(prev => prev.map(run => run.id === testRunId ? completedRun : run));
+      toast({ title: 'Test Completed', description: 'Automation test completed successfully' });
+    }, 3000);
   };
 
   const stopTest = (testRunId: string) => {
     setTestRuns(prev => prev.map(run => 
       run.id === testRunId ? { ...run, status: 'paused' as const } : run
     ));
-    setRunningTests((prev: Set<string>) => {
-      const newSet = new Set(prev);
-      newSet.delete(testRunId);
-      return newSet;
-    });
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed': return CheckCircle;
       case 'failed': return XCircle;
-      case 'running': return Activity;
+      case 'running': return Clock;
       case 'paused': return Pause;
-      default: return Clock;
+      default: return Minus;
     }
   };
 
@@ -559,12 +518,13 @@ export default function AutomationTesting() {
                       </div>
                     );
                   })}
-                </div>
-              </div>
             </div>
+          </div>
+        </div>
           )}
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+export default AutomationTesting;
