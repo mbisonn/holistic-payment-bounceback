@@ -112,7 +112,7 @@ const WhatsAppIntegration = () => {
     try {
       // Fetch WhatsApp configuration
       const { data: configData, error: configError } = await supabase
-        .from('whatsapp_config')
+        .from<any>('whatsapp_config')
         .select('*')
         .single();
 
@@ -123,7 +123,7 @@ const WhatsAppIntegration = () => {
 
       // Fetch templates
       const { data: templatesData, error: templatesError } = await supabase
-        .from('whatsapp_templates')
+        .from<any>('whatsapp_templates')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -132,7 +132,7 @@ const WhatsAppIntegration = () => {
 
       // Fetch messages
       const { data: messagesData, error: messagesError } = await supabase
-        .from('whatsapp_messages')
+        .from<any>('whatsapp_messages')
         .select('*')
         .order('sent_at', { ascending: false })
         .limit(100);
@@ -201,14 +201,14 @@ const WhatsAppIntegration = () => {
 
       if (config) {
         const { error } = await supabase
-          .from('whatsapp_config')
+          .from<any>('whatsapp_config')
           .update(configData)
           .eq('id', config.id);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('whatsapp_config')
+          .from<any>('whatsapp_config')
           .insert([configData]);
 
         if (error) throw error;
@@ -250,14 +250,14 @@ const WhatsAppIntegration = () => {
 
       if (selectedTemplate) {
         const { error } = await supabase
-          .from('whatsapp_templates')
+          .from<any>('whatsapp_templates')
           .update(templateData)
           .eq('id', selectedTemplate.id);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('whatsapp_templates')
+          .from<any>('whatsapp_templates')
           .insert([templateData]);
 
         if (error) throw error;
@@ -284,7 +284,7 @@ const WhatsAppIntegration = () => {
   const toggleTemplateStatus = async (templateId: string, isActive: boolean) => {
     try {
       const { error } = await supabase
-        .from('whatsapp_templates')
+        .from<any>('whatsapp_templates')
         .update({ is_active: isActive })
         .eq('id', templateId);
 
@@ -312,7 +312,7 @@ const WhatsAppIntegration = () => {
 
     try {
       const { error } = await supabase
-        .from('whatsapp_templates')
+        .from<any>('whatsapp_templates')
         .delete()
         .eq('id', templateId);
 

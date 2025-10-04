@@ -36,7 +36,7 @@ const MealPlanSync = () => {
   const fetchSyncData = async () => {
     try {
       const { data, error } = await supabase
-        .from('meal_plan_sync')
+        .from<any>('meal_plan_sync')
         .select('*')
         .order('synced_at', { ascending: false });
 
@@ -46,7 +46,8 @@ const MealPlanSync = () => {
         customer_name: item.customer_name || 'Unknown',
         customer_phone: item.customer_phone || null,
         external_user_id: item.external_user_id || '',
-        synced_at: item.synced_at || null
+        synced_at: item.synced_at || null,
+        created_at: String(item.created_at)
       })));
     } catch (error) {
       toast({
@@ -87,7 +88,7 @@ const MealPlanSync = () => {
 
       // Store the synced data in our database
       const { error } = await supabase
-        .from('meal_plan_sync')
+        .from<any>('meal_plan_sync')
         .insert([{
           customer_email: customerEmail,
           customer_name: mealPlanData.name || customerEmail.split('@')[0],

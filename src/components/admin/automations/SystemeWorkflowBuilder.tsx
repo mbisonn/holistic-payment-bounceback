@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -22,8 +21,6 @@ import {
   Database,
   Send,
   XCircle,
-  ShoppingCart,
-  Calendar,
   User, 
   Zap,
   X,
@@ -107,7 +104,8 @@ const NODE_TYPES = {
   }
 };
 
-const WORKFLOW_TEMPLATES = [
+// Workflow templates are currently unused
+/* const WORKFLOW_TEMPLATES = [
   {
     id: 'welcome_series',
     name: 'Welcome Series',
@@ -373,9 +371,9 @@ export default function SystemeWorkflowBuilder() {
         <Card className="lg:col-span-1 bg-gray-800 border-gray-700">
           <CardHeader>
             <CardTitle className="text-white">Workflows</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-            {workflows.map((workflow) => (
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {(workflows || []).map((workflow) => (
               <div
                 key={workflow.id}
                 className={`p-3 rounded-lg cursor-pointer border transition-colors ${
@@ -388,10 +386,10 @@ export default function SystemeWorkflowBuilder() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-white font-medium">{workflow.name}</h3>
-                    <p className="text-sm text-gray-400">{workflow.nodes.length} steps</p>
+                    <p className="text-sm text-gray-400">{(workflow.nodes || []).length} steps</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={workflow.is_active ? "default" : "secondary"}>
+                    <Badge variant={workflow.is_active ? 'default' : 'secondary'}>
                       {workflow.is_active ? 'Active' : 'Draft'}
                     </Badge>
                     <Button
@@ -406,11 +404,11 @@ export default function SystemeWorkflowBuilder() {
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
 
         {/* Canvas */}
         <Card className="lg:col-span-2 bg-gray-800 border-gray-700">
@@ -451,7 +449,7 @@ export default function SystemeWorkflowBuilder() {
                 onDrop={handleCanvasDrop}
             onDragOver={(e) => e.preventDefault()}
           >
-                {(selectedWorkflow.nodes || []).map((node, index) => (
+                {(selectedWorkflow.nodes || []).map((node: WorkflowNode, index) => (
               <div
                 key={node.id}
                     className="absolute bg-gray-700 border border-gray-600 rounded-lg p-3 cursor-pointer hover:border-purple-500"
@@ -519,27 +517,30 @@ export default function SystemeWorkflowBuilder() {
             <CardTitle className="text-white">Node Palette</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {Object.entries(NODE_TYPES).map(([type, nodes]) => (
-              <div key={type}>
-                <h4 className="text-sm font-medium text-gray-300 mb-2 capitalize">{type}s</h4>
-                <div className="space-y-2">
-                  {(Array.isArray(nodes) ? nodes : (nodes as any)?.nodes || []).map((node) => {
-                    const Icon = node.icon;
-                    return (
-                      <div
-                        key={node.id}
-                        className="flex items-center gap-2 p-2 bg-gray-700 rounded-lg cursor-move hover:bg-gray-600"
-                        draggable
-                        onDragStart={() => setDraggedNodeType({ ...node, type })}
-                      >
-                        <Icon className="w-4 h-4 text-white" />
-                        <span className="text-white text-sm">{node.name}</span>
-                    </div>
-                    );
-                  })}
+            {Object.entries(NODE_TYPES).map(([type, group]) => {
+              const nodeList = Array.isArray(group) ? group : (group as any)?.nodes || [];
+              return (
+                <div key={type}>
+                  <h4 className="text-sm font-medium text-gray-300 mb-2 capitalize">{type}s</h4>
+                  <div className="space-y-2">
+                    {nodeList.map((node: any) => {
+                      const Icon = node.icon;
+                      return (
+                        <div
+                          key={node.id}
+                          className="flex items-center gap-2 p-2 bg-gray-700 rounded-lg cursor-move hover:bg-gray-600"
+                          draggable
+                          onDragStart={() => setDraggedNodeType({ ...node, type })}
+                        >
+                          <Icon className="w-4 h-4 text-white" />
+                          <span className="text-white text-sm">{node.name}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              ))}
+              );
+            })}
           </CardContent>
         </Card>
           </div>
@@ -591,7 +592,6 @@ export default function SystemeWorkflowBuilder() {
                     </Select>
             </div>
           </div>
-        </div>
             )}
           </CardContent>
         </Card>

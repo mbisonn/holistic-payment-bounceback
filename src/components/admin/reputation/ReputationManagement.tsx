@@ -140,7 +140,7 @@ const ReputationManagement = () => {
   const fetchReviews = async () => {
     try {
       const { data, error } = await supabase
-        .from('reviews')
+        .from<any>('reviews')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -390,7 +390,7 @@ const ReputationManagement = () => {
   const updateReviewStatus = async (reviewId: string, status: string) => {
     try {
       const { error } = await supabase
-        .from('reviews')
+        .from<any>('reviews')
         .update({ status })
         .eq('id', reviewId);
 
@@ -418,7 +418,7 @@ const ReputationManagement = () => {
 
     try {
       const { error } = await supabase
-        .from('reviews')
+        .from<any>('reviews')
         .update({
           response: responseText,
           response_date: new Date().toISOString()
@@ -450,11 +450,7 @@ const ReputationManagement = () => {
     }
   };
 
-  const getRatingColor = (rating: number) => {
-    if (rating >= 4) return 'text-green-500';
-    if (rating >= 3) return 'text-yellow-500';
-    return 'text-red-500';
-  };
+  // removed unused getRatingColor
 
   const getStatusColor = (status: string) => {
     switch (status) {
