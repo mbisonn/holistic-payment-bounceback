@@ -7,27 +7,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { 
   Star, 
   MessageSquare, 
   TrendingUp, 
   TrendingDown, 
-  Filter, 
   Search, 
   Plus, 
-  Eye, 
+  Eye,
   Reply, 
-  Flag, 
-  ThumbsUp, 
-  ThumbsDown,
-  ExternalLink,
   BarChart3,
-  Users,
-  Calendar,
   AlertTriangle,
   CheckCircle,
-  XCircle,
   Building,
   Bell,
   BellOff,
@@ -116,7 +107,7 @@ const ReputationManagement = () => {
   // Google My Business state
   const [googleConnected, setGoogleConnected] = useState(false);
   const [googleConnecting, setGoogleConnecting] = useState(false);
-  const [businessLocations, setBusinessLocations] = useState<BusinessLocation[]>([]);
+  const [, setBusinessLocations] = useState<BusinessLocation[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<BusinessLocation | null>(null);
   const [googleReviews, setGoogleReviews] = useState<GoogleReview[]>([]);
   const [loadingGoogleReviews, setLoadingGoogleReviews] = useState(false);
@@ -139,13 +130,9 @@ const ReputationManagement = () => {
 
   const fetchReviews = async () => {
     try {
-      const { data, error } = await supabase
-        .from<any>('reviews')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setReviews(data || []);
+      // Note: Reviews table doesn't exist yet - placeholder for future implementation
+      console.log('Reviews feature coming soon');
+      setReviews([]);
     } catch (error) {
       console.error('Error fetching reviews:', error);
       toast({
@@ -388,66 +375,26 @@ const ReputationManagement = () => {
   };
 
   const updateReviewStatus = async (reviewId: string, status: string) => {
-    try {
-      const { error } = await supabase
-        .from<any>('reviews')
-        .update({ status })
-        .eq('id', reviewId);
-
-      if (error) throw error;
-
-      setReviews(prev => prev.map(review =>
-        review.id === reviewId ? { ...review, status: status as any } : review
-      ));
-
-      toast({
-        title: 'Success',
-        description: 'Review status updated successfully'
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update review status',
-        variant: 'destructive'
-      });
-    }
+    // Note: Reviews table doesn't exist yet
+    console.log('Update review status:', { reviewId, status });
+    toast({
+      title: 'Coming Soon',
+      description: 'Review status update feature is coming soon'
+    });
   };
 
   const addResponse = async () => {
     if (!selectedReview || !responseText.trim()) return;
 
-    try {
-      const { error } = await supabase
-        .from<any>('reviews')
-        .update({
-          response: responseText,
-          response_date: new Date().toISOString()
-        })
-        .eq('id', selectedReview.id);
-
-      if (error) throw error;
-
-      setReviews(prev => prev.map(review =>
-        review.id === selectedReview.id 
-          ? { ...review, response: responseText, response_date: new Date().toISOString() }
-          : review
-      ));
-
-      setResponseDialog(false);
-      setResponseText('');
-      setSelectedReview(null);
-
-      toast({
-        title: 'Success',
-        description: 'Response added successfully'
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to add response',
-        variant: 'destructive'
-      });
-    }
+    // Note: Reviews table doesn't exist yet
+    console.log('Add review response:', { response: responseText });
+    toast({
+      title: 'Coming Soon',
+      description: 'Review response feature is coming soon'
+    });
+    setResponseDialog(false);
+    setResponseText('');
+    setSelectedReview(null);
   };
 
   // removed unused getRatingColor

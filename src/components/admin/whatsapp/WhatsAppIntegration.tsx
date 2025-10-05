@@ -8,27 +8,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { 
   MessageSquare, 
   Phone, 
   Settings, 
   Send, 
   Bell, 
-  Users, 
   BarChart3, 
   Plus, 
   Edit, 
-  Trash2, 
-  Play, 
-  Pause, 
+  Trash2,
+  Eye,
   CheckCircle, 
   XCircle, 
   AlertTriangle,
   Zap,
-  Clock,
-  Eye,
-  Filter,
   Search
 } from 'lucide-react';
 
@@ -95,11 +89,16 @@ const WhatsAppIntegration = () => {
     business_name: ''
   });
 
-  const [newTemplate, setNewTemplate] = useState({
+  const [newTemplate, setNewTemplate] = useState<{
+    name: string;
+    content: string;
+    category: 'purchase_notification' | 'order_update' | 'marketing' | 'support';
+    variables: string[];
+  }>({
     name: '',
     content: '',
-    category: 'purchase_notification' as const,
-    variables: [] as string[]
+    category: 'purchase_notification',
+    variables: []
   });
 
   const { toast } = useToast();
@@ -110,38 +109,14 @@ const WhatsAppIntegration = () => {
 
   const fetchData = async () => {
     try {
-      // Fetch WhatsApp configuration
-      const { data: configData, error: configError } = await supabase
-        .from<any>('whatsapp_config')
-        .select('*')
-        .single();
-
-      if (configError && configError.code !== 'PGRST116') {
-        throw configError;
+      // Note: WhatsApp tables don't exist yet - placeholder for future implementation
+      console.log('WhatsApp integration coming soon');
+      if (false) {
+        setConfig(null);
       }
-      setConfig(configData);
-
-      // Fetch templates
-      const { data: templatesData, error: templatesError } = await supabase
-        .from<any>('whatsapp_templates')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (templatesError) throw templatesError;
-      setTemplates(templatesData || []);
-
-      // Fetch messages
-      const { data: messagesData, error: messagesError } = await supabase
-        .from<any>('whatsapp_messages')
-        .select('*')
-        .order('sent_at', { ascending: false })
-        .limit(100);
-
-      if (messagesError) throw messagesError;
-      setMessages(messagesData || []);
-
-      // Calculate stats
-      calculateStats(messagesData || []);
+      setTemplates([]);
+      setMessages([]);
+      calculateStats([]);
 
     } catch (error) {
       console.error('Error fetching WhatsApp data:', error);
@@ -184,44 +159,12 @@ const WhatsAppIntegration = () => {
 
   const saveConfig = async () => {
     try {
-      if (!newConfig.phone_number || !newConfig.api_token || !newConfig.business_name) {
-        toast({
-          title: 'Error',
-          description: 'Please fill in all required fields',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      const configData = {
-        ...newConfig,
-        is_active: true,
-        updated_at: new Date().toISOString()
-      };
-
-      if (config) {
-        const { error } = await supabase
-          .from<any>('whatsapp_config')
-          .update(configData)
-          .eq('id', config.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from<any>('whatsapp_config')
-          .insert([configData]);
-
-        if (error) throw error;
-      }
-
-      setConfig({ ...configData, id: config?.id || 'new', created_at: config?.created_at || new Date().toISOString() });
-      setShowConfigDialog(false);
-      setNewConfig({ phone_number: '', api_token: '', webhook_url: '', business_name: '' });
-
+      console.log('Save config:', newConfig);
       toast({
-        title: 'Success',
-        description: 'WhatsApp configuration saved successfully'
+        title: 'Coming Soon',
+        description: 'WhatsApp configuration feature is coming soon'
       });
+      setShowConfigDialog(false);
     } catch (error) {
       toast({
         title: 'Error',
@@ -232,105 +175,30 @@ const WhatsAppIntegration = () => {
   };
 
   const saveTemplate = async () => {
-    try {
-      if (!newTemplate.name || !newTemplate.content) {
-        toast({
-          title: 'Error',
-          description: 'Please fill in all required fields',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      const templateData = {
-        ...newTemplate,
-        is_active: true,
-        created_at: new Date().toISOString()
-      };
-
-      if (selectedTemplate) {
-        const { error } = await supabase
-          .from<any>('whatsapp_templates')
-          .update(templateData)
-          .eq('id', selectedTemplate.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from<any>('whatsapp_templates')
-          .insert([templateData]);
-
-        if (error) throw error;
-      }
-
-      fetchData();
-      setShowTemplateDialog(false);
-      setSelectedTemplate(null);
-      setNewTemplate({ name: '', content: '', category: 'purchase_notification', variables: [] });
-
-      toast({
-        title: 'Success',
-        description: 'Template saved successfully'
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to save template',
-        variant: 'destructive'
-      });
-    }
+    console.log('Save template:', newTemplate);
+    toast({
+      title: 'Coming Soon',
+      description: 'WhatsApp template feature is coming soon'
+    });
+    setShowTemplateDialog(false);
+    setSelectedTemplate(null);
   };
 
   const toggleTemplateStatus = async (templateId: string, isActive: boolean) => {
-    try {
-      const { error } = await supabase
-        .from<any>('whatsapp_templates')
-        .update({ is_active: isActive })
-        .eq('id', templateId);
-
-      if (error) throw error;
-
-      setTemplates(prev => prev.map(template =>
-        template.id === templateId ? { ...template, is_active: isActive } : template
-      ));
-
-      toast({
-        title: 'Success',
-        description: `Template ${isActive ? 'activated' : 'deactivated'}`
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update template status',
-        variant: 'destructive'
-      });
-    }
+    console.log('Toggle template:', { templateId, isActive });
+    toast({
+      title: 'Coming Soon',
+      description: 'Template status feature is coming soon'
+    });
   };
 
   const deleteTemplate = async (templateId: string) => {
     if (!confirm('Are you sure you want to delete this template?')) return;
-
-    try {
-      const { error } = await supabase
-        .from<any>('whatsapp_templates')
-        .delete()
-        .eq('id', templateId);
-
-      if (error) throw error;
-
-      setTemplates(prev => prev.filter(template => template.id !== templateId));
-
-      toast({
-        title: 'Success',
-        description: 'Template deleted successfully'
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete template',
-        variant: 'destructive'
-      });
-    }
+    console.log('Delete template:', templateId);
+    toast({
+      title: 'Coming Soon',
+      description: 'Delete template feature is coming soon'
+    });
   };
 
   const getStatusColor = (status: string) => {

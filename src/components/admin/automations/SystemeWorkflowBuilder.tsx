@@ -26,8 +26,7 @@ import {
   X,
   Trash2,
   Eye,
-  Target,
-  Filter
+  Target
 } from 'lucide-react';
 
 interface WorkflowNode {
@@ -81,7 +80,7 @@ const NODE_TYPES = {
   },
   condition: {
     name: 'Conditions',
-    icon: Filter,
+    icon: Target,
     color: 'yellow',
     nodes: [
       { id: 'has_tag', label: 'Has Tag', icon: Tag, description: 'Check if customer has a specific tag' },
@@ -104,8 +103,9 @@ const NODE_TYPES = {
   }
 };
 
-// Workflow templates are currently unused
-/* const WORKFLOW_TEMPLATES = [
+// Workflow templates for future expansion (intentionally unused)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _WORKFLOW_TEMPLATES = [
   {
     id: 'welcome_series',
     name: 'Welcome Series',
@@ -172,6 +172,7 @@ const NODE_TYPES = {
     ]
   }
 ];
+
 export default function SystemeWorkflowBuilder() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
@@ -554,7 +555,7 @@ export default function SystemeWorkflowBuilder() {
           <CardContent className="space-y-4">
             {selectedNode.type === 'action' && selectedNode.name === 'Send Email' && (
               <div className="space-y-4">
-            <div>
+                <div>
                   <Label className="text-white">Email Template</Label>
                   <Select>
                     <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
@@ -566,16 +567,16 @@ export default function SystemeWorkflowBuilder() {
                       <SelectItem value="rating">Rating Request</SelectItem>
                     </SelectContent>
                   </Select>
-            </div>
-            </div>
+                </div>
+              </div>
             )}
             
             {selectedNode.type === 'delay' && (
               <div className="space-y-4">
-            <div>
+                <div>
                   <Label className="text-white">Delay Duration</Label>
                   <div className="flex gap-2">
-              <Input
+                    <Input
                       type="number" 
                       placeholder="1" 
                       className="bg-gray-700 border-gray-600 text-white"
@@ -590,8 +591,9 @@ export default function SystemeWorkflowBuilder() {
                         <SelectItem value="days">Days</SelectItem>
                       </SelectContent>
                     </Select>
-            </div>
-          </div>
+                  </div>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
