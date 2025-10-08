@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -98,7 +99,7 @@ const NODE_TYPES = {
       { id: 'wait_minutes', name: 'Wait Minutes', label: 'Wait Minutes', icon: Clock, description: 'Wait for specified minutes' },
       { id: 'wait_hours', name: 'Wait Hours', label: 'Wait Hours', icon: Clock, description: 'Wait for specified hours' },
       { id: 'wait_days', name: 'Wait Days', label: 'Wait Days', icon: Clock, description: 'Wait for specified days' },
-      { id: 'wait_until', label: 'Wait Until', icon: Clock, description: 'Wait until specific time' },
+      { id: 'wait_until', name: 'Wait Until', label: 'Wait Until', icon: Clock, description: 'Wait until specific time' },
     ]
   }
 };
@@ -171,6 +172,7 @@ const NODE_TYPES = {
     ]
   }
 ];
+*/
 export default function SystemeWorkflowBuilder() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
@@ -563,56 +565,52 @@ export default function SystemeWorkflowBuilder() {
           </div>
           
       {/* Node Configuration Panel */}
-      {selectedNode && (
+      {selectedNode ? (
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader>
             <CardTitle className="text-white">Configure: {selectedNode.name}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {selectedNode.type === 'action' && selectedNode.name === 'Send Email' && (
+            {selectedNode.type === 'action' && selectedNode.name === 'Send Email' ? (
               <div className="space-y-4">
-            <div>
-                  <Label className="text-white">Email Template</Label>
+                <Label className="text-white">Email Template</Label>
+                <Select>
+                  <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                    <SelectValue placeholder="Select email template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="welcome">Welcome Email</SelectItem>
+                    <SelectItem value="follow_up">Follow Up</SelectItem>
+                    <SelectItem value="rating">Rating Request</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            {selectedNode.type === 'delay' ? (
+              <div className="space-y-4">
+                <Label className="text-white">Delay Duration</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    placeholder="1"
+                    className="bg-gray-700 border-gray-600 text-white"
+                  />
                   <Select>
                     <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                      <SelectValue placeholder="Select email template" />
+                      <SelectValue placeholder="Unit" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="welcome">Welcome Email</SelectItem>
-                      <SelectItem value="follow_up">Follow Up</SelectItem>
-                      <SelectItem value="rating">Rating Request</SelectItem>
+                      <SelectItem value="minutes">Minutes</SelectItem>
+                      <SelectItem value="hours">Hours</SelectItem>
+                      <SelectItem value="days">Days</SelectItem>
                     </SelectContent>
                   </Select>
-            </div>
-            </div>
-            )}
-            
-            {selectedNode.type === 'delay' && (
-              <div className="space-y-4">
-            <div>
-                  <Label className="text-white">Delay Duration</Label>
-                  <div className="flex gap-2">
-              <Input
-                      type="number" 
-                      placeholder="1" 
-                      className="bg-gray-700 border-gray-600 text-white"
-                    />
-                    <Select>
-                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                        <SelectValue placeholder="Unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="minutes">Minutes</SelectItem>
-                        <SelectItem value="hours">Hours</SelectItem>
-                        <SelectItem value="days">Days</SelectItem>
-                      </SelectContent>
-                    </Select>
-            </div>
-          </div>
-            )}
+                </div>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Workflow Name Dialog */}
       <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
