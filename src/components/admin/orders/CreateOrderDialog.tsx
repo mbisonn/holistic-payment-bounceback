@@ -101,6 +101,28 @@ export const CreateOrderDialog = ({ open, onOpenChange, onOrderCreated }: Create
     return itemsTotal + shipping - discount;
   };
 
+  const generatePaymentLink = async (orderId: string, totalAmount: number) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('payment-links', {
+        body: {
+          amount: totalAmount * 100, // Convert to kobo
+          email: formData.customer_email,
+          metadata: {
+            order_id: orderId,
+            customer_name: formData.customer_name,
+            type: 'manual_order'
+          }
+        }
+      });
+
+      if (error) throw error;
+      return data?.link;
+    } catch (error) {
+      console.error('Error generating payment link:', error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -116,6 +138,8 @@ export const CreateOrderDialog = ({ open, onOpenChange, onOrderCreated }: Create
     setLoading(true);
 
     try {
+      const totalAmount = calculateTotal();
+      
       // Create the order
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -126,7 +150,7 @@ export const CreateOrderDialog = ({ open, onOpenChange, onOrderCreated }: Create
           delivery_address: formData.delivery_address,
           delivery_city: formData.delivery_city,
           delivery_state: formData.delivery_state,
-          total_amount: calculateTotal(),
+          total_amount: totalAmount,
           status: formData.status,
           payment_status: 'pending'
         }])
@@ -149,9 +173,17 @@ export const CreateOrderDialog = ({ open, onOpenChange, onOrderCreated }: Create
 
       if (itemsError) throw itemsError;
 
+      // Generate payment link if status is pending
+      let paymentLink = null;
+      if (formData.status === 'pending') {
+        paymentLink = await generatePaymentLink(order.id, totalAmount);
+      }
+
       toast({
         title: 'Success',
-        description: 'Order created successfully'
+        description: paymentLink 
+          ? `Order created successfully. Payment link: ${paymentLink}`
+          : 'Order created successfully'
       });
 
       // Reset form
@@ -370,6 +402,8 @@ export const CreateOrderDialog = ({ open, onOpenChange, onOrderCreated }: Create
                   <SelectItem value="shipped">Shipped</SelectItem>
                   <SelectItem value="delivered">Delivered</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="refunded">Refunded</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
                 </SelectContent>
               </Select>
             </div>

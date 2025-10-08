@@ -117,11 +117,11 @@ serve(async (req: Request) => {
     }
     if (!product) {
       const { data } = await supabaseClient
-        .from('upsell_products')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
+      .from('upsell_products')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
         .maybeSingle();
       product = data;
     }

@@ -54,6 +54,8 @@ const CustomersManagement = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagDialogLoading, setTagDialogLoading] = useState(false);
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   // Fetch all tags and tag assignments on mount
   useEffect(() => {
@@ -131,7 +133,7 @@ const CustomersManagement = () => {
 
   const fetchAllTags = async () => {
     try {
-      const { data, error } = await supabase.from('tags').select('*');
+      const { data, error } = await supabase.from('customer_tags').select('*');
       if (error) throw error;
       setAllTags((data || []).map((t: any) => ({ 
         id: t.id, 
@@ -147,8 +149,25 @@ const CustomersManagement = () => {
   };
 
   const fetchAllTagAssignments = async () => {
-    // Mock data since customer_tag_assignments table doesn't exist
+    try {
+      const { data, error } = await supabase
+        .from('customer_tag_assignments')
+        .select('*');
+      if (error) throw error;
+      
+      // Group assignments by customer email
+      const assignments: Record<string, TagAssignment[]> = {};
+      (data || []).forEach((assignment: any) => {
+        if (!assignments[assignment.customer_email]) {
+          assignments[assignment.customer_email] = [];
+        }
+        assignments[assignment.customer_email].push(assignment);
+      });
+      setTagAssignments(assignments);
+    } catch (e) {
+      console.warn('Failed to fetch tag assignments:', e);
     setTagAssignments({});
+    }
   };
 
   const openTagDialog = (customer: Customer) => {
@@ -160,11 +179,37 @@ const CustomersManagement = () => {
   const handleTagChange = (tagId: string) => {
     setSelectedTags(prev => prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]);
   };
+
+  const viewCustomerDetails = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setShowDetailsDialog(true);
+  };
   const saveCustomerTags = async (customer: Customer) => {
     setTagDialogLoading(true);
     try {
-      // Mock save since tables don't exist
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Remove existing assignments for this customer
+      await supabase
+        .from('customer_tag_assignments')
+        .delete()
+        .eq('customer_email', customer.email);
+
+      // Add new assignments
+      if (selectedTags.length > 0) {
+        const assignments = selectedTags.map(tagId => ({
+          customer_email: customer.email,
+          customer_name: customer.name,
+          tag_id: tagId
+        }));
+
+        const { error } = await supabase
+          .from('customer_tag_assignments')
+          .insert(assignments);
+
+        if (error) throw error;
+      }
+      
+      // Refresh tag assignments
+      await fetchAllTagAssignments();
       
       toast({
         title: 'Tags updated',
@@ -362,7 +407,12 @@ const CustomersManagement = () => {
                       </Dialog>
                     </td>
                     <td className="p-4">
-                      <Button size="sm" variant="outline" className="glass-button-outline">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="glass-button-outline"
+                        onClick={() => viewCustomerDetails(customer)}
+                      >
                         View Details
                       </Button>
                     </td>
@@ -407,6 +457,88 @@ const CustomersManagement = () => {
         onOpenChange={setAddCustomerOpen}
         onCustomerAdded={fetchCustomers}
       />
+
+      {/* Customer Details Dialog */}
+      {selectedCustomer && (
+        <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+          <DialogContent className="glass-card glass-modal max-w-2xl animate-fade-in">
+            <DialogHeader>
+              <DialogTitle className="text-white">Customer Details</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-300 mb-2">Name</h4>
+                  <p className="text-white">{selectedCustomer.name}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-300 mb-2">Email</h4>
+                  <p className="text-white">{selectedCustomer.email}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-300 mb-2">Phone</h4>
+                  <p className="text-white">{selectedCustomer.phone || 'Not provided'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-300 mb-2">Total Orders</h4>
+                  <p className="text-white">{selectedCustomer.totalOrders}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-300 mb-2">Total Spent</h4>
+                  <p className="text-white">₦{selectedCustomer.totalSpent.toLocaleString()}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-300 mb-2">Last Order</h4>
+                  <p className="text-white">
+                    {selectedCustomer.lastOrderDate 
+                      ? new Date(selectedCustomer.lastOrderDate).toLocaleDateString()
+                      : 'No orders'
+                    }
+                  </p>
+                </div>
+              </div>
+              
+              {selectedCustomer.address && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-300 mb-2">Address</h4>
+                  <p className="text-white">{selectedCustomer.address}</p>
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-sm font-medium text-gray-300 mb-2">Tags</h4>
+                <div className="flex flex-wrap gap-2">
+                  {(tagAssignments[selectedCustomer.email] || []).map(assignment => {
+                    const tag = allTags.find(t => t.id === assignment.tag_id);
+                    if (!tag) return null;
+                    return (
+                      <span 
+                        key={tag.id}
+                        className="px-2 py-1 rounded text-xs"
+                        style={{ backgroundColor: tag.color || '#3B82F6', color: '#fff' }}
+                      >
+                        {tag.name}
+                      </span>
+                    );
+                  })}
+                  {(tagAssignments[selectedCustomer.email] || []).length === 0 && (
+                    <span className="text-gray-400 text-sm">No tags assigned</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDetailsDialog(false)}
+                className="glass-button-outline"
+              >
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>;
 };
 export default CustomersManagement;

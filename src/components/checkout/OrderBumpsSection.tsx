@@ -76,11 +76,15 @@ const OrderBumpsSection = ({ cart, updateCart }: OrderBumpsSectionProps) => {
           : 0;
 
         return (
-          <Card key={orderBump.id} className="bg-gradient-to-r from-yellow-400 to-yellow-500 border-yellow-300 shadow-lg shadow-yellow-500/25 text-black">
+          <Card key={orderBump.id} className={`relative border-2 rounded-xl overflow-hidden transition-all duration-300 ${
+            inCart 
+              ? 'border-yellow-500 bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg shadow-yellow-500/25' 
+              : 'border-gray-200 bg-white hover:border-yellow-300 hover:shadow-md'
+          }`}>
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
                 {orderBump.image_url && (
-                  <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-black/10">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
                     <img 
                       src={orderBump.image_url} 
                       alt={orderBump.title}
@@ -92,15 +96,18 @@ const OrderBumpsSection = ({ cart, updateCart }: OrderBumpsSectionProps) => {
                   </div>
                 )}
                 
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-bold text-lg text-black leading-tight">
                         {orderBump.title}
                       </h4>
                       
                       {hasDiscount && (
-                        <Badge variant="outline" className="mt-2 bg-red-100 text-red-800 border-red-200">
+                        <Badge 
+                          variant="outline" 
+                          className="mt-2 bg-yellow-100 text-yellow-800 border-yellow-200 font-semibold glow-soft"
+                        >
                           {discountPercentage}% OFF - Limited Time!
                         </Badge>
                       )}
@@ -127,13 +134,13 @@ const OrderBumpsSection = ({ cart, updateCart }: OrderBumpsSectionProps) => {
                   </div>
                   
                   {orderBump.description && (
-                    <p className="text-sm text-black/80 mt-2 leading-relaxed">
+                    <p className="text-sm text-gray-700 leading-relaxed mt-3">
                       {orderBump.description}
                     </p>
                   )}
                   
-                  <div className="flex items-center gap-3 mt-3">
-                    <span className="text-xl font-bold text-black">
+                  <div className="flex items-center gap-3 mt-4">
+                    <span className="text-2xl font-bold text-black">
                       {formatCurrency(finalPrice)}
                     </span>
                     {hasDiscount && (
@@ -145,6 +152,14 @@ const OrderBumpsSection = ({ cart, updateCart }: OrderBumpsSectionProps) => {
                 </div>
               </div>
             </CardContent>
+            
+            {inCart && (
+              <div className="absolute top-3 right-3">
+                <div className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-semibold glow-badge">
+                  Added ✓
+                </div>
+              </div>
+            )}
           </Card>
         );
       })}
