@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { withTimeout, startLoadingGuard } from '@/utils/asyncGuards';
 import { EmailTemplateEditor } from '@/components/admin/email/EmailTemplateEditor';
+import { MultiSendCampaign } from '@/components/admin/email/MultiSendCampaign';
 
 interface EmailCampaign {
   id: string;
@@ -47,6 +48,7 @@ const EmailCampaigns = () => {
   });
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+  const [showMultiSend, setShowMultiSend] = useState(false);
   const { toast } = useToast();
 
   const createGoogleReviewAutomation = useCallback(async (templateId: string) => {
@@ -364,6 +366,14 @@ const EmailCampaigns = () => {
             <Plus className="mr-2 h-4 w-4" />
             Create Template
           </Button>
+          <Button 
+            variant="outline"
+            onClick={() => setShowMultiSend(true)}
+            className="glass-button-outline"
+          >
+            <Send className="mr-2 h-4 w-4" />
+            Send Multiple
+          </Button>
           <Button onClick={() => setShowCampaignDialog(true)} className="glass-button">
             <Plus className="mr-2 h-4 w-4" />
             Create Campaign
@@ -495,6 +505,13 @@ const EmailCampaigns = () => {
           fetchTemplates();
           setEditingTemplate(null);
         }}
+      />
+
+      {/* Multi Send Campaign */}
+      <MultiSendCampaign
+        open={showMultiSend}
+        onOpenChange={setShowMultiSend}
+        templates={templates}
       />
     </div>
   );
