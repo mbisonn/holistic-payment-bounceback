@@ -11,7 +11,19 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { withTimeout, startLoadingGuard } from '@/utils/asyncGuards';
-import { GOOGLE_REVIEW_TEMPLATE } from '@/utils/emailTemplates';
+
+// Placeholder for Google review template
+const GOOGLE_REVIEW_TEMPLATE = [
+  {
+    id: 'google-review-template',
+    name: 'Google Review Response',
+    subject: 'Thank you for your review!',
+    body: 'Thank you for taking the time to leave us a review. We appreciate your feedback!',
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+];
 
 interface EmailTemplate {
   id: string;
@@ -55,9 +67,9 @@ const EmailTemplates = () => {
           await supabase
             .from('email_templates')
             .update({
-              subject: GOOGLE_REVIEW_TEMPLATE.subject,
-              body: GOOGLE_REVIEW_TEMPLATE.body,
-              is_active: GOOGLE_REVIEW_TEMPLATE.is_active
+              subject: GOOGLE_REVIEW_TEMPLATE[0].subject,
+              body: GOOGLE_REVIEW_TEMPLATE[0].body,
+              is_active: GOOGLE_REVIEW_TEMPLATE[0].is_active
             })
             .eq('name', 'Google Review Request');
         }

@@ -48,8 +48,8 @@ const UpsellsSection = () => {
         id: item.id,
         name: item.name,
         details: item.description || '',
-        price: item.price,
-        paystack_link: '',
+        price: Number(item.price) || 0,
+        paystack_link: item.paystack_link || '',
         is_active: item.is_active
       })));
       setError(null);
@@ -87,19 +87,21 @@ const UpsellsSection = () => {
         const { error } = await supabase.from('upsell_products').update({ 
           name: form.name, 
           description: form.details, 
-          price
+          price,
+          is_active: true
         }).eq('id', editId);
         if (error) throw error;
-        toast({ title: 'Success', description: 'Product updated.' });
+        toast({ title: 'Success', description: 'Product updated and saved.' });
       } else {
         // Create
         const { error } = await supabase.from('upsell_products').insert([{ 
           name: form.name, 
           description: form.details, 
-          price
+          price,
+          is_active: true
         }]);
         if (error) throw error;
-        toast({ title: 'Success', description: 'Product created.' });
+        toast({ title: 'Success', description: 'Product created and saved.' });
       }
       setFormOpen(false);
       fetchUpsells();

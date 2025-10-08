@@ -102,12 +102,13 @@ serve(async (req: Request) => {
       });
     }
 
-    // Fetch product from database based on type
-    const { data: product, error: productError } = await supabaseClient
+    // Fetch product from database - get any active upsell product
+    // Note: type is just used for metadata, not for filtering
+    const { data: product, error: productError} = await supabaseClient
       .from('upsell_products')
       .select('*')
-      .eq('type', type)
       .eq('is_active', true)
+      .order('created_at', { ascending: false })
       .limit(1)
       .single();
 
