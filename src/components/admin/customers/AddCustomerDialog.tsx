@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Save } from 'lucide-react';
 
 interface AddCustomerDialogProps {
   open: boolean;
@@ -15,12 +17,34 @@ interface AddCustomerDialogProps {
 export const AddCustomerDialog = ({ open, onOpenChange, onCustomerAdded }: AddCustomerDialogProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    address: ''
+    address: '',
+    product_id: ''
   });
+
+  useEffect(() => {
+    if (open) {
+      fetchProducts();
+    }
+  }, [open]);
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, price')
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +134,21 @@ export const AddCustomerDialog = ({ open, onOpenChange, onCustomerAdded }: AddCu
               className="glass-input text-white border-white/20"
             />
           </div>
+          <div>
+            <Label htmlFor="product" className="text-white">Product Purchased</Label>
+            <Select value={formData.product_id} onValueChange={(value) => setFormData(prev => ({ ...prev, product_id: value }))}>
+              <SelectTrigger className="glass-input text-white border-white/20">
+                <SelectValue placeholder="Select a product" />
+              </SelectTrigger>
+              <SelectContent>
+                {products.map(product => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.name} - ₦{product.price.toLocaleString()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex justify-end space-x-2 pt-4">
             <Button 
               type="button" 
@@ -125,6 +164,15 @@ export const AddCustomerDialog = ({ open, onOpenChange, onCustomerAdded }: AddCu
               className="glass-button"
             >
               {loading ? 'Adding...' : 'Add Customer'}
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleSubmit}
+              disabled={loading}
+              className="glass-button"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Customer
             </Button>
           </div>
         </form>

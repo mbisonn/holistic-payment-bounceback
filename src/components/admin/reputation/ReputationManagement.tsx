@@ -13,18 +13,11 @@ import {
   MessageSquare, 
   TrendingUp, 
   TrendingDown, 
-  Filter, 
   Search, 
   Plus, 
   Eye, 
   Reply, 
-  Flag, 
-  ThumbsUp, 
-  ThumbsDown,
-  ExternalLink,
   BarChart3,
-  Users,
-  Calendar,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -36,9 +29,9 @@ import {
   RefreshCw,
   MapPin,
   Phone,
-  Send,
   Edit,
-  AlertCircle
+  AlertCircle,
+  Save
 } from 'lucide-react';
 
 interface Review {
@@ -116,7 +109,7 @@ const ReputationManagement = () => {
   // Google My Business state
   const [googleConnected, setGoogleConnected] = useState(false);
   const [googleConnecting, setGoogleConnecting] = useState(false);
-  const [businessLocations, setBusinessLocations] = useState<BusinessLocation[]>([]);
+  // Removed unused businessLocations state
   const [selectedLocation, setSelectedLocation] = useState<BusinessLocation | null>(null);
   const [googleReviews, setGoogleReviews] = useState<GoogleReview[]>([]);
   const [loadingGoogleReviews, setLoadingGoogleReviews] = useState(false);
@@ -489,8 +482,8 @@ const ReputationManagement = () => {
           <p className="text-gray-300">Monitor and manage your online reviews and reputation</p>
         </div>
         <Button className="bounce-back-consult-button">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Review
+          <Building className="h-4 w-4 mr-2" />
+          Connect Google My Business
         </Button>
       </div>
 
@@ -499,14 +492,6 @@ const ReputationManagement = () => {
           <TabsTrigger value="overview" className="text-white data-[state=active]:bg-white/20">
             <BarChart3 className="h-4 w-4 mr-2" />
             Overview
-          </TabsTrigger>
-          <TabsTrigger value="reviews" className="text-white data-[state=active]:bg-white/20">
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Reviews
-          </TabsTrigger>
-          <TabsTrigger value="responses" className="text-white data-[state=active]:bg-white/20">
-            <Reply className="h-4 w-4 mr-2" />
-            Responses
           </TabsTrigger>
           <TabsTrigger value="google" className="text-white data-[state=active]:bg-white/20">
             <Building className="h-4 w-4 mr-2" />
@@ -877,45 +862,98 @@ const ReputationManagement = () => {
             </CardHeader>
             <CardContent>
               {!googleConnected ? (
-                <div className="space-y-4">
-                  <p className="text-gray-400">
-                    Connect your Google My Business account to:
-                  </p>
-                  <ul className="space-y-2 text-gray-400">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-400" />
-                      View all your Google reviews in one place
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-400" />
-                      Get instant notifications for new reviews
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-400" />
-                      Respond to reviews directly from this dashboard
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-400" />
-                      Track review trends and analytics
-                    </li>
-                  </ul>
-                  <Button 
-                    onClick={connectGoogleAccount}
-                    disabled={googleConnecting}
-                    className="bounce-back-consult-button"
-                  >
-                    {googleConnecting ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : (
-                      <>
-                        <Link2 className="h-4 w-4 mr-2" />
-                        Connect Google My Business
-                      </>
-                    )}
-                  </Button>
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <p className="text-gray-400">
+                      Enter your Google My Business details to connect:
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-white mb-2">
+                          Business Name
+                        </label>
+                        <Input
+                          placeholder="Enter your business name"
+                          className="bounce-back-consult-input text-white border-white/20"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-white mb-2">
+                          Business Address
+                        </label>
+                        <Input
+                          placeholder="Enter your business address"
+                          className="bounce-back-consult-input text-white border-white/20"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-white mb-2">
+                          Phone Number
+                        </label>
+                        <Input
+                          placeholder="Enter your business phone"
+                          className="bounce-back-consult-input text-white border-white/20"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-white mb-2">
+                          Google Business ID
+                        </label>
+                        <Input
+                          placeholder="Enter your Google Business ID"
+                          className="bounce-back-consult-input text-white border-white/20"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-gray-400">
+                      <p className="text-sm">Benefits of connecting:</p>
+                      <ul className="space-y-1 text-sm">
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          View all your Google reviews in one place
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          Respond to reviews directly from this dashboard
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          Get instant notifications for new reviews
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-400" />
+                          Track review trends and analytics
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={connectGoogleAccount}
+                      disabled={googleConnecting}
+                      className="bounce-back-consult-button"
+                    >
+                      {googleConnecting ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Connecting...
+                        </>
+                      ) : (
+                        <>
+                          <Link2 className="h-4 w-4 mr-2" />
+                          Connect Google My Business
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      onClick={connectGoogleAccount}
+                      disabled={googleConnecting}
+                      className="bounce-back-consult-button"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Settings
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">

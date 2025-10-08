@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Save } from 'lucide-react';
 
 interface CreateOrderDialogProps {
   open: boolean;
@@ -400,6 +400,15 @@ export const CreateOrderDialog = ({ open, onOpenChange, onOrderCreated }: Create
               className="glass-button"
             >
               {loading ? 'Creating...' : 'Create Order'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="glass-button"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Order
             </Button>
           </div>
         </form>

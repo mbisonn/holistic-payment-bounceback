@@ -42,10 +42,12 @@ const MealPlanSync = () => {
 
       if (error) throw error;
       setSyncData((data || []).map(item => ({
-        ...item,
+        id: item.id,
         customer_name: item.customer_name || 'Unknown',
+        customer_email: item.customer_email,
         customer_phone: item.customer_phone || null,
         external_user_id: item.external_user_id || '',
+        meal_plan_data: item.meal_plan_data,
         synced_at: item.synced_at || null,
         created_at: String(item.created_at)
       })));

@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit, Trash2, Link, ExternalLink } from 'lucide-react';
+import { Plus, Edit, Trash2, Link, ExternalLink, Save } from 'lucide-react';
 
 interface UpsellProduct {
   id: string;
@@ -29,7 +29,7 @@ const UpsellLinks = () => {
   const [editingProduct, setEditingProduct] = useState<UpsellProduct | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    type: 'membership',
+    type: 'upsell',
     price: 0,
     duration_months: 1,
     description: ''
@@ -404,10 +404,14 @@ const UpsellLinks = () => {
                     <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white">
                       {editingProduct ? 'Save Changes' : 'Create Product'}
                     </Button>
+                    <Button type="button" onClick={editingProduct ? handleSaveEdit : handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Product
+                    </Button>
                     <Button variant="outline" onClick={() => {
                       setDialogOpen(false);
                       setEditingProduct(null);
-                      setFormData({ name: '', type: 'membership', price: 0, duration_months: 1, description: '' });
+                      setFormData({ name: '', type: 'upsell', price: 0, duration_months: 1, description: '' });
                     }}>
                       Cancel
                     </Button>

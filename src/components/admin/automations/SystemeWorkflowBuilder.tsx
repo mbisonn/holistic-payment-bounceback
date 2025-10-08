@@ -19,7 +19,6 @@ import {
   Gift,
   CheckCircle,
   Database,
-  Send,
   XCircle,
   User, 
   Zap,
@@ -53,14 +52,14 @@ const NODE_TYPES = {
     icon: Zap,
     color: 'blue',
     nodes: [
-      { id: 'customer_signup', label: 'Customer Signup', icon: User, description: 'When a new customer signs up' },
-      { id: 'purchase_paystack', label: 'Purchase (Paystack)', icon: CreditCard, description: 'When a purchase is made via Paystack' },
-      { id: 'abandoned_cart', label: 'Cart Abandoned', icon: CreditCard, description: 'When a customer abandons their cart' },
-      { id: 'email_opened', label: 'Email Opened', icon: Eye, description: 'When an email is opened' },
-      { id: 'email_clicked', label: 'Email Clicked', icon: Target, description: 'When an email link is clicked' },
-      { id: 'birthday', label: 'Customer Birthday', icon: Gift, description: 'On a customer\'s birthday' },
-      { id: 'order_delivered', label: 'Order Delivered', icon: CheckCircle, description: 'When an order is delivered' },
-      { id: 'payment_failed', label: 'Payment Failed', icon: XCircle, description: 'When a payment fails' },
+      { id: 'customer_signup', name: 'Customer Signup', label: 'Customer Signup', icon: User, description: 'When a new customer signs up' },
+      { id: 'purchase_paystack', name: 'Purchase (Paystack)', label: 'Purchase (Paystack)', icon: CreditCard, description: 'When a purchase is made via Paystack' },
+      { id: 'abandoned_cart', name: 'Cart Abandoned', label: 'Cart Abandoned', icon: CreditCard, description: 'When a customer abandons their cart' },
+      { id: 'email_opened', name: 'Email Opened', label: 'Email Opened', icon: Eye, description: 'When an email is opened' },
+      { id: 'email_clicked', name: 'Email Clicked', label: 'Email Clicked', icon: Target, description: 'When an email link is clicked' },
+      { id: 'birthday', name: 'Customer Birthday', label: 'Customer Birthday', icon: Gift, description: 'On a customer\'s birthday' },
+      { id: 'order_delivered', name: 'Order Delivered', label: 'Order Delivered', icon: CheckCircle, description: 'When an order is delivered' },
+      { id: 'payment_failed', name: 'Payment Failed', label: 'Payment Failed', icon: XCircle, description: 'When a payment fails' },
     ]
   },
   action: {
@@ -68,15 +67,15 @@ const NODE_TYPES = {
     icon: Settings,
     color: 'green',
     nodes: [
-      { id: 'send_email', label: 'Send Email', icon: Send, description: 'Send an email to the customer' },
-      { id: 'send_whatsapp', label: 'Send WhatsApp', icon: MessageSquare, description: 'Send a WhatsApp message' },
-      { id: 'send_email_campaign', label: 'Send Email Campaign', icon: Mail, description: 'Send an email campaign' },
-      { id: 'send_sms', label: 'Send SMS', icon: MessageSquare, description: 'Send an SMS to the customer' },
-      { id: 'assign_tag', label: 'Assign Tag', icon: Tag, description: 'Assign a tag to the customer' },
-      { id: 'remove_tag', label: 'Remove Tag', icon: XCircle, description: 'Remove a tag from the customer' },
-      { id: 'create_task', label: 'Create Task', icon: CheckCircle, description: 'Create a task for the team' },
-      { id: 'webhook', label: 'Call Webhook', icon: Database, description: 'Call an external webhook' },
-      { id: 'update_customer', label: 'Update Customer', icon: User, description: 'Update customer information' },
+      { id: 'send_email', name: 'Send Email', label: 'Send Email', icon: Mail, description: 'Send an email to the customer' },
+      { id: 'send_whatsapp', name: 'Send WhatsApp', label: 'Send WhatsApp', icon: MessageSquare, description: 'Send a WhatsApp message' },
+      { id: 'send_email_campaign', name: 'Send Email Campaign', label: 'Send Email Campaign', icon: Mail, description: 'Send an email campaign' },
+      { id: 'send_sms', name: 'Send SMS', label: 'Send SMS', icon: MessageSquare, description: 'Send an SMS to the customer' },
+      { id: 'assign_tag', name: 'Assign Tag', label: 'Assign Tag', icon: Tag, description: 'Assign a tag to the customer' },
+      { id: 'remove_tag', name: 'Remove Tag', label: 'Remove Tag', icon: XCircle, description: 'Remove a tag from the customer' },
+      { id: 'create_task', name: 'Create Task', label: 'Create Task', icon: CheckCircle, description: 'Create a task for the team' },
+      { id: 'webhook', name: 'Call Webhook', label: 'Call Webhook', icon: Database, description: 'Call an external webhook' },
+      { id: 'update_customer', name: 'Update Customer', label: 'Update Customer', icon: User, description: 'Update customer information' },
     ]
   },
   condition: {
@@ -84,11 +83,11 @@ const NODE_TYPES = {
     icon: Filter,
     color: 'yellow',
     nodes: [
-      { id: 'has_tag', label: 'Has Tag', icon: Tag, description: 'Check if customer has a specific tag' },
-      { id: 'purchase_value', label: 'Purchase Value', icon: Target, description: 'Check purchase value' },
-      { id: 'time_of_day', label: 'Time of Day', icon: Clock, description: 'Check time of day' },
-      { id: 'customer_segment', label: 'Customer Segment', icon: User, description: 'Check customer segment' },
-      { id: 'order_count', label: 'Order Count', icon: CheckCircle, description: 'Check number of orders' },
+      { id: 'has_tag', name: 'Has Tag', label: 'Has Tag', icon: Tag, description: 'Check if customer has a specific tag' },
+      { id: 'purchase_value', name: 'Purchase Value', label: 'Purchase Value', icon: Target, description: 'Check purchase value' },
+      { id: 'time_of_day', name: 'Time of Day', label: 'Time of Day', icon: Clock, description: 'Check time of day' },
+      { id: 'customer_segment', name: 'Customer Segment', label: 'Customer Segment', icon: User, description: 'Check customer segment' },
+      { id: 'order_count', name: 'Order Count', label: 'Order Count', icon: CheckCircle, description: 'Check number of orders' },
     ]
   },
   delay: {
@@ -96,9 +95,9 @@ const NODE_TYPES = {
     icon: Clock,
     color: 'purple',
     nodes: [
-      { id: 'wait_minutes', label: 'Wait Minutes', icon: Clock, description: 'Wait for specified minutes' },
-      { id: 'wait_hours', label: 'Wait Hours', icon: Clock, description: 'Wait for specified hours' },
-      { id: 'wait_days', label: 'Wait Days', icon: Clock, description: 'Wait for specified days' },
+      { id: 'wait_minutes', name: 'Wait Minutes', label: 'Wait Minutes', icon: Clock, description: 'Wait for specified minutes' },
+      { id: 'wait_hours', name: 'Wait Hours', label: 'Wait Hours', icon: Clock, description: 'Wait for specified hours' },
+      { id: 'wait_days', name: 'Wait Days', label: 'Wait Days', icon: Clock, description: 'Wait for specified days' },
       { id: 'wait_until', label: 'Wait Until', icon: Clock, description: 'Wait until specific time' },
     ]
   }
@@ -179,6 +178,8 @@ export default function SystemeWorkflowBuilder() {
   const [isEditing, setIsEditing] = useState(false);
   const [showNodePalette, setShowNodePalette] = useState(false);
   const [draggedNodeType, setDraggedNodeType] = useState<any>(null);
+  const [workflowName, setWorkflowName] = useState('');
+  const [showNameDialog, setShowNameDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -216,14 +217,29 @@ export default function SystemeWorkflowBuilder() {
   };
 
   const createNewWorkflow = () => {
+    setWorkflowName('');
+    setShowNameDialog(true);
+  };
+
+  const handleCreateWorkflow = () => {
+    if (!workflowName.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a workflow name',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     const newWorkflow: Workflow = {
-      name: 'New Workflow',
+      name: workflowName,
       description: '',
       nodes: [],
       is_active: false
     };
     setSelectedWorkflow(newWorkflow);
     setIsEditing(true);
+    setShowNameDialog(false);
   };
 
   const saveWorkflow = async () => {
@@ -531,9 +547,10 @@ export default function SystemeWorkflowBuilder() {
                           className="flex items-center gap-2 p-2 bg-gray-700 rounded-lg cursor-move hover:bg-gray-600"
                           draggable
                           onDragStart={() => setDraggedNodeType({ ...node, type })}
+                          title={node.description}
                         >
                           <Icon className="w-4 h-4 text-white" />
-                          <span className="text-white text-sm">{node.name}</span>
+                          <span className="text-white text-sm">{node.label || node.name}</span>
                         </div>
                       );
                     })}
@@ -596,6 +613,46 @@ export default function SystemeWorkflowBuilder() {
           </CardContent>
         </Card>
       )}
+
+      {/* Workflow Name Dialog */}
+      <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
+        <DialogContent className="bg-gray-800 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">Create New Workflow</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-white">Workflow Name</Label>
+              <Input
+                value={workflowName}
+                onChange={(e) => setWorkflowName(e.target.value)}
+                placeholder="Enter workflow name"
+                className="bg-gray-700 border-gray-600 text-white"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleCreateWorkflow();
+                  }
+                }}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowNameDialog(false)}
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateWorkflow}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                Create Workflow
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
