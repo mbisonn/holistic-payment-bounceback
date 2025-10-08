@@ -108,7 +108,6 @@ export default function SystemeWorkflowBuilder() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [showNodePalette, setShowNodePalette] = useState(false);
   const [draggedNodeType, setDraggedNodeType] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -238,7 +237,7 @@ export default function SystemeWorkflowBuilder() {
     const newNode: WorkflowNode = {
       id: `node_${Date.now()}`,
       type: nodeType.type,
-      name: nodeType.name,
+      name: nodeType.label || nodeType.name,
       config: {},
       position,
       connections: []
@@ -345,19 +344,23 @@ export default function SystemeWorkflowBuilder() {
         <Card className="lg:col-span-2 bg-gray-800 border-gray-700">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-white">
-                {selectedWorkflow ? selectedWorkflow.name : 'Select a workflow'}
-              </CardTitle>
+              {selectedWorkflow ? (
+                <div className="flex-1 mr-4">
+                  <Input
+                    value={selectedWorkflow.name}
+                    onChange={(e) => {
+                      setSelectedWorkflow({ ...selectedWorkflow, name: e.target.value });
+                      setIsEditing(true);
+                    }}
+                    className="bg-gray-700 border-gray-600 text-white font-semibold"
+                    placeholder="Workflow name..."
+                  />
+                </div>
+              ) : (
+                <CardTitle className="text-white">Select a workflow</CardTitle>
+              )}
               {selectedWorkflow && (
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowNodePalette(!showNodePalette)}
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Node
-                  </Button>
                   {isEditing && (
                     <Button
                       size="sm"
@@ -454,7 +457,7 @@ export default function SystemeWorkflowBuilder() {
                 <div key={type}>
                   <h4 className="text-sm font-medium text-gray-300 mb-2 capitalize">{type}s</h4>
                   <div className="space-y-2">
-                    {nodeList.map((node: any) => {
+                     {nodeList.map((node: any) => {
                       const Icon = node.icon;
                       return (
                         <div
@@ -464,7 +467,10 @@ export default function SystemeWorkflowBuilder() {
                           onDragStart={() => setDraggedNodeType({ ...node, type })}
                         >
                           <Icon className="w-4 h-4 text-white" />
-                          <span className="text-white text-sm">{node.name}</span>
+                          <div className="flex flex-col">
+                            <span className="text-white text-sm font-medium">{node.label}</span>
+                            <span className="text-gray-400 text-xs">{node.description}</span>
+                          </div>
                         </div>
                       );
                     })}

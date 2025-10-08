@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,6 +48,30 @@ const EmailCampaigns = () => {
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const { toast } = useToast();
+
+  const createGoogleReviewAutomation = useCallback(async (templateId: string) => {
+    try {
+      // Create automation workflow for Google Review - 1 Month After Purchase
+      const automationData = {
+        name: 'Google Review Request - 1 Month After Purchase',
+        trigger: 'purchase_paystack',
+        action: 'send_email_campaign',
+        trigger_data: JSON.stringify({ delay_hours: 720 }), // 30 days
+        action_data: JSON.stringify({ 
+          template_id: templateId,
+          campaign_name: 'Google Review Request'
+        }),
+        is_active: true
+      };
+      
+      const { error } = await supabase.from('automation_rules').upsert(automationData);
+      if (!error) {
+        console.log('Google Review automation created successfully');
+      }
+    } catch (e) {
+      console.error('Failed to create Google Review automation:', e);
+    }
+  }, []);
 
   useEffect(() => {
     fetchCampaigns();
@@ -192,31 +216,7 @@ const EmailCampaigns = () => {
       // Create automation workflow for Google Review
       await createGoogleReviewAutomation(templateId);
     })();
-  }, []);
-
-  const createGoogleReviewAutomation = async (templateId: string) => {
-    try {
-      // Create automation workflow for Google Review
-      const automationData = {
-        name: 'Google Review Request Automation',
-        trigger: 'purchase_paystack',
-        action: 'send_email_campaign',
-        trigger_data: JSON.stringify({ delay_hours: 24 }),
-        action_data: JSON.stringify({ 
-          template_id: templateId,
-          campaign_name: 'Google Review Request'
-        }),
-        is_active: true
-      };
-      
-      const { error } = await supabase.from('automation_rules').upsert(automationData);
-      if (!error) {
-        console.log('Google Review automation created successfully');
-      }
-    } catch (e) {
-      console.error('Failed to create Google Review automation:', e);
-    }
-  };
+  }, [createGoogleReviewAutomation]);
 
   const fetchCampaigns = async () => {
     // Guard to force-resolve loading in case the request stalls
