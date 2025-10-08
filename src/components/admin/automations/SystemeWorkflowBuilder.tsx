@@ -379,7 +379,7 @@ export default function SystemeWorkflowBuilder() {
         <Button onClick={createNewWorkflow} className="bg-purple-600 hover:bg-purple-700">
           <Plus className="w-4 h-4 mr-2" />
           New Workflow
-          </Button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

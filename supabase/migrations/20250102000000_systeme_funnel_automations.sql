@@ -241,3 +241,4 @@ GRANT SELECT ON public.automation_rules_view TO authenticated;
 
 
 
+
