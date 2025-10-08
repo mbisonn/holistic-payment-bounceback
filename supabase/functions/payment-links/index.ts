@@ -6,6 +6,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
 interface PaymentLinkRequest {
   type: 'upsell' | 'downsell';
+  productId?: string;
+  productName?: string;
+  price?: number;
   customerInfo: {
     name: string;
     email: string;
@@ -78,7 +81,7 @@ serve(async (req: Request) => {
       });
     }
     
-    const { type, customerInfo, reference, redirectUrl } = reqBody as PaymentLinkRequest;
+    const { type, productId, productName, price, customerInfo, reference, redirectUrl } = reqBody as PaymentLinkRequest;
     
     // Validate required fields
     if (!type || !customerInfo || !customerInfo.email || !customerInfo.name) {
@@ -102,17 +105,28 @@ serve(async (req: Request) => {
       });
     }
 
-    // Fetch product from database - get any active upsell product
-    // Note: type is just used for metadata, not for filtering
-    const { data: product, error: productError} = await supabaseClient
-      .from('upsell_products')
-      .select('*')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    // Fetch product from database. Prefer provided productId; fallback to latest active.
+    let product: any = null;
+    if (productId) {
+      const { data, error } = await supabaseClient
+        .from('upsell_products')
+        .select('*')
+        .eq('id', productId)
+        .single();
+      if (!error) product = data;
+    }
+    if (!product) {
+      const { data } = await supabaseClient
+        .from('upsell_products')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      product = data;
+    }
 
-    if (productError || !product) {
+    if (!product) {
       return new Response(
         JSON.stringify({ error: `Product not found for type: ${type}` }),
         {
@@ -155,12 +169,12 @@ serve(async (req: Request) => {
     // Create payment request for Paystack
     const paymentData = {
       email: sanitizedEmail,
-      amount: product.price * 100, // Convert to kobo
+      amount: Math.round((price ?? product.price) * 100), // Convert to kobo
       callback_url: finalRedirectUrl,
       metadata: {
         name: sanitizedName,
         productId: product.id,
-        productName: product.name,
+        productName: productName ?? product.name,
         productType: type,
         phone: customerInfo.phone ? customerInfo.phone.trim() : '',
       },
