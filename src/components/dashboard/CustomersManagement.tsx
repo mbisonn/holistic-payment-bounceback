@@ -85,15 +85,13 @@ const CustomersManagement = () => {
       // Prefer using orders table data over non-existent customers table
       const { data: orders, error: fetchError } = await supabase
         .from('orders')
-        .select('customer_name, customer_email, customer_phone, delivery_address, total_amount, created_at');
+        .select('customer_name, customer_email, total_amount, created_at');
       if (fetchError) throw fetchError;
 
       const customerMap = new Map<string, Customer>();
       orders?.forEach((order: { 
         customer_email: string; 
         customer_name?: string | null; 
-        customer_phone?: string | null; 
-        delivery_address?: string | null; 
         total_amount: number; 
         created_at: string | null;
       }) => {
@@ -111,8 +109,8 @@ const CustomersManagement = () => {
             id: email,
             email: email,
             name: order.customer_name || 'Unknown',
-            phone: order.customer_phone || undefined,
-            address: order.delivery_address || undefined,
+            phone: undefined,
+            address: undefined,
             totalOrders: 1,
             totalSpent: order.total_amount,
             lastOrderDate: order.created_at || new Date().toISOString()
@@ -166,7 +164,7 @@ const CustomersManagement = () => {
       setTagAssignments(assignments);
     } catch (e) {
       console.warn('Failed to fetch tag assignments:', e);
-    setTagAssignments({});
+      setTagAssignments({});
     }
   };
 
@@ -176,6 +174,7 @@ const CustomersManagement = () => {
     const assignments = tagAssignments[customer.email] || [];
     setSelectedTags(assignments.map(a => a.tag_id!).filter(Boolean));
   };
+
   const handleTagChange = (tagId: string) => {
     setSelectedTags(prev => prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]);
   };

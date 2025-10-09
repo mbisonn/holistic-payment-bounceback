@@ -30,7 +30,7 @@ CREATE POLICY "user_access_requests_own_insert"
 ON public.user_access_requests 
 FOR INSERT 
 TO authenticated 
-WITH CHECK (auth.uid()::text = user_id::text OR user_email = (SELECT email FROM auth.users WHERE id = auth.uid()));
+WITH CHECK (auth.uid()::text = user_id::text OR email = (SELECT email FROM auth.users WHERE id = auth.uid()));
 
 -- Allow users to view their own access requests
 CREATE POLICY "user_access_requests_own_select" 
@@ -39,7 +39,7 @@ FOR SELECT
 TO authenticated 
 USING (
   auth.uid()::text = user_id::text 
-  OR user_email = (SELECT email FROM auth.users WHERE id = auth.uid())
+  OR email = (SELECT email FROM auth.users WHERE id = auth.uid())
   OR EXISTS (
     SELECT 1 FROM public.user_roles 
     WHERE user_id = auth.uid() AND role = 'admin'::app_role

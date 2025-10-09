@@ -10,13 +10,12 @@ import { useToast } from '@/hooks/use-toast';
 
 interface MealPlanData {
   id: string;
-  customer_name: string;
   customer_email: string;
-  customer_phone: string | null;
-  external_user_id: string;
   meal_plan_data: any;
-  synced_at: string | null;
-  created_at: string;
+  last_synced_at: string | null;
+  created_at: string | null;
+  sync_status: string | null;
+  updated_at: string | null;
 }
 
 const MealPlanSync = () => {
@@ -36,21 +35,12 @@ const MealPlanSync = () => {
   const fetchSyncData = async () => {
     try {
       const { data, error } = await supabase
-        .from<any>('meal_plan_sync')
+        .from('meal_plan_sync')
         .select('*')
-        .order('synced_at', { ascending: false });
+        .order('last_synced_at', { ascending: false });
 
       if (error) throw error;
-      setSyncData((data || []).map(item => ({
-        id: item.id,
-        customer_name: item.customer_name || 'Unknown',
-        customer_email: item.customer_email,
-        customer_phone: item.customer_phone || null,
-        external_user_id: item.external_user_id || '',
-        meal_plan_data: item.meal_plan_data,
-        synced_at: item.synced_at || null,
-        created_at: String(item.created_at)
-      })));
+      setSyncData((data || []) as MealPlanData[]);
     } catch (error) {
       toast({
         title: "Error",
@@ -65,7 +55,6 @@ const MealPlanSync = () => {
   const handleSync = async () => {
     if (!customerEmail || !externalUserId) {
       toast({
-        title: "Error",
         description: "Please enter both customer email and external user ID",
         variant: "destructive",
       });
@@ -90,12 +79,12 @@ const MealPlanSync = () => {
 
       // Store the synced data in our database
       const { error } = await supabase
-        .from<any>('meal_plan_sync')
+        .from('meal_plan_sync')
         .insert([{
           customer_email: customerEmail,
-          customer_name: mealPlanData.name || customerEmail.split('@')[0],
-          external_user_id: externalUserId,
           meal_plan_data: mealPlanData,
+          sync_status: 'synced',
+          last_synced_at: new Date().toISOString(),
         }]);
 
       if (error) throw error;
@@ -199,17 +188,13 @@ const MealPlanSync = () => {
                 <div key={sync.id} className="p-4 bg-white/5 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium text-white">{sync.customer_name}</h4>
-                      <p className="text-sm text-white/70">{sync.customer_email}</p>
-                      <p className="text-xs text-white/50">External ID: {sync.external_user_id}</p>
+                      <h4 className="font-medium text-white">{sync.customer_email}</h4>
+                      <p className="text-sm text-white/70">Status: {sync.sync_status || 'Unknown'}</p>
                     </div>
                     <div className="text-right">
                       <Badge variant="secondary">
-                        Synced {sync.synced_at ? new Date(sync.synced_at).toLocaleDateString() : 'Unknown'}
+                        Synced {sync.last_synced_at ? new Date(sync.last_synced_at).toLocaleDateString() : 'Unknown'}
                       </Badge>
-                      {sync.customer_phone && (
-                        <p className="text-sm text-white/70 mt-1">{sync.customer_phone}</p>
-                      )}
                     </div>
                   </div>
                 </div>

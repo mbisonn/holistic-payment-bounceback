@@ -14,13 +14,11 @@ import {
   TrendingUp, 
   TrendingDown, 
   Search, 
-  Plus, 
   Eye, 
   Reply, 
   BarChart3,
   AlertTriangle,
   CheckCircle,
-  XCircle,
   Building,
   Bell,
   BellOff,
@@ -31,7 +29,8 @@ import {
   Phone,
   Edit,
   AlertCircle,
-  Save
+  Save,
+  Send
 } from 'lucide-react';
 
 interface Review {
@@ -133,7 +132,7 @@ const ReputationManagement = () => {
   const fetchReviews = async () => {
     try {
       const { data, error } = await supabase
-        .from<any>('reviews')
+        .from('reviews')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -169,7 +168,6 @@ const ReputationManagement = () => {
         locationId: 'loc_123456',
         isConnected: true
       };
-      setBusinessLocations([mockLocation]);
       setSelectedLocation(mockLocation);
       fetchGoogleReviews();
     }
@@ -195,7 +193,6 @@ const ReputationManagement = () => {
         locationId: 'loc_123456',
         isConnected: true
       };
-      setBusinessLocations([mockLocation]);
       setSelectedLocation(mockLocation);
       setGoogleConnecting(false);
       fetchGoogleReviews();
@@ -210,7 +207,6 @@ const ReputationManagement = () => {
   const disconnectGoogle = () => {
     localStorage.removeItem('google_my_business_connected');
     setGoogleConnected(false);
-    setBusinessLocations([]);
     setGoogleReviews([]);
     setSelectedLocation(null);
     
@@ -383,7 +379,7 @@ const ReputationManagement = () => {
   const updateReviewStatus = async (reviewId: string, status: string) => {
     try {
       const { error } = await supabase
-        .from<any>('reviews')
+        .from('reviews')
         .update({ status })
         .eq('id', reviewId);
 
@@ -411,7 +407,7 @@ const ReputationManagement = () => {
 
     try {
       const { error } = await supabase
-        .from<any>('reviews')
+        .from('reviews')
         .update({
           response: responseText,
           response_date: new Date().toISOString()
