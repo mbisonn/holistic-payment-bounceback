@@ -44,6 +44,10 @@ export const EnhancedCustomersManagement = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [sortField, setSortField] = useState<'date' | 'product' | 'tags'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showEditTagsDialog, setShowEditTagsDialog] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<Array<{ id: string; name: string }>>([]);
   const [newCustomer, setNewCustomer] = useState({
     name: '',
     email: '',
@@ -54,11 +58,25 @@ export const EnhancedCustomersManagement = () => {
 
   useEffect(() => {
     fetchData();
+    fetchTags();
   }, []);
 
   useEffect(() => {
     filterAndSortCustomers();
   }, [customers, searchTerm, sortField, sortOrder]);
+
+  const fetchTags = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tags')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      setAvailableTags(data || []);
+    } catch (error) {
+      console.error('Error fetching tags:', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -68,8 +86,6 @@ export const EnhancedCustomersManagement = () => {
         .select('id, name')
         .eq('is_active', true);
       setProducts(productsData || []);
-
-      // Tags will be loaded separately when needed
 
       // Fetch customers from orders
       const { data: ordersData, error: ordersError } = await supabase
@@ -205,6 +221,35 @@ export const EnhancedCustomersManagement = () => {
   const viewCustomerDetails = (customer: Customer) => {
     setSelectedCustomer(customer);
     setShowDetailsDialog(true);
+  };
+
+  const openEditTagsDialog = (customer: Customer) => {
+    setEditingCustomer(customer);
+    setSelectedTags(customer.tags || []);
+    setShowEditTagsDialog(true);
+  };
+
+  const handleSaveTags = async () => {
+    if (!editingCustomer) return;
+    
+    try {
+      // Save tags to customer_notes table
+      const { error } = await supabase
+        .from('customer_notes')
+        .upsert({
+          customer_email: editingCustomer.customer_email,
+          tags: selectedTags.join(',')
+        }, { onConflict: 'customer_email' });
+
+      if (error) throw error;
+
+      toast.success('Tags updated successfully');
+      setShowEditTagsDialog(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating tags:', error);
+      toast.error('Failed to update tags');
+    }
   };
 
   if (loading) {
@@ -393,6 +438,7 @@ export const EnhancedCustomersManagement = () => {
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => openEditTagsDialog(customer)}
                           className="glass-button-outline"
                         >
                           <Edit className="h-4 w-4" />
@@ -415,6 +461,53 @@ export const EnhancedCustomersManagement = () => {
           customer={selectedCustomer}
         />
       )}
+
+      {/* Edit Tags Dialog */}
+      <Dialog open={showEditTagsDialog} onOpenChange={setShowEditTagsDialog}>
+        <DialogContent className="glass-card">
+          <DialogHeader>
+            <DialogTitle className="text-glass-text">Edit Customer Tags</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Label className="text-glass-text">Select Tags</Label>
+            <Select
+              value={selectedTags[selectedTags.length - 1] || ''}
+              onValueChange={(value) => {
+                if (!selectedTags.includes(value)) {
+                  setSelectedTags([...selectedTags, value]);
+                }
+              }}
+            >
+              <SelectTrigger className="glass-input text-glass-text">
+                <SelectValue placeholder="Select a tag" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableTags.map(tag => (
+                  <SelectItem key={tag.id} value={tag.name}>
+                    {tag.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex flex-wrap gap-2">
+              {selectedTags.map((tag, idx) => (
+                <Badge key={idx} className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+                  {tag}
+                  <button
+                    onClick={() => setSelectedTags(selectedTags.filter((_, i) => i !== idx))}
+                    className="ml-2 hover:text-red-400"
+                  >
+                    ×
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <Button onClick={handleSaveTags} className="w-full glass-button">
+              Save Tags
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

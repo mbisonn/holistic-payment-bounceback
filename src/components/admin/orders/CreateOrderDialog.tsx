@@ -107,16 +107,22 @@ export const CreateOrderDialog = ({ open, onOpenChange, onOrderCreated }: Create
         body: {
           amount: totalAmount * 100, // Convert to kobo
           email: formData.customer_email,
+          customerInfo: {
+            email: formData.customer_email,
+            name: formData.customer_name
+          },
           metadata: {
             order_id: orderId,
-            customer_name: formData.customer_name,
-            type: 'manual_order'
+            customer_name: formData.customer_name
           }
         }
       });
 
       if (error) throw error;
-      return data?.link;
+      
+      // Extract payment URL from response
+      const paymentUrl = data?.data?.payment_url || data?.payment_url || data?.data?.authorization_url || data?.authorization_url;
+      return paymentUrl;
     } catch (error) {
       console.error('Error generating payment link:', error);
       return null;
@@ -179,12 +185,20 @@ export const CreateOrderDialog = ({ open, onOpenChange, onOrderCreated }: Create
         paymentLink = await generatePaymentLink(order.id, totalAmount);
       }
 
-      toast({
-        title: 'Success',
-        description: paymentLink 
-          ? `Order created successfully. Payment link: ${paymentLink}`
-          : 'Order created successfully'
-      });
+      if (paymentLink) {
+        // Copy to clipboard
+        navigator.clipboard.writeText(paymentLink);
+        toast({
+          title: 'Success',
+          description: 'Order created! Payment link copied to clipboard.',
+          duration: 5000
+        });
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Order created successfully'
+        });
+      }
 
       // Reset form
       setFormData({
@@ -387,25 +401,43 @@ export const CreateOrderDialog = ({ open, onOpenChange, onOrderCreated }: Create
 
           {/* Status & Notes */}
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="status" className="text-white">Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: any) => setFormData(prev => ({ ...prev, status: value }))}
-              >
-                <SelectTrigger className="glass-input text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="shipped">Shipped</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                  <SelectItem value="refunded">Refunded</SelectItem>
-                  <SelectItem value="on_hold">On Hold</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="status" className="text-white">Order Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: any) => setFormData(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger className="glass-input text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="processing">Processing</SelectItem>
+                    <SelectItem value="shipped">Shipped</SelectItem>
+                    <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="refunded">Refunded</SelectItem>
+                    <SelectItem value="on_hold">On Hold</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="payment_status" className="text-white">Payment Status</Label>
+                <Select
+                  value="pending"
+                  disabled
+                >
+                  <SelectTrigger className="glass-input text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <Label htmlFor="notes" className="text-white">Notes</Label>
@@ -433,16 +465,8 @@ export const CreateOrderDialog = ({ open, onOpenChange, onOrderCreated }: Create
               disabled={loading}
               className="glass-button"
             >
-              {loading ? 'Creating...' : 'Create Order'}
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={loading}
-              className="glass-button"
-            >
               <Save className="h-4 w-4 mr-2" />
-              Save Order
+              {loading ? 'Creating...' : 'Create Order & Generate Payment Link'}
             </Button>
           </div>
         </form>

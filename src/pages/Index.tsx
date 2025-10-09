@@ -448,14 +448,52 @@ const Index = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex flex-col gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       {applicableOrderBumps.map(orderBump => (
-                        <OrderBumpCard
-                          key={orderBump.id}
-                          orderBump={orderBump}
-                          onToggle={() => handleOrderBumpToggle(orderBump.id)}
-                          isSelected={!!selectedBumps[orderBump.id]}
-                        />
+                        <Card key={orderBump.id} className="overflow-hidden bg-gradient-to-br from-yellow-400 to-yellow-500 border-yellow-600">
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-4">
+                              {orderBump.image_url && (
+                                <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-yellow-300">
+                                  <img 
+                                    src={orderBump.image_url} 
+                                    alt={orderBump.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <h4 className="font-bold text-lg text-yellow-900">{orderBump.title}</h4>
+                                    {orderBump.discounted_price && orderBump.discounted_price < orderBump.original_price && (
+                                      <Badge className="mt-1 bg-yellow-600 text-white">
+                                        {Math.round(((orderBump.original_price - orderBump.discounted_price) / orderBump.original_price) * 100)}% OFF
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!selectedBumps[orderBump.id]}
+                                    onChange={() => handleOrderBumpToggle(orderBump.id)}
+                                    className="w-6 h-6 rounded border-2 border-yellow-700 accent-yellow-600"
+                                  />
+                                </div>
+                                <p className="text-sm text-yellow-900 mt-2">{orderBump.description}</p>
+                                <div className="flex items-center gap-3 mt-3">
+                                  <span className="text-2xl font-bold text-white bg-yellow-600 px-3 py-1 rounded-lg">
+                                    ₦{(orderBump.discounted_price || orderBump.original_price).toLocaleString()}
+                                  </span>
+                                  {orderBump.discounted_price && orderBump.discounted_price < orderBump.original_price && (
+                                    <span className="text-lg text-yellow-800 line-through">
+                                      ₦{orderBump.original_price.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
                       ))}
                     </div>
                   </CardContent>

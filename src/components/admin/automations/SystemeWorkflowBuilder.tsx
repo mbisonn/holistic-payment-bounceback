@@ -178,17 +178,46 @@ export default function SystemeWorkflowBuilder() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [showNodePalette, setShowNodePalette] = useState(false);
   const [draggedNodeType, setDraggedNodeType] = useState<any>(null);
   const [workflowName, setWorkflowName] = useState('');
   const [showNameDialog, setShowNameDialog] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [emailTemplates, setEmailTemplates] = useState<Array<{ id: string; name: string }>>([]);
+  const [tags, setTags] = useState<Array<{ id: string; name: string }>>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchWorkflows();
+    fetchEmailTemplates();
+    fetchTags();
   }, []);
+
+  const fetchEmailTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('email_templates')
+        .select('id, name')
+        .eq('is_active', true);
+      if (error) throw error;
+      setEmailTemplates(data || []);
+    } catch (error) {
+      console.error('Error fetching email templates:', error);
+    }
+  };
+
+  const fetchTags = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tags')
+        .select('id, name');
+      if (error) throw error;
+      setTags(data || []);
+    } catch (error) {
+      console.error('Error fetching tags:', error);
+    }
+  };
 
   const fetchWorkflows = async () => {
     setLoading(true);
@@ -325,7 +354,7 @@ export default function SystemeWorkflowBuilder() {
     const newNode: WorkflowNode = {
       id: `node_${Date.now()}`,
       type: nodeType.type,
-      name: nodeType.name,
+      name: nodeType.label || nodeType.name,
       config: {},
       position,
       connections: []
@@ -432,19 +461,30 @@ export default function SystemeWorkflowBuilder() {
         <Card className="lg:col-span-2 bg-gray-800 border-gray-700">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-white">
-                {selectedWorkflow ? selectedWorkflow.name : 'Select a workflow'}
-              </CardTitle>
+              {selectedWorkflow && isEditingName ? (
+                <Input
+                  value={selectedWorkflow.name}
+                  onChange={(e) => setSelectedWorkflow({ ...selectedWorkflow, name: e.target.value })}
+                  onBlur={() => setIsEditingName(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setIsEditingName(false);
+                      setIsEditing(true);
+                    }
+                  }}
+                  className="bg-gray-700 border-gray-600 text-white max-w-sm"
+                  autoFocus
+                />
+              ) : (
+                <CardTitle 
+                  className="text-white cursor-pointer hover:text-gray-300"
+                  onClick={() => selectedWorkflow && setIsEditingName(true)}
+                >
+                  {selectedWorkflow ? selectedWorkflow.name : 'Select a workflow'}
+                </CardTitle>
+              )}
               {selectedWorkflow && (
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowNodePalette(!showNodePalette)}
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Node
-                  </Button>
                   {isEditing && (
                     <Button
                       size="sm"
@@ -574,14 +614,45 @@ export default function SystemeWorkflowBuilder() {
             {selectedNode.type === 'action' && selectedNode.name === 'Send Email' ? (
               <div className="space-y-4">
                 <Label className="text-white">Email Template</Label>
-                <Select>
+                <Select
+                  value={selectedNode.config.template_id || ''}
+                  onValueChange={(value) => {
+                    setSelectedNode({ ...selectedNode, config: { ...selectedNode.config, template_id: value } });
+                    setIsEditing(true);
+                  }}
+                >
                   <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                     <SelectValue placeholder="Select email template" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="welcome">Welcome Email</SelectItem>
-                    <SelectItem value="follow_up">Follow Up</SelectItem>
-                    <SelectItem value="rating">Rating Request</SelectItem>
+                    {emailTemplates.map(template => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            {selectedNode.type === 'action' && selectedNode.name === 'Assign Tag' ? (
+              <div className="space-y-4">
+                <Label className="text-white">Tag to Assign</Label>
+                <Select
+                  value={selectedNode.config.tag_id || ''}
+                  onValueChange={(value) => {
+                    setSelectedNode({ ...selectedNode, config: { ...selectedNode.config, tag_id: value } });
+                    setIsEditing(true);
+                  }}
+                >
+                  <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                    <SelectValue placeholder="Select tag" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tags.map(tag => (
+                      <SelectItem key={tag.id} value={tag.id}>
+                        {tag.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -593,9 +664,20 @@ export default function SystemeWorkflowBuilder() {
                   <Input
                     type="number"
                     placeholder="1"
+                    value={selectedNode.config.duration || ''}
+                    onChange={(e) => {
+                      setSelectedNode({ ...selectedNode, config: { ...selectedNode.config, duration: parseInt(e.target.value) } });
+                      setIsEditing(true);
+                    }}
                     className="bg-gray-700 border-gray-600 text-white"
                   />
-                  <Select>
+                  <Select
+                    value={selectedNode.config.unit || 'minutes'}
+                    onValueChange={(value) => {
+                      setSelectedNode({ ...selectedNode, config: { ...selectedNode.config, unit: value } });
+                      setIsEditing(true);
+                    }}
+                  >
                     <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                       <SelectValue placeholder="Unit" />
                     </SelectTrigger>
