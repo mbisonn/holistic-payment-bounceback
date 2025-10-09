@@ -5,7 +5,6 @@ import { getApplicableOrderBumps, addOrderBumpToCart } from '@/utils/orderBumpUt
 import { CartItem } from '@/types/product-types';
 import { useToast } from '@/hooks/use-toast';
 import CustomerInfoSection from '@/components/home/CustomerInfoSection';
-import OrderBumpCard from '@/components/home/OrderBumpCard';
 import Header from '@/components/home/Header';
 import { calculateDiscountedTotal } from '@/utils/discountManager';
 import { DiscountCode } from '@/types/product-types';
@@ -15,6 +14,7 @@ import { trackPageVisit, updateCustomerProfile } from '@/utils/crmService';
 import PremiumFooter from '@/components/home/PremiumFooter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Tag, Gift, CreditCard } from 'lucide-react';
 import DiscountCodeInput from '@/components/home/DiscountCodeInput';
 import CartSection from '@/components/home/CartSection';

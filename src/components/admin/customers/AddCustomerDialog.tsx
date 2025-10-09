@@ -70,7 +70,7 @@ export const AddCustomerDialog = ({ open, onOpenChange, onCustomerAdded }: AddCu
         description: "Customer added successfully",
       });
 
-      setFormData({ name: '', email: '', phone: '', address: '' });
+      setFormData({ name: '', email: '', phone: '', address: '', product_id: '' });
       onOpenChange(false);
       onCustomerAdded();
     } catch (error: any) {
