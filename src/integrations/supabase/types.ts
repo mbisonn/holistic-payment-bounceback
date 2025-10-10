@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -7,40 +7,123 @@
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
   }
   public: {
     Tables: {
+      auth_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      automation_actions: {
+        Row: {
+          action_config: Json | null
+          action_type: string
+          created_at: string | null
+          id: string
+          order_index: number | null
+          workflow_id: string | null
+        }
+        Insert: {
+          action_config?: Json | null
+          action_type: string
+          created_at?: string | null
+          id?: string
+          order_index?: number | null
+          workflow_id?: string | null
+        }
+        Update: {
+          action_config?: Json | null
+          action_type?: string
+          created_at?: string | null
+          id?: string
+          order_index?: number | null
+          workflow_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_actions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          executed_at: string | null
+          id: string
+          status: string | null
+          trigger_data: Json | null
+          workflow_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          status?: string | null
+          trigger_data?: Json | null
+          workflow_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          id?: string
+          status?: string | null
+          trigger_data?: Json | null
+          workflow_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_logs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_rules: {
         Row: {
           action: string
-          action_data: string | null
+          action_data: Json | null
           created_at: string
           id: string
-          is_active: boolean
+          is_active: boolean | null
           name: string
           trigger: string
           trigger_data: Json | null
@@ -48,10 +131,10 @@ export type Database = {
         }
         Insert: {
           action: string
-          action_data?: string | null
+          action_data?: Json | null
           created_at?: string
           id?: string
-          is_active?: boolean
+          is_active?: boolean | null
           name: string
           trigger: string
           trigger_data?: Json | null
@@ -59,10 +142,10 @@ export type Database = {
         }
         Update: {
           action?: string
-          action_data?: string | null
+          action_data?: Json | null
           created_at?: string
           id?: string
-          is_active?: boolean
+          is_active?: boolean | null
           name?: string
           trigger?: string
           trigger_data?: Json | null
@@ -70,69 +153,68 @@ export type Database = {
         }
         Relationships: []
       }
-      customer_analytics: {
+      automation_triggers: {
         Row: {
-          avg_order_value: number | null
-          created_at: string
-          customer_email: string
+          created_at: string | null
           id: string
-          last_order_date: string | null
-          lifetime_value: number | null
-          total_orders: number | null
-          total_spent: number | null
-          updated_at: string
+          trigger_config: Json | null
+          trigger_type: string
+          workflow_id: string | null
         }
         Insert: {
-          avg_order_value?: number | null
-          created_at?: string
-          customer_email: string
+          created_at?: string | null
           id?: string
-          last_order_date?: string | null
-          lifetime_value?: number | null
-          total_orders?: number | null
-          total_spent?: number | null
-          updated_at?: string
+          trigger_config?: Json | null
+          trigger_type: string
+          workflow_id?: string | null
         }
         Update: {
-          avg_order_value?: number | null
-          created_at?: string
-          customer_email?: string
+          created_at?: string | null
           id?: string
-          last_order_date?: string | null
-          lifetime_value?: number | null
-          total_orders?: number | null
-          total_spent?: number | null
-          updated_at?: string
+          trigger_config?: Json | null
+          trigger_type?: string
+          workflow_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "automation_triggers_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      customer_exports: {
+      automation_workflows: {
         Row: {
-          created_at: string
-          export_type: string
-          exported_by: string | null
-          file_url: string | null
+          created_at: string | null
+          description: string | null
           id: string
-          record_count: number | null
-          status: string | null
+          is_active: boolean | null
+          name: string
+          trigger_config: Json | null
+          trigger_type: string
+          updated_at: string | null
         }
         Insert: {
-          created_at?: string
-          export_type: string
-          exported_by?: string | null
-          file_url?: string | null
+          created_at?: string | null
+          description?: string | null
           id?: string
-          record_count?: number | null
-          status?: string | null
+          is_active?: boolean | null
+          name: string
+          trigger_config?: Json | null
+          trigger_type: string
+          updated_at?: string | null
         }
         Update: {
-          created_at?: string
-          export_type?: string
-          exported_by?: string | null
-          file_url?: string | null
+          created_at?: string | null
+          description?: string | null
           id?: string
-          record_count?: number | null
-          status?: string | null
+          is_active?: boolean | null
+          name?: string
+          trigger_config?: Json | null
+          trigger_type?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -165,21 +247,24 @@ export type Database = {
       }
       customer_tag_assignments: {
         Row: {
-          assigned_at: string
+          assigned_at: string | null
+          created_at: string
           customer_email: string
           customer_name: string | null
           id: string
           tag_id: string | null
         }
         Insert: {
-          assigned_at?: string
+          assigned_at?: string | null
+          created_at?: string
           customer_email: string
           customer_name?: string | null
           id?: string
           tag_id?: string | null
         }
         Update: {
-          assigned_at?: string
+          assigned_at?: string | null
+          created_at?: string
           customer_email?: string
           customer_name?: string | null
           id?: string
@@ -225,88 +310,44 @@ export type Database = {
       discount_codes: {
         Row: {
           code: string
-          created_at: string
+          created_at: string | null
           expires_at: string | null
           id: string
-          is_active: boolean
+          is_active: boolean | null
           minimum_amount: number | null
           type: string
-          updated_at: string
+          updated_at: string | null
           usage_limit: number | null
-          used_count: number
+          used_count: number | null
           value: number
         }
         Insert: {
           code: string
-          created_at?: string
+          created_at?: string | null
           expires_at?: string | null
           id?: string
-          is_active?: boolean
+          is_active?: boolean | null
           minimum_amount?: number | null
           type: string
-          updated_at?: string
+          updated_at?: string | null
           usage_limit?: number | null
-          used_count?: number
-          value: number
+          used_count?: number | null
+          value?: number
         }
         Update: {
           code?: string
-          created_at?: string
+          created_at?: string | null
           expires_at?: string | null
           id?: string
-          is_active?: boolean
+          is_active?: boolean | null
           minimum_amount?: number | null
           type?: string
-          updated_at?: string
+          updated_at?: string | null
           usage_limit?: number | null
-          used_count?: number
+          used_count?: number | null
           value?: number
         }
         Relationships: []
-      }
-      email_analytics: {
-        Row: {
-          bounced_at: string | null
-          campaign_id: string | null
-          clicked_at: string | null
-          created_at: string
-          email_address: string
-          id: string
-          opened_at: string | null
-          sent_at: string | null
-          unsubscribed_at: string | null
-        }
-        Insert: {
-          bounced_at?: string | null
-          campaign_id?: string | null
-          clicked_at?: string | null
-          created_at?: string
-          email_address: string
-          id?: string
-          opened_at?: string | null
-          sent_at?: string | null
-          unsubscribed_at?: string | null
-        }
-        Update: {
-          bounced_at?: string | null
-          campaign_id?: string | null
-          clicked_at?: string | null
-          created_at?: string
-          email_address?: string
-          id?: string
-          opened_at?: string | null
-          sent_at?: string | null
-          unsubscribed_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "email_analytics_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "email_campaigns"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       email_campaigns: {
         Row: {
@@ -315,10 +356,15 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          recipient_tags: string[] | null
+          scheduled_at: string | null
           send_delay_minutes: number | null
+          sent_at: string | null
+          status: string | null
+          subject: string | null
           template_id: string | null
           trigger_conditions: Json | null
-          trigger_type: string
+          trigger_type: string | null
           updated_at: string
         }
         Insert: {
@@ -327,10 +373,15 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          recipient_tags?: string[] | null
+          scheduled_at?: string | null
           send_delay_minutes?: number | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string | null
           template_id?: string | null
           trigger_conditions?: Json | null
-          trigger_type: string
+          trigger_type?: string | null
           updated_at?: string
         }
         Update: {
@@ -339,10 +390,15 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          recipient_tags?: string[] | null
+          scheduled_at?: string | null
           send_delay_minutes?: number | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string | null
           template_id?: string | null
           trigger_conditions?: Json | null
-          trigger_type?: string
+          trigger_type?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -355,544 +411,183 @@ export type Database = {
           },
         ]
       }
-      email_events: {
-        Row: {
-          campaign_id: string | null
-          event_type: string
-          id: string
-          message_id: string
-          recipient: string | null
-          timestamp: string
-          url: string | null
-        }
-        Insert: {
-          campaign_id?: string | null
-          event_type: string
-          id?: string
-          message_id: string
-          recipient?: string | null
-          timestamp?: string
-          url?: string | null
-        }
-        Update: {
-          campaign_id?: string | null
-          event_type?: string
-          id?: string
-          message_id?: string
-          recipient?: string | null
-          timestamp?: string
-          url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "email_events_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "email_campaigns"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      email_logs: {
-        Row: {
-          campaign_id: string | null
-          created_at: string
-          delivered_at: string | null
-          error_message: string | null
-          id: string
-          metadata: Json | null
-          recipient_email: string
-          recipient_name: string | null
-          sent_at: string | null
-          status: string | null
-          subject: string
-          template_id: string | null
-        }
-        Insert: {
-          campaign_id?: string | null
-          created_at?: string
-          delivered_at?: string | null
-          error_message?: string | null
-          id?: string
-          metadata?: Json | null
-          recipient_email: string
-          recipient_name?: string | null
-          sent_at?: string | null
-          status?: string | null
-          subject: string
-          template_id?: string | null
-        }
-        Update: {
-          campaign_id?: string | null
-          created_at?: string
-          delivered_at?: string | null
-          error_message?: string | null
-          id?: string
-          metadata?: Json | null
-          recipient_email?: string
-          recipient_name?: string | null
-          sent_at?: string | null
-          status?: string | null
-          subject?: string
-          template_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "email_logs_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "email_campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_logs_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "email_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      email_settings: {
-        Row: {
-          admin_recipients: string[]
-          id: number
-          sender_email: string
-          smtp_enabled: boolean | null
-          smtp_password: string | null
-          smtp_username: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          admin_recipients: string[]
-          id?: number
-          sender_email: string
-          smtp_enabled?: boolean | null
-          smtp_password?: string | null
-          smtp_username?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          admin_recipients?: string[]
-          id?: number
-          sender_email?: string
-          smtp_enabled?: boolean | null
-          smtp_password?: string | null
-          smtp_username?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       email_templates: {
         Row: {
+          body: string | null
           created_at: string
-          html_content: string
+          html_content: string | null
           id: string
           is_active: boolean | null
           name: string
           placeholders: string[] | null
           subject: string
-          template_type: string
+          template_type: string | null
           text_content: string | null
           updated_at: string
         }
         Insert: {
+          body?: string | null
           created_at?: string
-          html_content: string
+          html_content?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           placeholders?: string[] | null
           subject: string
-          template_type: string
+          template_type?: string | null
           text_content?: string | null
           updated_at?: string
         }
         Update: {
+          body?: string | null
           created_at?: string
-          html_content?: string
+          html_content?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           placeholders?: string[] | null
           subject?: string
-          template_type?: string
+          template_type?: string | null
           text_content?: string | null
           updated_at?: string
         }
         Relationships: []
       }
-      funnel_automation_actions: {
+      email_tracking: {
         Row: {
-          action_config: Json | null
-          action_type: string
-          automation_id: string | null
-          created_at: string
-          delay_minutes: number | null
+          created_at: string | null
+          email_id: string | null
+          event_data: Json | null
+          event_type: string
           id: string
-          order_index: number | null
+          recipient_email: string
         }
         Insert: {
-          action_config?: Json | null
-          action_type: string
-          automation_id?: string | null
-          created_at?: string
-          delay_minutes?: number | null
+          created_at?: string | null
+          email_id?: string | null
+          event_data?: Json | null
+          event_type: string
           id?: string
-          order_index?: number | null
+          recipient_email: string
         }
         Update: {
-          action_config?: Json | null
-          action_type?: string
-          automation_id?: string | null
-          created_at?: string
-          delay_minutes?: number | null
+          created_at?: string | null
+          email_id?: string | null
+          event_data?: Json | null
+          event_type?: string
           id?: string
-          order_index?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "funnel_automation_actions_automation_id_fkey"
-            columns: ["automation_id"]
-            isOneToOne: false
-            referencedRelation: "automation_rules_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "funnel_automation_actions_automation_id_fkey"
-            columns: ["automation_id"]
-            isOneToOne: false
-            referencedRelation: "funnel_automations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      funnel_automation_analytics: {
-        Row: {
-          automation_id: string | null
-          created_at: string
-          id: string
-          metric_date: string
-          metric_name: string
-          metric_value: number
-        }
-        Insert: {
-          automation_id?: string | null
-          created_at?: string
-          id?: string
-          metric_date: string
-          metric_name: string
-          metric_value: number
-        }
-        Update: {
-          automation_id?: string | null
-          created_at?: string
-          id?: string
-          metric_date?: string
-          metric_name?: string
-          metric_value?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "funnel_automation_analytics_automation_id_fkey"
-            columns: ["automation_id"]
-            isOneToOne: false
-            referencedRelation: "automation_rules_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "funnel_automation_analytics_automation_id_fkey"
-            columns: ["automation_id"]
-            isOneToOne: false
-            referencedRelation: "funnel_automations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      funnel_automation_conditions: {
-        Row: {
-          automation_id: string | null
-          condition_config: Json | null
-          condition_type: string
-          created_at: string
-          id: string
-          order_index: number | null
-        }
-        Insert: {
-          automation_id?: string | null
-          condition_config?: Json | null
-          condition_type: string
-          created_at?: string
-          id?: string
-          order_index?: number | null
-        }
-        Update: {
-          automation_id?: string | null
-          condition_config?: Json | null
-          condition_type?: string
-          created_at?: string
-          id?: string
-          order_index?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "funnel_automation_conditions_automation_id_fkey"
-            columns: ["automation_id"]
-            isOneToOne: false
-            referencedRelation: "automation_rules_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "funnel_automation_conditions_automation_id_fkey"
-            columns: ["automation_id"]
-            isOneToOne: false
-            referencedRelation: "funnel_automations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      funnel_automation_executions: {
-        Row: {
-          automation_id: string | null
-          completed_at: string | null
-          created_at: string
-          customer_email: string
-          error_message: string | null
-          execution_data: Json | null
-          id: string
-          started_at: string | null
-          status: string
-        }
-        Insert: {
-          automation_id?: string | null
-          completed_at?: string | null
-          created_at?: string
-          customer_email: string
-          error_message?: string | null
-          execution_data?: Json | null
-          id?: string
-          started_at?: string | null
-          status?: string
-        }
-        Update: {
-          automation_id?: string | null
-          completed_at?: string | null
-          created_at?: string
-          customer_email?: string
-          error_message?: string | null
-          execution_data?: Json | null
-          id?: string
-          started_at?: string | null
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "funnel_automation_executions_automation_id_fkey"
-            columns: ["automation_id"]
-            isOneToOne: false
-            referencedRelation: "automation_rules_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "funnel_automation_executions_automation_id_fkey"
-            columns: ["automation_id"]
-            isOneToOne: false
-            referencedRelation: "funnel_automations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      funnel_automation_templates: {
-        Row: {
-          category: string
-          created_at: string
-          description: string | null
-          id: string
-          is_premium: boolean | null
-          name: string
-          template_data: Json
-        }
-        Insert: {
-          category: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_premium?: boolean | null
-          name: string
-          template_data: Json
-        }
-        Update: {
-          category?: string
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_premium?: boolean | null
-          name?: string
-          template_data?: Json
+          recipient_email?: string
         }
         Relationships: []
       }
-      funnel_automation_triggers: {
+      google_business_settings: {
         Row: {
-          automation_id: string | null
-          created_at: string
+          api_key: string
+          business_id: string | null
+          business_name: string
+          created_at: string | null
           id: string
-          order_index: number | null
-          trigger_config: Json | null
-          trigger_type: string
+          is_connected: boolean | null
+          place_id: string
+          updated_at: string | null
         }
         Insert: {
-          automation_id?: string | null
-          created_at?: string
+          api_key: string
+          business_id?: string | null
+          business_name: string
+          created_at?: string | null
           id?: string
-          order_index?: number | null
-          trigger_config?: Json | null
-          trigger_type: string
+          is_connected?: boolean | null
+          place_id: string
+          updated_at?: string | null
         }
         Update: {
-          automation_id?: string | null
-          created_at?: string
+          api_key?: string
+          business_id?: string | null
+          business_name?: string
+          created_at?: string | null
           id?: string
-          order_index?: number | null
-          trigger_config?: Json | null
-          trigger_type?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "funnel_automation_triggers_automation_id_fkey"
-            columns: ["automation_id"]
-            isOneToOne: false
-            referencedRelation: "automation_rules_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "funnel_automation_triggers_automation_id_fkey"
-            columns: ["automation_id"]
-            isOneToOne: false
-            referencedRelation: "funnel_automations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      funnel_automations: {
-        Row: {
-          created_at: string
-          description: string | null
-          funnel_id: string | null
-          id: string
-          is_active: boolean
-          name: string
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          funnel_id?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          funnel_id?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          type?: string
-          updated_at?: string
+          is_connected?: boolean | null
+          place_id?: string
+          updated_at?: string | null
         }
         Relationships: []
-      }
-      invoices: {
-        Row: {
-          created_at: string
-          customer_email: string
-          customer_name: string
-          discount_amount: number | null
-          due_date: string | null
-          id: string
-          invoice_number: string
-          order_id: string | null
-          pdf_url: string | null
-          status: string | null
-          tax_amount: number | null
-          total_amount: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          customer_email: string
-          customer_name: string
-          discount_amount?: number | null
-          due_date?: string | null
-          id?: string
-          invoice_number: string
-          order_id?: string | null
-          pdf_url?: string | null
-          status?: string | null
-          tax_amount?: number | null
-          total_amount: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          customer_email?: string
-          customer_name?: string
-          discount_amount?: number | null
-          due_date?: string | null
-          id?: string
-          invoice_number?: string
-          order_id?: string | null
-          pdf_url?: string | null
-          status?: string | null
-          tax_amount?: number | null
-          total_amount?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invoices_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       meal_plan_sync: {
         Row: {
           created_at: string | null
           customer_email: string
-          customer_name: string | null
-          customer_phone: string | null
-          external_user_id: string | null
           id: string
+          last_synced_at: string | null
           meal_plan_data: Json | null
-          synced_at: string | null
+          sync_status: string | null
+          updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           customer_email: string
-          customer_name?: string | null
-          customer_phone?: string | null
-          external_user_id?: string | null
           id?: string
+          last_synced_at?: string | null
           meal_plan_data?: Json | null
-          synced_at?: string | null
+          sync_status?: string | null
+          updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           customer_email?: string
-          customer_name?: string | null
-          customer_phone?: string | null
-          external_user_id?: string | null
           id?: string
+          last_synced_at?: string | null
           meal_plan_data?: Json | null
-          synced_at?: string | null
+          sync_status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      meal_plans: {
+        Row: {
+          calories: number | null
+          category: string | null
+          cook_time: number | null
+          created_at: string
+          description: string | null
+          id: string
+          ingredients: string[] | null
+          instructions: string | null
+          is_active: boolean | null
+          name: string
+          prep_time: number | null
+          servings: number | null
+          updated_at: string
+        }
+        Insert: {
+          calories?: number | null
+          category?: string | null
+          cook_time?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          ingredients?: string[] | null
+          instructions?: string | null
+          is_active?: boolean | null
+          name: string
+          prep_time?: number | null
+          servings?: number | null
+          updated_at?: string
+        }
+        Update: {
+          calories?: number | null
+          category?: string | null
+          cook_time?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          ingredients?: string[] | null
+          instructions?: string | null
+          is_active?: boolean | null
+          name?: string
+          prep_time?: number | null
+          servings?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -904,8 +599,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean | null
-          original_price: number | null
-          product_id: string | null
+          original_price: number
           title: string
           updated_at: string | null
         }
@@ -916,8 +610,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean | null
-          original_price?: number | null
-          product_id?: string | null
+          original_price: number
           title: string
           updated_at?: string | null
         }
@@ -928,8 +621,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean | null
-          original_price?: number | null
-          product_id?: string | null
+          original_price?: number
           title?: string
           updated_at?: string | null
         }
@@ -950,7 +642,7 @@ export type Database = {
           order_id?: string | null
           price: number
           product_id?: string | null
-          quantity: number
+          quantity?: number
         }
         Update: {
           created_at?: string | null
@@ -965,7 +657,21 @@ export type Database = {
             foreignKeyName: "order_items_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "order_summary_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "active_products_view"
             referencedColumns: ["id"]
           },
           {
@@ -979,13 +685,14 @@ export type Database = {
       }
       orders: {
         Row: {
-          cart_items: Json | null
           created_at: string | null
           customer_email: string
-          customer_name: string
+          customer_name: string | null
+          customer_phone: string | null
+          delivery_address: string | null
+          delivery_city: string | null
+          delivery_state: string | null
           id: string
-          order_source: string | null
-          payment_reference: string | null
           payment_status: string | null
           status: string | null
           total_amount: number
@@ -993,13 +700,14 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          cart_items?: Json | null
           created_at?: string | null
           customer_email: string
-          customer_name: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_state?: string | null
           id?: string
-          order_source?: string | null
-          payment_reference?: string | null
           payment_status?: string | null
           status?: string | null
           total_amount: number
@@ -1007,89 +715,19 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
-          cart_items?: Json | null
           created_at?: string | null
           customer_email?: string
-          customer_name?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          delivery_address?: string | null
+          delivery_city?: string | null
+          delivery_state?: string | null
           id?: string
-          order_source?: string | null
-          payment_reference?: string | null
           payment_status?: string | null
           status?: string | null
           total_amount?: number
           updated_at?: string | null
           user_id?: string | null
-        }
-        Relationships: []
-      }
-      product_analytics: {
-        Row: {
-          cart_additions: number | null
-          created_at: string
-          date_recorded: string
-          id: string
-          product_id: string | null
-          purchases: number | null
-          revenue: number | null
-          updated_at: string
-          views: number | null
-        }
-        Insert: {
-          cart_additions?: number | null
-          created_at?: string
-          date_recorded?: string
-          id?: string
-          product_id?: string | null
-          purchases?: number | null
-          revenue?: number | null
-          updated_at?: string
-          views?: number | null
-        }
-        Update: {
-          cart_additions?: number | null
-          created_at?: string
-          date_recorded?: string
-          id?: string
-          product_id?: string | null
-          purchases?: number | null
-          revenue?: number | null
-          updated_at?: string
-          views?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_analytics_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_reviews: {
-        Row: {
-          created_at: string | null
-          id: number
-          product_id: string
-          rating: number
-          review: string
-          user_name: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: number
-          product_id: string
-          rating: number
-          review: string
-          user_name: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: number
-          product_id?: string
-          rating?: number
-          review?: string
-          user_name?: string
         }
         Relationships: []
       }
@@ -1134,27 +772,27 @@ export type Database = {
       }
       profiles: {
         Row: {
-          avatar_url: string | null
           created_at: string | null
-          email: string | null
+          email: string
           full_name: string | null
           id: string
+          role: string | null
           updated_at: string | null
         }
         Insert: {
-          avatar_url?: string | null
           created_at?: string | null
-          email?: string | null
+          email: string
           full_name?: string | null
           id: string
+          role?: string | null
           updated_at?: string | null
         }
         Update: {
-          avatar_url?: string | null
           created_at?: string | null
-          email?: string | null
+          email?: string
           full_name?: string | null
           id?: string
+          role?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1215,211 +853,191 @@ export type Database = {
       }
       scheduled_emails: {
         Row: {
-          campaign_id: string | null
+          content: string
           created_at: string | null
-          customer_email: string | null
-          error: string | null
-          html: string
+          error_message: string | null
           id: string
-          send_at: string
+          recipient_email: string
+          scheduled_at: string
           sent_at: string | null
           status: string | null
           subject: string
-          to_email: string
-          updated_at: string | null
+          template_id: string | null
         }
         Insert: {
-          campaign_id?: string | null
+          content: string
           created_at?: string | null
-          customer_email?: string | null
-          error?: string | null
-          html: string
+          error_message?: string | null
           id?: string
-          send_at: string
+          recipient_email: string
+          scheduled_at: string
           sent_at?: string | null
           status?: string | null
           subject: string
-          to_email: string
-          updated_at?: string | null
+          template_id?: string | null
         }
         Update: {
-          campaign_id?: string | null
+          content?: string
           created_at?: string | null
-          customer_email?: string | null
-          error?: string | null
-          html?: string
+          error_message?: string | null
           id?: string
-          send_at?: string
+          recipient_email?: string
+          scheduled_at?: string
           sent_at?: string | null
           status?: string | null
           subject?: string
-          to_email?: string
-          updated_at?: string | null
+          template_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "fk_scheduled_emails_campaign_id"
-            columns: ["campaign_id"]
+            foreignKeyName: "scheduled_emails_template_id_fkey"
+            columns: ["template_id"]
             isOneToOne: false
-            referencedRelation: "email_campaigns"
+            referencedRelation: "email_templates"
             referencedColumns: ["id"]
           },
         ]
       }
       shipping_settings: {
         Row: {
-          base_fee: number
+          base_fee: number | null
           created_at: string
           description: string | null
-          enable_free_shipping: boolean
-          free_shipping_threshold: number
+          enable_free_shipping: boolean | null
+          free_shipping_threshold: number | null
           id: string
-          is_active: boolean
-          lagos_delivery_fee: number
+          is_active: boolean | null
+          lagos_delivery_fee: number | null
           name: string
-          other_states_delivery_fee: number
+          other_states_delivery_fee: number | null
           updated_at: string
         }
         Insert: {
-          base_fee?: number
+          base_fee?: number | null
           created_at?: string
           description?: string | null
-          enable_free_shipping?: boolean
-          free_shipping_threshold?: number
+          enable_free_shipping?: boolean | null
+          free_shipping_threshold?: number | null
           id?: string
-          is_active?: boolean
-          lagos_delivery_fee?: number
+          is_active?: boolean | null
+          lagos_delivery_fee?: number | null
           name: string
-          other_states_delivery_fee?: number
+          other_states_delivery_fee?: number | null
           updated_at?: string
         }
         Update: {
-          base_fee?: number
+          base_fee?: number | null
           created_at?: string
           description?: string | null
-          enable_free_shipping?: boolean
-          free_shipping_threshold?: number
+          enable_free_shipping?: boolean | null
+          free_shipping_threshold?: number | null
           id?: string
-          is_active?: boolean
-          lagos_delivery_fee?: number
+          is_active?: boolean | null
+          lagos_delivery_fee?: number | null
           name?: string
-          other_states_delivery_fee?: number
+          other_states_delivery_fee?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
         }
         Relationships: []
       }
       upsell_products: {
         Row: {
-          created_at: string
+          created_at: string | null
           description: string | null
-          duration_months: number
           id: string
+          image_url: string | null
+          is_active: boolean | null
           name: string
+          original_price: number | null
           price: number
+          updated_at: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          duration_months: number
           id?: string
+          image_url?: string | null
+          is_active?: boolean | null
           name: string
-          price: number
+          original_price?: number | null
+          price?: number
+          updated_at?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          duration_months?: number
           id?: string
+          image_url?: string | null
+          is_active?: boolean | null
           name?: string
+          original_price?: number | null
           price?: number
+          updated_at?: string | null
         }
         Relationships: []
       }
-      upsell_transactions: {
-        Row: {
-          amount: number
-          created_at: string
-          customer_email: string
-          customer_name: string | null
-          customer_phone: string | null
-          id: string
-          metadata: Json | null
-          payment_reference: string | null
-          product_id: string | null
-          status: string | null
-          updated_at: string
-        }
-        Insert: {
-          amount?: number
-          created_at?: string
-          customer_email: string
-          customer_name?: string | null
-          customer_phone?: string | null
-          id?: string
-          metadata?: Json | null
-          payment_reference?: string | null
-          product_id?: string | null
-          status?: string | null
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          customer_email?: string
-          customer_name?: string | null
-          customer_phone?: string | null
-          id?: string
-          metadata?: Json | null
-          payment_reference?: string | null
-          product_id?: string | null
-          status?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "upsell_transactions_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "upsell_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_access_requests: {
         Row: {
+          admin_notes: string | null
           created_at: string | null
-          email: string
-          full_name: string | null
           id: string
+          message: string | null
           reason: string | null
+          requested_role: string
           reviewed_at: string | null
           reviewed_by: string | null
           status: string | null
           updated_at: string | null
+          user_email: string
           user_id: string | null
         }
         Insert: {
+          admin_notes?: string | null
           created_at?: string | null
-          email: string
-          full_name?: string | null
           id?: string
+          message?: string | null
           reason?: string | null
+          requested_role?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string | null
           updated_at?: string | null
+          user_email: string
           user_id?: string | null
         }
         Update: {
+          admin_notes?: string | null
           created_at?: string | null
-          email?: string
-          full_name?: string | null
           id?: string
+          message?: string | null
           reason?: string | null
+          requested_role?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string | null
           updated_at?: string | null
+          user_email?: string
           user_id?: string | null
         }
         Relationships: []
@@ -1430,97 +1048,73 @@ export type Database = {
           id: string
           role: Database["public"]["Enums"]["app_role"]
           updated_at: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
-      whatsapp_config: {
+      whatsapp_campaigns: {
         Row: {
-          api_token: string
-          business_name: string
           created_at: string
+          delivered_count: number | null
+          description: string | null
+          failed_count: number | null
           id: string
-          is_active: boolean
-          phone_number: string
-          updated_at: string
-          webhook_url: string | null
-        }
-        Insert: {
-          api_token: string
-          business_name: string
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          phone_number: string
-          updated_at?: string
-          webhook_url?: string | null
-        }
-        Update: {
-          api_token?: string
-          business_name?: string
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          phone_number?: string
-          updated_at?: string
-          webhook_url?: string | null
-        }
-        Relationships: []
-      }
-      whatsapp_messages: {
-        Row: {
-          content: string
-          customer_name: string
-          customer_phone: string
-          delivered_at: string | null
-          error_message: string | null
-          id: string
-          read_at: string | null
-          sent_at: string
-          status: string
+          name: string
+          scheduled_at: string | null
+          sent_count: number | null
+          status: string | null
+          target_tags: string[] | null
           template_id: string | null
+          total_recipients: number | null
+          updated_at: string
         }
         Insert: {
-          content: string
-          customer_name: string
-          customer_phone: string
-          delivered_at?: string | null
-          error_message?: string | null
+          created_at?: string
+          delivered_count?: number | null
+          description?: string | null
+          failed_count?: number | null
           id?: string
-          read_at?: string | null
-          sent_at?: string
-          status?: string
+          name: string
+          scheduled_at?: string | null
+          sent_count?: number | null
+          status?: string | null
+          target_tags?: string[] | null
           template_id?: string | null
+          total_recipients?: number | null
+          updated_at?: string
         }
         Update: {
-          content?: string
-          customer_name?: string
-          customer_phone?: string
-          delivered_at?: string | null
-          error_message?: string | null
+          created_at?: string
+          delivered_count?: number | null
+          description?: string | null
+          failed_count?: number | null
           id?: string
-          read_at?: string | null
-          sent_at?: string
-          status?: string
+          name?: string
+          scheduled_at?: string | null
+          sent_count?: number | null
+          status?: string | null
+          target_tags?: string[] | null
           template_id?: string | null
+          total_recipients?: number | null
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "whatsapp_messages_template_id_fkey"
+            foreignKeyName: "whatsapp_campaigns_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_templates"
@@ -1528,99 +1122,249 @@ export type Database = {
           },
         ]
       }
-      whatsapp_templates: {
+      whatsapp_messages: {
         Row: {
-          category: string
-          content: string
           created_at: string
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string
+          direction: string
+          error_message: string | null
           id: string
-          is_active: boolean
-          name: string
-          variables: string[]
+          media_content_type: string | null
+          media_url: string | null
+          message_body: string
+          message_sid: string | null
+          status: string
+          updated_at: string
         }
         Insert: {
-          category: string
-          content: string
           created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone: string
+          direction: string
+          error_message?: string | null
           id?: string
-          is_active?: boolean
-          name: string
-          variables?: string[]
+          media_content_type?: string | null
+          media_url?: string | null
+          message_body: string
+          message_sid?: string | null
+          status: string
+          updated_at?: string
         }
         Update: {
-          category?: string
-          content?: string
           created_at?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string
+          direction?: string
+          error_message?: string | null
           id?: string
-          is_active?: boolean
-          name?: string
-          variables?: string[]
+          media_content_type?: string | null
+          media_url?: string | null
+          message_body?: string
+          message_sid?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
-      workflow_steps: {
+      whatsapp_settings: {
         Row: {
-          configuration: Json
+          api_key: string
+          api_provider: string
+          api_secret: string | null
+          business_account_id: string | null
           created_at: string
           id: string
-          is_active: boolean
-          step_order: number
-          step_type: string
+          is_active: boolean | null
+          phone_number: string
+          phone_number_id: string | null
           updated_at: string
-          workflow_id: string | null
+          webhook_url: string | null
+          webhook_verify_token: string | null
         }
         Insert: {
-          configuration?: Json
+          api_key: string
+          api_provider: string
+          api_secret?: string | null
+          business_account_id?: string | null
           created_at?: string
           id?: string
-          is_active?: boolean
-          step_order: number
-          step_type: string
+          is_active?: boolean | null
+          phone_number: string
+          phone_number_id?: string | null
           updated_at?: string
-          workflow_id?: string | null
+          webhook_url?: string | null
+          webhook_verify_token?: string | null
         }
         Update: {
-          configuration?: Json
+          api_key?: string
+          api_provider?: string
+          api_secret?: string | null
+          business_account_id?: string | null
           created_at?: string
           id?: string
-          is_active?: boolean
-          step_order?: number
-          step_type?: string
+          is_active?: boolean | null
+          phone_number?: string
+          phone_number_id?: string | null
           updated_at?: string
-          workflow_id?: string | null
+          webhook_url?: string | null
+          webhook_verify_token?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "workflow_steps_workflow_id_fkey"
-            columns: ["workflow_id"]
-            isOneToOne: false
-            referencedRelation: "automation_rules"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      whatsapp_templates: {
+        Row: {
+          buttons: Json | null
+          category: string
+          created_at: string
+          footer_text: string | null
+          header_text: string | null
+          id: string
+          is_active: boolean | null
+          language: string
+          name: string
+          status: string | null
+          template_body: string
+          template_id: string | null
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          buttons?: Json | null
+          category: string
+          created_at?: string
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          is_active?: boolean | null
+          language?: string
+          name: string
+          status?: string | null
+          template_body: string
+          template_id?: string | null
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          buttons?: Json | null
+          category?: string
+          created_at?: string
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          is_active?: boolean | null
+          language?: string
+          name?: string
+          status?: string | null
+          template_body?: string
+          template_id?: string | null
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: []
       }
     }
     Views: {
-      automation_rules_view: {
+      active_products_view: {
         Row: {
-          action: string | null
-          action_data: Json | null
-          automation_type: string | null
+          category: string | null
           created_at: string | null
           description: string | null
-          funnel_id: string | null
           id: string | null
-          is_active: boolean | null
+          image_url: string | null
           name: string | null
-          system_type: string | null
-          trigger: string | null
-          trigger_data: Json | null
+          price: number | null
+          stock_quantity: number | null
           updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          name?: string | null
+          price?: number | null
+          stock_quantity?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          name?: string | null
+          price?: number | null
+          stock_quantity?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      index_usage_stats: {
+        Row: {
+          index_size: string | null
+          indexname: unknown | null
+          schemaname: unknown | null
+          tablename: unknown | null
+          times_used: number | null
+          tuples_fetched: number | null
+          tuples_read: number | null
+        }
+        Relationships: []
+      }
+      order_summary_view: {
+        Row: {
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          id: string | null
+          item_count: number | null
+          payment_status: string | null
+          status: string | null
+          total_amount: number | null
         }
         Relationships: []
       }
     }
     Functions: {
+      approve_access_request: {
+        Args: { request_id: string }
+        Returns: boolean
+      }
+      check_password_strength: {
+        Args: { password: string }
+        Returns: Json
+      }
+      cleanup_unused_indexes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          index_name: string
+          index_size: string
+          table_name: string
+        }[]
+      }
+      create_access_request: {
+        Args:
+          | {
+              request_reason?: string
+              requested_role?: string
+              user_email: string
+            }
+          | { request_reason?: string; user_email: string }
+        Returns: string
+      }
+      current_user_has_role: {
+        Args: { role_name: string }
+        Returns: boolean
+      }
+      current_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       current_user_is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -1629,32 +1373,84 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
-      generate_invoice_number: {
+      demote_admin_to_user: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
+      detect_suspicious_activity: {
+        Args: { user_id: string }
+        Returns: Json
+      }
+      get_active_products: {
         Args: Record<PropertyKey, never>
-        Returns: string
+        Returns: {
+          category: string
+          description: string
+          id: string
+          image_url: string
+          name: string
+          price: number
+        }[]
       }
       get_all_users: {
         Args: Record<PropertyKey, never>
         Returns: {
           created_at: string
           email: string
-          full_name: string
           id: string
           role: string
+          user_metadata: Json
         }[]
+      }
+      get_database_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_user_dashboard_data: {
+        Args: { user_id?: string }
+        Returns: Json
+      }
+      get_user_role: {
+        Args: { user_id?: string }
+        Returns: string
       }
       has_role: {
         Args:
-          | {
-              check_user_id: string
-              role_name: Database["public"]["Enums"]["app_role"]
-            }
           | { role_name: string; user_id: string }
+          | { role_name: string; user_id?: string }
         Returns: boolean
+      }
+      is_admin: {
+        Args: { user_id?: string }
+        Returns: boolean
+      }
+      log_auth_event: {
+        Args: {
+          action: string
+          details?: Json
+          ip_address?: unknown
+          user_agent?: string
+          user_id: string
+        }
+        Returns: undefined
+      }
+      promote_user_to_admin: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
+      reject_access_request: {
+        Args:
+          | { admin_notes?: string; request_id: string }
+          | { request_id: string }
+        Returns: boolean
+      }
+      validate_user_registration: {
+        Args: { email: string; full_name?: string; password: string }
+        Returns: Json
       }
     }
     Enums: {
-      app_role: "admin" | "verified" | "user"
+      app_role: "user" | "verified" | "admin" | "moderator" | "manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1780,13 +1576,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
-      app_role: ["admin", "verified", "user"],
+      app_role: ["user", "verified", "admin", "moderator", "manager"],
     },
   },
 } as const
-

@@ -387,18 +387,22 @@ export const EnhancedCustomersManagement = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-glass-text">
-                      <div className="flex flex-wrap gap-1">
-                        {customer.products?.slice(0, 2).map((product, idx) => (
-                          <Badge key={idx} variant="outline" className="border-glass-border text-glass-text text-xs">
-                            {product}
-                          </Badge>
-                        ))}
-                        {customer.products && customer.products.length > 2 && (
-                          <Badge variant="outline" className="border-glass-border text-glass-text text-xs">
-                            +{customer.products.length - 2}
-                          </Badge>
-                        )}
-                      </div>
+                      <Select>
+                        <SelectTrigger className="glass-input w-[180px]">
+                          <SelectValue placeholder="View products" />
+                        </SelectTrigger>
+                        <SelectContent className="glass-card">
+                          {customer.products && customer.products.length > 0 ? (
+                            customer.products.map((product, idx) => (
+                              <SelectItem key={idx} value={product} className="text-glass-text">
+                                {product}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>No products</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className="text-glass-text">
                       <Badge variant="outline" className="border-glass-border text-glass-text">
