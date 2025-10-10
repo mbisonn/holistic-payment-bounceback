@@ -107,28 +107,45 @@ serve(async (req: Request) => {
 
     // Fetch product from database. Prefer provided productId; fallback to latest active.
     let product: any = null;
+    let queryError: any = null;
+    
     if (productId) {
       const { data, error } = await supabaseClient
         .from('upsell_products')
         .select('*')
         .eq('id', productId)
-        .single();
-      if (!error) product = data;
-    }
-    if (!product) {
-      const { data } = await supabaseClient
-      .from('upsell_products')
-      .select('*')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
         .maybeSingle();
-      product = data;
+      
+      if (error) {
+        queryError = error;
+        console.error('Error fetching product by ID:', error);
+      }
+      if (data) product = data;
+    }
+    
+    if (!product) {
+      const { data, error } = await supabaseClient
+        .from('upsell_products')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error) {
+        queryError = error;
+        console.error('Error fetching active products:', error);
+      }
+      if (data) product = data;
     }
 
     if (!product) {
+      const errorMsg = queryError 
+        ? `Database error: ${queryError.message}` 
+        : `No ${type} products found. Please create at least one active product.`;
+      
       return new Response(
-        JSON.stringify({ error: `Product not found for type: ${type}` }),
+        JSON.stringify({ error: errorMsg }),
         {
           status: 404,
           headers: {

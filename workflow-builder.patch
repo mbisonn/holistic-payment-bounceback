@@ -1,0 +1,48 @@
+diff --git a/src/components/admin/workflow/VisualWorkflowBuilder.tsx b/src/components/admin/workflow/VisualWorkflowBuilder.tsx
+index xxx..xxx 100644
+--- a/src/components/admin/workflow/VisualWorkflowBuilder.tsx
++++ b/src/components/admin/workflow/VisualWorkflowBuilder.tsx
+@@ -102,6 +102,8 @@ export const VisualWorkflowBuilder: React.FC<VisualWorkflowBuilderProps> = ({ o
+   const [availableTags, setAvailableTags] = useState<Array<{ id: string; name: string }>>([]);
+   const [uploading, setUploading] = useState(false);
++  const [emailCampaigns, setEmailCampaigns] = useState<Array<{ id: string; name: string }>>([]);
++  const [emailTemplates, setEmailTemplates] = useState<Array<{ id: string; name: string }>>([]);
+   
+   const webhookUrl = useMemo(() => {
+     return 'https://example.com/webhook';
+@@ -193,11 +195,27 @@ export const VisualWorkflowBuilder: React.FC<VisualWorkflowBuilderProps> = ({ o
+-  // Load customer tags for action configuration
++  // Load customer tags, email campaigns, and templates for action configuration
+   useEffect(() => {
+     (async () => {
+       try {
+-        const { data, error } = await supabase.from('customer_tags').select('id, name');
+-        if (error) throw error;
+-        setAvailableTags((data || []).map((t: any) => ({ id: t.id, name: t.name })));
++        // Load tags
++        const { data: tagsData, error: tagsError } = await supabase.from('customer_tags').select('id, name');
++        if (tagsError) throw tagsError;
++        setAvailableTags((tagsData || []).map((t: any) => ({ id: t.id, name: t.name })));
++
++        // Load email campaigns
++        const { data: campaignsData, error: campaignsError } = await supabase
++          .from('email_campaigns')
++          .select('id, name')
++          .eq('is_active', true);
++        if (!campaignsError) {
++          setEmailCampaigns((campaignsData || []).map((c: any) => ({ id: c.id, name: c.name })));
++        }
++
++        // Load email templates
++        const { data: templatesData, error: templatesError } = await supabase
++          .from('email_templates')
++          .select('id, name');
++        if (!templatesError) {
++          setEmailTemplates((templatesData || []).map((t: any) => ({ id: t.id, name: t.name })));
++        }
+       } catch (e) {
+-        console.error('Failed to load tags', e);
++        console.error('Failed to load workflow resources', e);
+       }
+     })();
+   }, []);
