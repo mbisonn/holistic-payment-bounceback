@@ -11,6 +11,7 @@ const Index = React.lazy(() => import("./pages/Index"));
 const AdminLogin = React.lazy(() => import("./pages/AdminLogin"));
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const OrderTracking = React.lazy(() => import("@/pages/OrderTracking"));
+const MealPlan = React.lazy(() => import("@/pages/MealPlan"));
 // Removed standalone pages now embedded inside dashboard
 // const DiscountCodesPage = React.lazy(() => import("@/pages/DiscountCodesPage"));
 // const UpsellPayment = React.lazy(() => import("@/pages/UpsellPayment"));
@@ -39,6 +40,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/order-tracking" element={<OrderTracking />} />
+            <Route path="/meal-plan" element={<MealPlan />} />
             {/** Routes removed: now embedded inside the dashboard */}
             {/** <Route path="/discount-codes" element={<DiscountCodesPage />} /> */}
             {/** <Route path="/upsell/:productId" element={<UpsellPayment />} /> */}

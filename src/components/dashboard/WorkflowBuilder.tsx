@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Users, Mail, Tag, Plus, 
   ArrowRight, Play, Pause, Save, X,
@@ -26,6 +27,12 @@ interface WorkflowNode {
   position: { x: number; y: number };
   data: any;
   connections: string[];
+}
+
+interface WorkflowConnection {
+  id: string;
+  source: string;
+  target: string;
 }
 
 interface WorkflowElement {
@@ -94,10 +101,34 @@ const WORKFLOW_ELEMENTS: WorkflowElement[] = [
 const WorkflowBuilder: React.FC = () => {
   const { toast } = useToast();
   const [nodes, setNodes] = useState<WorkflowNode[]>([]);
+  const [connections, setConnections] = useState<WorkflowConnection[]>([]);
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
+  const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState('New Workflow');
   const [workflowStatus, setWorkflowStatus] = useState<'draft' | 'active' | 'paused'>('draft');
+  const [emailCampaigns, setEmailCampaigns] = useState<Array<{ id: string; name: string }>>([]);
+  const [tags, setTags] = useState<Array<{ id: string; name: string }>>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchEmailCampaigns();
+    fetchTags();
+  }, []);
+
+  const fetchEmailCampaigns = async () => {
+    const { data } = await supabase
+      .from('email_campaigns')
+      .select('id, name')
+      .eq('is_active', true);
+    setEmailCampaigns(data || []);
+  };
+
+  const fetchTags = async () => {
+    const { data } = await supabase
+      .from('tags')
+      .select('id, name');
+    setTags(data || []);
+  };
 
   const addNode = (element: WorkflowElement, position: { x: number; y: number }) => {
     const newNode: WorkflowNode = {
@@ -120,6 +151,33 @@ const WorkflowBuilder: React.FC = () => {
     setNodes(prev => prev.map(node => 
       node.id === nodeId ? { ...node, ...updates } : node
     ));
+  };
+
+  const connectNodes = (sourceId: string, targetId: string) => {
+    const newConnection: WorkflowConnection = {
+      id: `conn_${Date.now()}`,
+      source: sourceId,
+      target: targetId
+    };
+    setConnections(prev => [...prev, newConnection]);
+    
+    // Update source node connections
+    setNodes(prev => prev.map(node => 
+      node.id === sourceId 
+        ? { ...node, connections: [...node.connections, targetId] }
+        : node
+    ));
+  };
+
+  const startConnection = (nodeId: string) => {
+    setConnectingFrom(nodeId);
+  };
+
+  const completeConnection = (targetNodeId: string) => {
+    if (connectingFrom && connectingFrom !== targetNodeId) {
+      connectNodes(connectingFrom, targetNodeId);
+    }
+    setConnectingFrom(null);
   };
 
   const deleteNode = (nodeId: string) => {
@@ -170,22 +228,57 @@ const WorkflowBuilder: React.FC = () => {
       const workflowData = {
         name: workflowName,
         nodes: nodes,
-        edges: [],
+        connections: connections,
         status: workflowStatus,
         is_active: workflowStatus === 'active'
       };
 
-      const { error } = await supabase
-        .from('automation_rules')
-        .insert({
+      const { data: workflow, error: workflowError } = await supabase
+        .from('automation_workflows')
+        .insert([{
           name: workflowName,
-          trigger: 'workflow',
-          action: 'execute_workflow',
-          trigger_data: JSON.stringify(workflowData),
+          description: '',
+          trigger_type: 'manual',
+          trigger_config: workflowData as any,
           is_active: workflowStatus === 'active'
-        });
+        }])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (workflowError) throw workflowError;
+
+      // Save nodes
+      if (workflow && nodes.length > 0) {
+        const nodeInserts = nodes.map(node => ({
+          workflow_id: workflow.id,
+          node_id: node.id,
+          node_type: node.type,
+          position_x: node.position.x,
+          position_y: node.position.y,
+          config: node.data
+        }));
+
+        const { error: nodesError } = await supabase
+          .from('workflow_nodes')
+          .insert(nodeInserts);
+
+        if (nodesError) console.error('Error saving nodes:', nodesError);
+      }
+
+      // Save connections
+      if (workflow && connections.length > 0) {
+        const connectionInserts = connections.map(conn => ({
+          workflow_id: workflow.id,
+          source_node_id: conn.source,
+          target_node_id: conn.target
+        }));
+
+        const { error: connectionsError } = await supabase
+          .from('workflow_connections')
+          .insert(connectionInserts);
+
+        if (connectionsError) console.error('Error saving connections:', connectionsError);
+      }
 
       toast({ title: 'Success', description: 'Workflow saved successfully' });
     } catch (error: any) {
@@ -277,6 +370,45 @@ const WorkflowBuilder: React.FC = () => {
               </svg>
             </div>
 
+            {/* Connection Lines */}
+            <svg className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
+              {connections.map((conn) => {
+                const sourceNode = nodes.find(n => n.id === conn.source);
+                const targetNode = nodes.find(n => n.id === conn.target);
+                if (!sourceNode || !targetNode) return null;
+
+                const x1 = sourceNode.position.x + 128;
+                const y1 = sourceNode.position.y + 40;
+                const x2 = targetNode.position.x + 128;
+                const y2 = targetNode.position.y + 40;
+
+                return (
+                  <line
+                    key={conn.id}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke="#60A5FA"
+                    strokeWidth="2"
+                    markerEnd="url(#arrowhead)"
+                  />
+                );
+              })}
+              <defs>
+                <marker
+                  id="arrowhead"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="3"
+                  orient="auto"
+                >
+                  <polygon points="0 0, 10 3, 0 6" fill="#60A5FA" />
+                </marker>
+              </defs>
+            </svg>
+
             {/* Nodes */}
             <AnimatePresence>
               {nodes.map((node) => (
@@ -287,12 +419,19 @@ const WorkflowBuilder: React.FC = () => {
                   exit={{ opacity: 0, scale: 0.8 }}
                   className={`absolute cursor-pointer ${
                     selectedNode?.id === node.id ? 'ring-2 ring-blue-400' : ''
-                  }`}
+                  } ${connectingFrom === node.id ? 'ring-2 ring-green-400' : ''}`}
                   style={{
                     left: node.position.x,
                     top: node.position.y,
+                    zIndex: 10
                   }}
-                  onClick={() => handleNodeClick(node)}
+                  onClick={() => {
+                    if (connectingFrom) {
+                      completeConnection(node.id);
+                    } else {
+                      handleNodeClick(node);
+                    }
+                  }}
                 >
                   <Card className="w-64 glass-card border-white/20">
                     <CardHeader className="pb-2">
@@ -301,17 +440,31 @@ const WorkflowBuilder: React.FC = () => {
                           <node.icon className="h-4 w-4 text-blue-400" />
                           <CardTitle className="text-white text-sm">{node.title}</CardTitle>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteNode(node.id);
-                          }}
-                          className="h-6 w-6 p-0 text-gray-400 hover:text-red-400"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startConnection(node.id);
+                            }}
+                            className="h-6 w-6 p-0 text-gray-400 hover:text-green-400"
+                            title="Connect to another node"
+                          >
+                            <ArrowRight className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNode(node.id);
+                            }}
+                            className="h-6 w-6 p-0 text-gray-400 hover:text-red-400"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
@@ -360,6 +513,68 @@ const WorkflowBuilder: React.FC = () => {
                   </Badge>
                 </div>
               </div>
+
+              {/* Action-specific configuration */}
+              {selectedNode.title === 'Send Email Campaign' && (
+                <div>
+                  <Label className="text-white text-sm">Select Email Campaign</Label>
+                  <Select
+                    value={selectedNode.data?.campaign_id || ''}
+                    onValueChange={(value) => updateNode(selectedNode.id, { 
+                      data: { ...selectedNode.data, campaign_id: value } 
+                    })}
+                  >
+                    <SelectTrigger className="glass-input text-white mt-1">
+                      <SelectValue placeholder="Choose campaign" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {emailCampaigns.map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.id}>
+                          {campaign.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {selectedNode.title === 'Add Tag' && (
+                <div>
+                  <Label className="text-white text-sm">Select Tag</Label>
+                  <Select
+                    value={selectedNode.data?.tag_id || ''}
+                    onValueChange={(value) => updateNode(selectedNode.id, { 
+                      data: { ...selectedNode.data, tag_id: value } 
+                    })}
+                  >
+                    <SelectTrigger className="glass-input text-white mt-1">
+                      <SelectValue placeholder="Choose tag" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tags.map((tag) => (
+                        <SelectItem key={tag.id} value={tag.id}>
+                          {tag.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {selectedNode.title === 'Wait' && (
+                <div>
+                  <Label className="text-white text-sm">Wait Duration (minutes)</Label>
+                  <Input
+                    type="number"
+                    value={selectedNode.data?.duration || ''}
+                    onChange={(e) => updateNode(selectedNode.id, { 
+                      data: { ...selectedNode.data, duration: parseInt(e.target.value) } 
+                    })}
+                    className="glass-input text-white mt-1"
+                    placeholder="Enter minutes"
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
