@@ -1266,6 +1266,88 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_connections: {
+        Row: {
+          created_at: string | null
+          id: string
+          source_handle: string | null
+          source_node_id: string
+          target_handle: string | null
+          target_node_id: string
+          workflow_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          source_handle?: string | null
+          source_node_id: string
+          target_handle?: string | null
+          target_node_id: string
+          workflow_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          source_handle?: string | null
+          source_node_id?: string
+          target_handle?: string | null
+          target_node_id?: string
+          workflow_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_connections_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_nodes: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          id: string
+          node_id: string
+          node_type: string
+          position_x: number | null
+          position_y: number | null
+          updated_at: string | null
+          workflow_id: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          node_id: string
+          node_type: string
+          position_x?: number | null
+          position_y?: number | null
+          updated_at?: string | null
+          workflow_id?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          node_id?: string
+          node_type?: string
+          position_x?: number | null
+          position_y?: number | null
+          updated_at?: string | null
+          workflow_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_nodes_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       active_products_view: {

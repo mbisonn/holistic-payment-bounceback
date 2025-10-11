@@ -59,9 +59,20 @@ export default function WhatsAppCampaigns() {
   const sendCampaign = async (id: string) => {
     if (!confirm('Are you sure you want to send this campaign?')) return;
 
-    console.log('Sending campaign:', id);
-    toast.info('Campaign sending started...');
-    // Campaign sending would be handled by an edge function
+    try {
+      toast.info('Campaign sending started...');
+      
+      const { error } = await supabase.functions.invoke('send-whatsapp-campaign', {
+        body: { campaign_id: id }
+      });
+
+      if (error) throw error;
+
+      toast.success('Campaign sent successfully');
+      fetchData();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send campaign');
+    }
   };
 
   return (
