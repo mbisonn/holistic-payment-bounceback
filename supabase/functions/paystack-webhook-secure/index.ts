@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { createHmac } from "https://deno.land/std@0.190.0/node/crypto.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +7,28 @@ const corsHeaders = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'X-XSS-Protection': '1; mode=block',
+};
+
+// Helper function to generate HMAC SHA-512 signature using Web Crypto API
+const generateHmacSignature = async (secretKey: string, message: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secretKey);
+  const messageData = encoder.encode(message);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-512' },
+    false,
+    ['sign']
+  );
+  
+  const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+    
+  return expectedSignature;
 };
 
 // Enhanced rate limiting with Redis-like store simulation
@@ -90,7 +111,7 @@ serve(async (req) => {
     }
 
     if (signature) {
-      const expectedSignature = createHmac('sha512', secretKey).update(body).digest('hex');
+      const expectedSignature = await generateHmacSignature(secretKey, body);
       if (signature !== expectedSignature) {
         console.error('Invalid webhook signature from IP:', clientIP);
         return new Response(JSON.stringify({ error: 'Invalid signature' }), {
