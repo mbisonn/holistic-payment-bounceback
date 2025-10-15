@@ -4,6 +4,7 @@ import {
   ShoppingBag, 
   Users, 
   TrendingUp, 
+  TrendingDown,
   Plus, 
   Tag, 
   Star, 
