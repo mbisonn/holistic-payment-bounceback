@@ -213,7 +213,8 @@ import {
   CalendarThermometer,
   CalendarGauge,
   CalendarTimer,
-  CalendarStopwatch
+  CalendarStopwatch,
+  Crown
 } from 'lucide-react';
 
 export interface TriggerDefinition {
