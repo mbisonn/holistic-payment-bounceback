@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +32,8 @@ import {
   Target,
   Filter,
   ArrowRight,
-  BarChart3
+  BarChart3,
+  ShoppingCart as ShoppingCartIcon
 } from 'lucide-react';
 
 interface WorkflowNode {
@@ -58,7 +59,7 @@ const STEP_ICONS: Record<string, React.ComponentType<any>> = {
   tag_removed: Tag,
   funnel_form_subscribed: Database,
   blog_form_subscribed: Database,
-  digital_store_form_subscribed: ShoppingCart,
+  digital_store_form_subscribed: ShoppingCartIcon,
   campaign_completed: CheckCircle,
   registered_to_webinar: Eye,
   enrolled_in_course: User,
@@ -78,7 +79,7 @@ const STEP_ICONS: Record<string, React.ComponentType<any>> = {
   has_tag: Tag,
   purchase_value: CreditCard,
   customer_segment: User,
-  order_count: ShoppingCart,
+  order_count: ShoppingCartIcon,
   
   // Delays
   wait_minutes: Clock,
