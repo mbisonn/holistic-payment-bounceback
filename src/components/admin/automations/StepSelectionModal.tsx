@@ -27,6 +27,41 @@ interface StepSelectionModalProps {
   stepType: 'action' | 'decision' | 'delay' | null;
 }
 
+// Map trigger categories to icons already imported above
+const categoryIconMap: Record<string, React.ComponentType<any>> = {
+  'Products': Package,
+  'Orders': ShoppingCart,
+  'Customers': User,
+  'Upsells/Downsells': TrendingUp,
+  'Order Bumps': Plus,
+  'Tags': Tag,
+  'Reputation': Star,
+  'WhatsApp': MessageCircle,
+  'Email': Mail,
+  'Discounts': DollarSign,
+  'Analytics': BarChart3,
+  'Meal Plan Sync': Calendar,
+  'Settings': Settings,
+  'User Center': User
+};
+
+// Group flat trigger definitions by category for rendering
+const GROUPED_TRIGGERS: Record<string, { name: string; icon: React.ComponentType<any>; triggers: typeof TRIGGER_DEFINITIONS }>
+  = (Array.isArray(TRIGGER_DEFINITIONS)
+    ? TRIGGER_DEFINITIONS.reduce((acc: any, trigger: any) => {
+        const category = trigger.category || 'Other';
+        if (!acc[category]) {
+          acc[category] = {
+            name: category,
+            icon: categoryIconMap[category] || Zap,
+            triggers: []
+          };
+        }
+        acc[category].triggers.push(trigger);
+        return acc;
+      }, {})
+    : {});
+
 const DECISION_OPTIONS = [
   {
     id: 'has_tag',
@@ -195,21 +230,23 @@ export default function StepSelectionModal({
   };
 
   const renderTriggerOptions = () => {
-    const filteredTriggers = Object.entries(TRIGGER_DEFINITIONS).filter(([categoryKey, categoryData]) =>
-      categoryData.triggers.some(trigger =>
-        trigger.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        trigger.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        categoryData.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
+    const filteredTriggers = Object
+      .entries(GROUPED_TRIGGERS)
+      .filter(([_, categoryData]: any) =>
+        (categoryData?.triggers || []).some((trigger: any) =>
+          trigger.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (trigger.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (categoryData.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
 
     return (
       <div className="space-y-4">
-        {filteredTriggers.map(([categoryKey, categoryData]) => {
-          const Icon = categoryData.icon;
-          const filteredCategoryTriggers = categoryData.triggers.filter(trigger =>
+        {filteredTriggers.map(([categoryKey, categoryData]: any) => {
+          const Icon = categoryData?.icon || Zap;
+          const filteredCategoryTriggers = (categoryData?.triggers || []).filter((trigger: any) =>
             trigger.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            trigger.description.toLowerCase().includes(searchTerm.toLowerCase())
+            (trigger.description || '').toLowerCase().includes(searchTerm.toLowerCase())
           );
 
           if (filteredCategoryTriggers.length === 0) return null;
@@ -219,7 +256,7 @@ export default function StepSelectionModal({
               <div className="flex items-center gap-2 px-1">
                 <Icon className="h-4 w-4 text-gray-600" />
                 <h4 className="text-sm font-medium text-gray-700">
-                  {categoryData.name}
+                  {categoryData?.name}
                 </h4>
                 <Badge variant="secondary" className="text-xs">
                   {filteredCategoryTriggers.length}
