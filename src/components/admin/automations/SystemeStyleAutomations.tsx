@@ -109,8 +109,6 @@ const STEP_ICONS: Record<string, React.ComponentType<any>> = {
   send_sms: MessageSquare,
   webhook: Database,
   delay: Clock,
-  add_tag: Tag,
-  remove_tag: Tag,
   update_customer: User,
   create_order: ShoppingCart
 };
@@ -362,280 +360,188 @@ export default function SystemeStyleAutomations() {
     return Array.from(categories);
   };
 
-  if (viewMode === 'builder') {
-    return (
-      <AutomationRuleBuilder
-        rule={editingRule || undefined}
-        onSave={handleSaveRule}
-        onCancel={() => {
-          setViewMode('list');
-          setEditingRule(null);
-        }}
-      />
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Automation Rules</h1>
-            <p className="text-gray-500 mt-1">
-              Create powerful automations to streamline your business processes
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={() => setViewMode('templates')}
-              variant="outline"
-              className="border-blue-200 text-blue-600 hover:bg-blue-50"
-            >
-              <Star className="h-4 w-4 mr-2" />
-              Templates
-            </Button>
-            <Button
-              onClick={() => setViewMode('builder')}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create automation
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200 px-6">
-        <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
-          <TabsList className="grid w-full grid-cols-2 max-w-md">
-            <TabsTrigger value="list" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              My Automations
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center gap-2">
-              <Star className="h-4 w-4" />
-              Templates
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search automations..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Rules</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-6">
-        {viewMode === 'templates' ? (
-          <TabsContent value="templates" className="mt-0">
-            {/* Template Filters */}
-            <div className="mb-6 space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    placeholder="Search templates..."
-                    value={templateSearchTerm}
-                    onChange={(e) => setTemplateSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                
-                <Select value={selectedTemplateCategory} onValueChange={setSelectedTemplateCategory}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {getTemplateCategories().map(category => (
-                      <SelectItem key={category} value={category}>{category}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+  const renderContent = () => {
+    if (viewMode === 'templates') {
+      return (
+        <div className="mt-0">
+          {/* Template Filters */}
+          <div className="mb-6 space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search templates..."
+                  value={templateSearchTerm}
+                  onChange={(e) => setTemplateSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-
-              {/* Quick Filter Buttons */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={selectedTemplateCategory === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedTemplateCategory('all')}
-                >
-                  All Templates
-                </Button>
-                <Button
-                  variant={selectedTemplateCategory === 'Email Marketing' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedTemplateCategory('Email Marketing')}
-                >
-                  <Mail className="h-3 w-3 mr-1" />
-                  Email Marketing
-                </Button>
-                <Button
-                  variant={selectedTemplateCategory === 'E-commerce' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedTemplateCategory('E-commerce')}
-                >
-                  <ShoppingCart className="h-3 w-3 mr-1" />
-                  E-commerce
-                </Button>
-                <Button
-                  variant={selectedTemplateCategory === 'Customer Engagement' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedTemplateCategory('Customer Engagement')}
-                >
-                  <Users className="h-3 w-3 mr-1" />
-                  Engagement
-                </Button>
-              </div>
+              
+              <Select value={selectedTemplateCategory} onValueChange={setSelectedTemplateCategory}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {getTemplateCategories().map(category => (
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Templates Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {getFilteredTemplates().map((template) => {
-                const Icon = template.icon;
-                return (
-                  <Card key={template.id} className="bg-white border border-gray-200 hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-blue-100">
-                            <Icon className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div className="flex-1">
-                            <CardTitle className="text-lg font-semibold text-gray-900 mb-1">
-                              {template.name}
-                            </CardTitle>
-                            <Badge variant="secondary" className="text-xs">
-                              {template.category}
-                            </Badge>
-                          </div>
+            {/* Quick Filter Buttons */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant={selectedTemplateCategory === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedTemplateCategory('all')}
+              >
+                All Templates
+              </Button>
+              <Button
+                variant={selectedTemplateCategory === 'Email Marketing' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedTemplateCategory('Email Marketing')}
+              >
+                <Mail className="h-3 w-3 mr-1" />
+                Email Marketing
+              </Button>
+              <Button
+                variant={selectedTemplateCategory === 'E-commerce' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedTemplateCategory('E-commerce')}
+              >
+                <ShoppingCart className="h-3 w-3 mr-1" />
+                E-commerce
+              </Button>
+              <Button
+                variant={selectedTemplateCategory === 'Customer Engagement' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedTemplateCategory('Customer Engagement')}
+              >
+                <Users className="h-3 w-3 mr-1" />
+                Engagement
+              </Button>
+            </div>
+          </div>
+
+          {/* Templates Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {getFilteredTemplates().map((template) => {
+              const Icon = template.icon;
+              return (
+                <Card key={template.id} className="bg-white border border-gray-200 hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-blue-100">
+                          <Icon className="w-5 h-5 text-blue-600" />
                         </div>
-                        
-                        {template.isPremium && (
-                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                            Premium
+                        <div className="flex-1">
+                          <CardTitle className="text-lg font-semibold text-gray-900 mb-1">
+                            {template.name}
+                          </CardTitle>
+                          <Badge variant="secondary" className="text-xs">
+                            {template.category}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {template.isPremium && (
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                          Premium
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-gray-600">
+                      {template.description}
+                    </p>
+
+                    {/* Template Details */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Clock className="w-3 h-3" />
+                        <span>{template.estimatedSetupTime}</span>
+                        <span>•</span>
+                        <span className="capitalize">{template.difficulty}</span>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-1">
+                        {template.tags.slice(0, 3).map(tag => (
+                          <Badge key={tag} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {template.tags.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{template.tags.length - 3}
                           </Badge>
                         )}
                       </div>
-                    </CardHeader>
-                    
-                    <CardContent className="space-y-4">
-                      <p className="text-sm text-gray-600">
-                        {template.description}
-                      </p>
+                    </div>
 
-                      {/* Template Details */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                          <Clock className="w-3 h-3" />
-                          <span>{template.estimatedSetupTime}</span>
-                          <span>•</span>
-                          <span className="capitalize">{template.difficulty}</span>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-1">
-                          {template.tags.slice(0, 3).map(tag => (
-                            <Badge key={tag} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                          {template.tags.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{template.tags.length - 3}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
+                    {/* Expected Results */}
+                    <div className="space-y-2">
+                      <h5 className="text-sm font-medium text-gray-700">Expected Results:</h5>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        {template.expectedResults.slice(0, 2).map((result, index) => (
+                          <li key={index} className="flex items-start gap-1">
+                            <CheckCircle className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span>{result}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
 
-                      {/* Expected Results */}
-                      <div className="space-y-2">
-                        <h5 className="text-sm font-medium text-gray-700">Expected Results:</h5>
-                        <ul className="text-xs text-gray-600 space-y-1">
-                          {template.expectedResults.slice(0, 2).map((result, index) => (
-                            <li key={index} className="flex items-start gap-1">
-                              <CheckCircle className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
-                              <span>{result}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 pt-2">
+                      <Button
+                        onClick={() => createFromTemplate(template)}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                        size="sm"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Use Template
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="px-3"
+                      >
+                        <Eye className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 pt-2">
-                        <Button
-                          onClick={() => createFromTemplate(template)}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                          size="sm"
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          Use Template
-                        </Button>
-                        
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="px-3"
-                        >
-                          <Eye className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {getFilteredTemplates().length === 0 && (
-              <div className="text-center py-12">
-                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <Star className="w-12 h-12 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No templates found
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  Try adjusting your search or filter criteria
-                </p>
+          {getFilteredTemplates().length === 0 && (
+            <div className="text-center py-12">
+              <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <Star className="w-12 h-12 text-gray-400" />
               </div>
-            )}
-          </TabsContent>
-        ) : (
-          <TabsContent value="list" className="mt-0">
-            {filteredRules.length === 0 ? (
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No templates found
+              </h3>
+              <p className="text-gray-500 mb-6">
+                Try adjusting your search or filter criteria
+              </p>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-0">
+        {filteredRules.length === 0 ? (
           <div className="text-center py-12">
             <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <Zap className="w-12 h-12 text-gray-400" />
@@ -778,9 +684,109 @@ export default function SystemeStyleAutomations() {
                 </Card>
               );
             })}
-          </TabsContent>
+          </div>
         )}
       </div>
+    );
+  };
+
+  if (viewMode === 'builder') {
+    return (
+      <AutomationRuleBuilder
+        rule={editingRule || undefined}
+        onSave={handleSaveRule}
+        onCancel={() => {
+          setViewMode('list');
+          setEditingRule(null);
+        }}
+      />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Automation Rules</h1>
+            <p className="text-gray-500 mt-1">
+              Create powerful automations to streamline your business processes
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => setViewMode('templates')}
+              variant="outline"
+              className="border-blue-200 text-blue-600 hover:bg-blue-50"
+            >
+              <Star className="h-4 w-4 mr-2" />
+              Templates
+            </Button>
+            <Button
+              onClick={() => setViewMode('builder')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create automation
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="bg-white border-b border-gray-200 px-6">
+        <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              My Automations
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="flex items-center gap-2">
+              <Star className="h-4 w-4" />
+              Templates
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              placeholder="Search automations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Rules</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-6">{renderContent()}</div>
     </div>
   );
 }
