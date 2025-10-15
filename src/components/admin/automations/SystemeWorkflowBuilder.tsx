@@ -1,16 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import StepSelectionModal from './StepSelectionModal';
 import {
   Plus,
   Save, 
+  Play,
+  Pause,
   Settings, 
   Mail, 
   Clock,
@@ -27,7 +30,9 @@ import {
   Trash2,
   Eye,
   Target,
-  Filter
+  Filter,
+  ArrowRight,
+  BarChart3
 } from 'lucide-react';
 
 interface WorkflowNode {
@@ -47,177 +52,59 @@ interface Workflow {
   is_active: boolean | null;
 }
 
-const NODE_TYPES = {
-  trigger: {
-    name: 'Triggers',
-    icon: Zap,
-    color: 'blue',
-    nodes: [
-      { id: 'customer_signup', name: 'Customer Signup', label: 'Customer Signup', icon: User, description: 'When a new customer signs up' },
-      { id: 'purchase_paystack', name: 'Purchase (Paystack)', label: 'Purchase (Paystack)', icon: CreditCard, description: 'When a purchase is made via Paystack' },
-      { id: 'abandoned_cart', name: 'Cart Abandoned', label: 'Cart Abandoned', icon: CreditCard, description: 'When a customer abandons their cart' },
-      { id: 'email_opened', name: 'Email Opened', label: 'Email Opened', icon: Eye, description: 'When an email is opened' },
-      { id: 'email_clicked', name: 'Email Clicked', label: 'Email Clicked', icon: Target, description: 'When an email link is clicked' },
-      { id: 'birthday', name: 'Customer Birthday', label: 'Customer Birthday', icon: Gift, description: 'On a customer\'s birthday' },
-      { id: 'order_delivered', name: 'Order Delivered', label: 'Order Delivered', icon: CheckCircle, description: 'When an order is delivered' },
-      { id: 'payment_failed', name: 'Payment Failed', label: 'Payment Failed', icon: XCircle, description: 'When a payment fails' },
-    ]
-  },
-  action: {
-    name: 'Actions',
-    icon: Settings,
-    color: 'green',
-    nodes: [
-      { id: 'send_email', name: 'Send Email', label: 'Send Email', icon: Mail, description: 'Send an email to the customer' },
-      { id: 'send_whatsapp', name: 'Send WhatsApp', label: 'Send WhatsApp', icon: MessageSquare, description: 'Send a WhatsApp message' },
-      { id: 'send_email_campaign', name: 'Send Email Campaign', label: 'Send Email Campaign', icon: Mail, description: 'Send an email campaign' },
-      { id: 'send_sms', name: 'Send SMS', label: 'Send SMS', icon: MessageSquare, description: 'Send an SMS to the customer' },
-      { id: 'assign_tag', name: 'Assign Tag', label: 'Assign Tag', icon: Tag, description: 'Assign a tag to the customer' },
-      { id: 'remove_tag', name: 'Remove Tag', label: 'Remove Tag', icon: XCircle, description: 'Remove a tag from the customer' },
-      { id: 'create_task', name: 'Create Task', label: 'Create Task', icon: CheckCircle, description: 'Create a task for the team' },
-      { id: 'webhook', name: 'Call Webhook', label: 'Call Webhook', icon: Database, description: 'Call an external webhook' },
-      { id: 'update_customer', name: 'Update Customer', label: 'Update Customer', icon: User, description: 'Update customer information' },
-    ]
-  },
-  condition: {
-    name: 'Conditions',
-    icon: Filter,
-    color: 'yellow',
-    nodes: [
-      { id: 'has_tag', name: 'Has Tag', label: 'Has Tag', icon: Tag, description: 'Check if customer has a specific tag' },
-      { id: 'purchase_value', name: 'Purchase Value', label: 'Purchase Value', icon: Target, description: 'Check purchase value' },
-      { id: 'time_of_day', name: 'Time of Day', label: 'Time of Day', icon: Clock, description: 'Check time of day' },
-      { id: 'customer_segment', name: 'Customer Segment', label: 'Customer Segment', icon: User, description: 'Check customer segment' },
-      { id: 'order_count', name: 'Order Count', label: 'Order Count', icon: CheckCircle, description: 'Check number of orders' },
-    ]
-  },
-  delay: {
-    name: 'Delays',
-    icon: Clock,
-    color: 'purple',
-    nodes: [
-      { id: 'wait_minutes', name: 'Wait Minutes', label: 'Wait Minutes', icon: Clock, description: 'Wait for specified minutes' },
-      { id: 'wait_hours', name: 'Wait Hours', label: 'Wait Hours', icon: Clock, description: 'Wait for specified hours' },
-      { id: 'wait_days', name: 'Wait Days', label: 'Wait Days', icon: Clock, description: 'Wait for specified days' },
-      { id: 'wait_until', name: 'Wait Until', label: 'Wait Until', icon: Clock, description: 'Wait until specific time' },
-    ]
-  }
+const STEP_ICONS: Record<string, React.ComponentType<any>> = {
+  // Triggers
+  tag_added: Tag,
+  tag_removed: Tag,
+  funnel_form_subscribed: Database,
+  blog_form_subscribed: Database,
+  digital_store_form_subscribed: ShoppingCart,
+  campaign_completed: CheckCircle,
+  registered_to_webinar: Eye,
+  enrolled_in_course: User,
+  new_sale: CreditCard,
+  
+  // Actions
+  subscribe_to_campaign: Mail,
+  unsubscribe_from_campaign: Mail,
+  add_tag: Tag,
+  remove_tag: Tag,
+  send_email: Mail,
+  send_email_to_specific: Mail,
+  enroll_in_course: User,
+  revoke_course_access: User,
+  
+  // Decisions
+  has_tag: Tag,
+  purchase_value: CreditCard,
+  customer_segment: User,
+  order_count: ShoppingCart,
+  
+  // Delays
+  wait_minutes: Clock,
+  wait_hours: Clock,
+  wait_days: Clock,
+  wait_weeks: Clock
 };
 
-// Workflow templates are currently unused
-/* const WORKFLOW_TEMPLATES = [
-  {
-    id: 'welcome_series',
-    name: 'Welcome Series',
-    description: 'Complete welcome series for new customers',
-    icon: '👋',
-    nodes: [
-      { id: 'start', type: 'start', label: 'Start', position: { x: 100, y: 100 }, data: {}, connections: ['trigger1'] },
-      { id: 'trigger1', type: 'trigger', label: 'Customer Signup', position: { x: 300, y: 100 }, data: { trigger: 'customer_signup' }, connections: ['action1'] },
-      { id: 'action1', type: 'action', label: 'Send Welcome Email', position: { x: 500, y: 100 }, data: { action: 'send_email' }, connections: ['delay1'] },
-      { id: 'delay1', type: 'delay', label: 'Wait 1 Day', position: { x: 700, y: 100 }, data: { delay: 'wait_days', value: 1 }, connections: ['action2'] },
-      { id: 'action2', type: 'action', label: 'Send Follow-up', position: { x: 900, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
-      { id: 'end', type: 'end', label: 'End', position: { x: 1100, y: 100 }, data: {}, connections: [] },
-    ],
-    connections: [
-      { id: 'c1', source: 'start', target: 'trigger1' },
-      { id: 'c2', source: 'trigger1', target: 'action1' },
-      { id: 'c3', source: 'action1', target: 'delay1' },
-      { id: 'c4', source: 'delay1', target: 'action2' },
-      { id: 'c5', source: 'action2', target: 'end' },
-    ]
-  },
-  {
-    id: 'abandoned_cart_recovery',
-    name: 'Abandoned Cart Recovery',
-    description: 'Recover abandoned carts with targeted emails',
-    icon: '🛒',
-    nodes: [
-      { id: 'start', type: 'start', label: 'Start', position: { x: 100, y: 100 }, data: {}, connections: ['trigger1'] },
-      { id: 'trigger1', type: 'trigger', label: 'Cart Abandoned', position: { x: 300, y: 100 }, data: { trigger: 'abandoned_cart' }, connections: ['delay1'] },
-      { id: 'delay1', type: 'delay', label: 'Wait 1 Hour', position: { x: 500, y: 100 }, data: { delay: 'wait_hours', value: 1 }, connections: ['action1'] },
-      { id: 'action1', type: 'action', label: 'Send Recovery Email', position: { x: 700, y: 100 }, data: { action: 'send_email' }, connections: ['delay2'] },
-      { id: 'delay2', type: 'delay', label: 'Wait 24 Hours', position: { x: 900, y: 100 }, data: { delay: 'wait_hours', value: 24 }, connections: ['action2'] },
-      { id: 'action2', type: 'action', label: 'Send Final Email', position: { x: 1100, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
-      { id: 'end', type: 'end', label: 'End', position: { x: 1300, y: 100 }, data: {}, connections: [] },
-    ],
-    connections: [
-      { id: 'c1', source: 'start', target: 'trigger1' },
-      { id: 'c2', source: 'trigger1', target: 'delay1' },
-      { id: 'c3', source: 'delay1', target: 'action1' },
-      { id: 'c4', source: 'action1', target: 'delay2' },
-      { id: 'c5', source: 'delay2', target: 'action2' },
-      { id: 'c6', source: 'action2', target: 'end' },
-    ]
-  },
-  {
-    id: 'post_purchase_sequence',
-    name: 'Post-Purchase Sequence',
-    description: 'Follow up after successful purchase',
-    icon: '🎉',
-    nodes: [
-      { id: 'start', type: 'start', label: 'Start', position: { x: 100, y: 100 }, data: {}, connections: ['trigger1'] },
-      { id: 'trigger1', type: 'trigger', label: 'Purchase Complete', position: { x: 300, y: 100 }, data: { trigger: 'purchase_paystack' }, connections: ['action1'] },
-      { id: 'action1', type: 'action', label: 'Send Thank You', position: { x: 500, y: 100 }, data: { action: 'send_email' }, connections: ['delay1'] },
-      { id: 'delay1', type: 'delay', label: 'Wait 3 Days', position: { x: 700, y: 100 }, data: { delay: 'wait_days', value: 3 }, connections: ['action2'] },
-      { id: 'action2', type: 'action', label: 'Request Review', position: { x: 900, y: 100 }, data: { action: 'send_email' }, connections: ['end'] },
-      { id: 'end', type: 'end', label: 'End', position: { x: 1100, y: 100 }, data: {}, connections: [] },
-    ],
-    connections: [
-      { id: 'c1', source: 'start', target: 'trigger1' },
-      { id: 'c2', source: 'trigger1', target: 'action1' },
-      { id: 'c3', source: 'action1', target: 'delay1' },
-      { id: 'c4', source: 'delay1', target: 'action2' },
-      { id: 'c5', source: 'action2', target: 'end' },
-    ]
-  }
-];
-*/
 export default function SystemeWorkflowBuilder() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
-  const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [draggedNodeType, setDraggedNodeType] = useState<any>(null);
-  const [workflowName, setWorkflowName] = useState('');
-  const [showNameDialog, setShowNameDialog] = useState(false);
-  const [isEditingName, setIsEditingName] = useState(false);
+  const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | null>(null);
   const [loading, setLoading] = useState(true);
-  const [emailTemplates, setEmailTemplates] = useState<Array<{ id: string; name: string }>>([]);
-  const [tags, setTags] = useState<Array<{ id: string; name: string }>>([]);
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [stepModalOpen, setStepModalOpen] = useState(false);
+  const [stepModalType, setStepModalType] = useState<'action' | 'decision' | 'delay' | null>(null);
+  const [newWorkflow, setNewWorkflow] = useState({
+    name: '',
+    description: ''
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  
   const { toast } = useToast();
 
   useEffect(() => {
     fetchWorkflows();
-    fetchEmailTemplates();
-    fetchTags();
   }, []);
-
-  const fetchEmailTemplates = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('email_templates')
-        .select('id, name')
-        .eq('is_active', true);
-      if (error) throw error;
-      setEmailTemplates(data || []);
-    } catch (error) {
-      console.error('Error fetching email templates:', error);
-    }
-  };
-
-  const fetchTags = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tags')
-        .select('id, name');
-      if (error) throw error;
-      setTags(data || []);
-    } catch (error) {
-      console.error('Error fetching tags:', error);
-    }
-  };
 
   const fetchWorkflows = async () => {
     setLoading(true);
@@ -247,13 +134,8 @@ export default function SystemeWorkflowBuilder() {
     }
   };
 
-  const createNewWorkflow = () => {
-    setWorkflowName('');
-    setShowNameDialog(true);
-  };
-
-  const handleCreateWorkflow = () => {
-    if (!workflowName.trim()) {
+  const createWorkflow = async () => {
+    if (!newWorkflow.name.trim()) {
       toast({
         title: 'Error',
         description: 'Please enter a workflow name',
@@ -262,57 +144,61 @@ export default function SystemeWorkflowBuilder() {
       return;
     }
 
-    const newWorkflow: Workflow = {
-      name: workflowName,
-      description: '',
-      nodes: [],
-      is_active: false
-    };
-    setSelectedWorkflow(newWorkflow);
-    setIsEditing(true);
-    setShowNameDialog(false);
-  };
-
-  const saveWorkflow = async () => {
-    if (!selectedWorkflow) return;
-
+    setIsSaving(true);
     try {
-      const workflowData = {
-        name: selectedWorkflow.name,
-        description: selectedWorkflow.description,
-        trigger_type: (selectedWorkflow.nodes || []).find(n => n.type === 'trigger')?.name || 'manual',
-        trigger_config: JSON.stringify({ nodes: selectedWorkflow.nodes || [] }),
-        is_active: selectedWorkflow.is_active
-      };
+      const { data, error } = await supabase
+        .from('automation_workflows')
+        .insert([{
+          name: newWorkflow.name,
+          description: newWorkflow.description,
+          trigger_config: { nodes: [] },
+      is_active: false
+        }])
+        .select()
+        .single();
 
-      if (selectedWorkflow.id) {
-      const { error } = await supabase
-          .from('automation_workflows')
-          .update(workflowData)
-          .eq('id', selectedWorkflow.id);
-        if (error) throw error;
-      } else {
-        const { data: insertData, error } = await supabase
-          .from('automation_workflows')
-          .insert([workflowData])
-          .select()
-          .single();
       if (error) throw error;
-        setSelectedWorkflow({ ...selectedWorkflow, id: insertData.id });
-      }
 
       toast({
         title: 'Success',
-        description: 'Workflow saved successfully'
+        description: 'Workflow created successfully'
+      });
+
+      setShowCreateDialog(false);
+      setNewWorkflow({ name: '', description: '' });
+      await fetchWorkflows();
+    } catch (error: any) {
+      console.error('Error creating workflow:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create workflow',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const toggleWorkflowStatus = async (workflowId: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase
+          .from('automation_workflows')
+        .update({ is_active: isActive })
+        .eq('id', workflowId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: `Workflow ${isActive ? 'activated' : 'deactivated'} successfully`
       });
 
       fetchWorkflows();
-      setIsEditing(false);
     } catch (error: any) {
-      console.error('Error saving workflow:', error);
+      console.error('Error toggling workflow status:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save workflow',
+        description: 'Failed to update workflow status',
         variant: 'destructive'
       });
     }
@@ -335,9 +221,6 @@ export default function SystemeWorkflowBuilder() {
       });
 
       fetchWorkflows();
-      if (selectedWorkflow?.id === workflowId) {
-        setSelectedWorkflow(null);
-      }
     } catch (error: any) {
       console.error('Error deleting workflow:', error);
       toast({
@@ -348,47 +231,26 @@ export default function SystemeWorkflowBuilder() {
     }
   };
 
-  const addNode = (nodeType: any, position: { x: number; y: number }) => {
-    if (!selectedWorkflow) return;
-
-    const newNode: WorkflowNode = {
-      id: `node_${Date.now()}`,
-      type: nodeType.type,
-      name: nodeType.label || nodeType.name,
-      config: {},
-      position,
-      connections: []
-    };
-
-    setSelectedWorkflow({
-      ...selectedWorkflow,
-      nodes: [...(selectedWorkflow.nodes || []), newNode]
+  const handleStepSelect = (stepType: 'action' | 'decision' | 'delay', stepId: string) => {
+    // This would add the step to the current workflow
+    // For now, we'll just show a toast
+    toast({
+      title: 'Step Added',
+      description: `${stepType} step "${stepId}" added to workflow`
     });
-    setIsEditing(true);
   };
 
-  const deleteNode = (nodeId: string) => {
-    if (!selectedWorkflow) return;
-
-    setSelectedWorkflow({
-      ...selectedWorkflow,
-      nodes: (selectedWorkflow.nodes || []).filter(node => node.id !== nodeId)
-    });
-    setIsEditing(true);
+  const openStepModal = (type: 'action' | 'decision' | 'delay') => {
+    setStepModalType(type);
+    setStepModalOpen(true);
   };
 
-  const handleCanvasDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (!draggedNodeType || !canvasRef.current) return;
+  const getStepIcon = (stepId: string) => {
+    return STEP_ICONS[stepId] || Settings;
+  };
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const position = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    };
-
-    addNode(draggedNodeType, position);
-    setDraggedNodeType(null);
+  const getStepName = (stepId: string) => {
+    return stepId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   if (loading) {
@@ -400,339 +262,230 @@ export default function SystemeWorkflowBuilder() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Workflow Builder</h2>
-          <p className="text-gray-400">Create multi-step automation workflows</p>
-        </div>
-        <Button onClick={createNewWorkflow} className="bg-purple-600 hover:bg-purple-700">
-          <Plus className="w-4 h-4 mr-2" />
-          New Workflow
-        </Button>
+            <h1 className="text-2xl font-bold text-gray-900">Workflow Builder</h1>
+            <p className="text-gray-500 mt-1">
+              Create complex automation workflows with visual drag-and-drop
+            </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Workflow List */}
-        <Card className="lg:col-span-1 bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-white">Workflows</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {(workflows || []).map((workflow) => (
-              <div
-                key={workflow.id}
-                className={`p-3 rounded-lg cursor-pointer border transition-colors ${
-                  selectedWorkflow?.id === workflow.id
-                    ? 'border-purple-500 bg-purple-500/20'
-                    : 'border-gray-600 hover:border-gray-500'
-                }`}
-                onClick={() => setSelectedWorkflow(workflow)}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-white font-medium">{workflow.name}</h3>
-                    <p className="text-sm text-gray-400">{(workflow.nodes || []).length} steps</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={workflow.is_active ? 'default' : 'secondary'}>
-                      {workflow.is_active ? 'Active' : 'Draft'}
-                    </Badge>
                     <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteWorkflow(workflow.id!);
-                      }}
-                      className="text-red-400 hover:text-red-300"
-                    >
-                      <Trash2 className="h-3 w-3" />
+            onClick={() => setShowCreateDialog(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create workflow
                     </Button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
 
-        {/* Canvas */}
-        <Card className="lg:col-span-2 bg-gray-800 border-gray-700">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              {selectedWorkflow && isEditingName ? (
-                <Input
-                  value={selectedWorkflow.name}
-                  onChange={(e) => setSelectedWorkflow({ ...selectedWorkflow, name: e.target.value })}
-                  onBlur={() => setIsEditingName(false)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      setIsEditingName(false);
-                      setIsEditing(true);
-                    }
-                  }}
-                  className="bg-gray-700 border-gray-600 text-white max-w-sm"
-                  autoFocus
-                />
-              ) : (
-                <CardTitle 
-                  className="text-white cursor-pointer hover:text-gray-300"
-                  onClick={() => selectedWorkflow && setIsEditingName(true)}
-                >
-                  {selectedWorkflow ? selectedWorkflow.name : 'Select a workflow'}
-                </CardTitle>
-              )}
-              {selectedWorkflow && (
-                <div className="flex items-center gap-2">
-                  {isEditing && (
+      {/* Content */}
+      <div className="p-6">
+        {workflows.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <Zap className="w-12 h-12 text-gray-400" />
+              </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No workflows yet
+            </h3>
+            <p className="text-gray-500 mb-6">
+              Create your first workflow to get started with visual automation building
+            </p>
                     <Button
-                      size="sm"
-                      onClick={saveWorkflow}
-                      className="bg-green-600 hover:bg-green-700"
+              onClick={() => setShowCreateDialog(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                      <Save className="w-4 h-4 mr-1" />
-                      Save
+              <Plus className="w-4 h-4 mr-2" />
+              Create your first workflow
                     </Button>
-                  )}
                 </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {workflows.map((workflow) => (
+              <Card key={workflow.id} className="bg-white border border-gray-200 hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        {workflow.name}
+                      </h3>
+                      {workflow.description && (
+                        <p className="text-sm text-gray-500">{workflow.description}</p>
               )}
             </div>
-          </CardHeader>
-          <CardContent>
-            {selectedWorkflow ? (
-              <div
-                ref={canvasRef}
-                className="relative h-96 bg-gray-900 rounded-lg border-2 border-dashed border-gray-600 overflow-auto"
-                onDrop={handleCanvasDrop}
-            onDragOver={(e) => e.preventDefault()}
-          >
-                {(selectedWorkflow.nodes || []).map((node: WorkflowNode, index) => (
-              <div
-                key={node.id}
-                    className="absolute bg-gray-700 border border-gray-600 rounded-lg p-3 cursor-pointer hover:border-purple-500"
-                style={{
-                      left: node.position.x || index * 150 + 50,
-                      top: node.position.y || 50
-                }}
-                onClick={() => setSelectedNode(node)}
-                  >
+                    
                     <div className="flex items-center gap-2">
-                      {(() => {
-                        const group = NODE_TYPES[node.type as keyof typeof NODE_TYPES] as any;
-                        const list = Array.isArray(group) ? group : group?.nodes;
-                        const match = Array.isArray(list) ? list.find((t: any) => t.name === node.name) : undefined;
-                        return match?.icon;
-                      })() && (
-                        <div className="text-white">
-                          {(() => {
-                            const group = NODE_TYPES[node.type as keyof typeof NODE_TYPES] as any;
-                            const list = Array.isArray(group) ? group : group?.nodes;
-                            const match = Array.isArray(list) ? list.find((t: any) => t.name === node.name) : undefined;
-                            return match?.icon ? React.createElement(match.icon, { className: "w-4 h-4" }) : null;
-                          })()}
-                </div>
-                      )}
-                      <span className="text-white text-sm">{node.name}</span>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                          deleteNode(node.id);
-                        }}
-                        className="text-red-400 hover:text-red-300 p-1 h-auto"
+                        onClick={() => toggleWorkflowStatus(workflow.id!, !workflow.is_active)}
+                        className="flex items-center gap-1"
                       >
-                        <X className="h-3 w-3" />
+                        {workflow.is_active ? (
+                          <>
+                            <Pause className="h-3 w-3" />
+                            Paused
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-3 w-3" />
+                            Active
+                          </>
+                        )}
                       </Button>
+                      <Badge variant={workflow.is_active ? "default" : "secondary"}>
+                        {workflow.is_active ? 'Active' : 'Paused'}
+                      </Badge>
                     </div>
               </div>
-            ))}
+                </CardHeader>
                 
-                {(selectedWorkflow.nodes || []).length === 0 && (
-                  <div className="flex items-center justify-center h-full text-gray-400">
-                    <div className="text-center">
-                      <Zap className="w-12 h-12 mx-auto mb-2" />
-                      <p>Drag nodes here to build your workflow</p>
-          </div>
-                  </div>
-                )}
+                <CardContent className="space-y-4">
+                  {/* Workflow Preview */}
+                  <div className="space-y-3">
+                    {workflow.nodes.length === 0 ? (
+                      <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                        <Button
+                          variant="outline"
+                          onClick={() => openStepModal('action')}
+                          className="border-dashed border-2 border-gray-300 hover:border-blue-400 bg-transparent"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create your first trigger
+                        </Button>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-96 text-gray-400">
-                <div className="text-center">
-                  <Settings className="w-12 h-12 mx-auto mb-2" />
-                  <p>Select a workflow to edit or create a new one</p>
+                      <div className="space-y-2">
+                        {workflow.nodes.slice(0, 3).map((node, index) => {
+                          const Icon = getStepIcon(node.name);
+                          return (
+                            <div key={node.id} className="flex items-center gap-3">
+                              <div className="p-2 rounded-lg bg-blue-100">
+                                <Icon className="w-4 h-4 text-blue-600" />
         </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {getStepName(node.name)}
+                                </p>
+                                <p className="text-xs text-gray-500 capitalize">
+                                  {node.type}
+                                </p>
       </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Node Palette */}
-        <Card className="lg:col-span-1 bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-white">Node Palette</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {Object.entries(NODE_TYPES).map(([type, group]) => {
-              const nodeList = Array.isArray(group) ? group : (group as any)?.nodes || [];
-              return (
-                <div key={type}>
-                  <h4 className="text-sm font-medium text-gray-300 mb-2 capitalize">{type}s</h4>
-                  <div className="space-y-2">
-                    {nodeList.map((node: any) => {
-                      const Icon = node.icon;
-                      return (
-                        <div
-                          key={node.id}
-                          className="flex items-center gap-2 p-2 bg-gray-700 rounded-lg cursor-move hover:bg-gray-600"
-                          draggable
-                          onDragStart={() => setDraggedNodeType({ ...node, type })}
-                          title={node.description}
-                        >
-                          <Icon className="w-4 h-4 text-white" />
-                          <span className="text-white text-sm">{node.label || node.name}</span>
+                              {index < workflow.nodes.length - 1 && (
+                                <ArrowRight className="w-4 h-4 text-gray-400" />
+                              )}
                         </div>
                       );
                     })}
+                        {workflow.nodes.length > 3 && (
+                          <p className="text-xs text-gray-500 text-center">
+                            +{workflow.nodes.length - 3} more steps
+                          </p>
+                        )}
                   </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+                    )}
           </div>
           
-      {/* Node Configuration Panel */}
-      {selectedNode ? (
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-white">Configure: {selectedNode.name}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {selectedNode.type === 'action' && selectedNode.name === 'Send Email' ? (
-              <div className="space-y-4">
-                <Label className="text-white">Email Template</Label>
-                <Select
-                  value={selectedNode.config.template_id || ''}
-                  onValueChange={(value) => {
-                    setSelectedNode({ ...selectedNode, config: { ...selectedNode.config, template_id: value } });
-                    setIsEditing(true);
-                  }}
-                >
-                  <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                    <SelectValue placeholder="Select email template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {emailTemplates.map(template => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {/* Stats */}
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <BarChart3 className="w-3 h-3" />
+                        {workflow.nodes.length} steps
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        {workflow.is_active ? 'Running' : 'Paused'}
+                      </span>
+                    </div>
               </div>
-            ) : null}
-            {selectedNode.type === 'action' && selectedNode.name === 'Assign Tag' ? (
-              <div className="space-y-4">
-                <Label className="text-white">Tag to Assign</Label>
-                <Select
-                  value={selectedNode.config.tag_id || ''}
-                  onValueChange={(value) => {
-                    setSelectedNode({ ...selectedNode, config: { ...selectedNode.config, tag_id: value } });
-                    setIsEditing(true);
-                  }}
-                >
-                  <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                    <SelectValue placeholder="Select tag" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tags.map(tag => (
-                      <SelectItem key={tag.id} value={tag.id}>
-                        {tag.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentWorkflow(workflow)}
+                      className="flex-1"
+                    >
+                      <Settings className="w-3 h-3 mr-1" />
+                      Edit
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => deleteWorkflow(workflow.id!)}
+                      className="px-3 text-red-600 border-red-200 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
               </div>
-            ) : null}
-            {selectedNode.type === 'delay' ? (
-              <div className="space-y-4">
-                <Label className="text-white">Delay Duration</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    placeholder="1"
-                    value={selectedNode.config.duration || ''}
-                    onChange={(e) => {
-                      setSelectedNode({ ...selectedNode, config: { ...selectedNode.config, duration: parseInt(e.target.value) } });
-                      setIsEditing(true);
-                    }}
-                    className="bg-gray-700 border-gray-600 text-white"
-                  />
-                  <Select
-                    value={selectedNode.config.unit || 'minutes'}
-                    onValueChange={(value) => {
-                      setSelectedNode({ ...selectedNode, config: { ...selectedNode.config, unit: value } });
-                      setIsEditing(true);
-                    }}
-                  >
-                    <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                      <SelectValue placeholder="Unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="minutes">Minutes</SelectItem>
-                      <SelectItem value="hours">Hours</SelectItem>
-                      <SelectItem value="days">Days</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            ) : null}
           </CardContent>
         </Card>
-      ) : null}
+            ))}
+          </div>
+        )}
+      </div>
 
-      {/* Workflow Name Dialog */}
-      <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
-        <DialogContent className="bg-gray-800 border-gray-700">
+      {/* Create Workflow Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="bg-white max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Create New Workflow</DialogTitle>
+            <DialogTitle>Create New Workflow</DialogTitle>
           </DialogHeader>
+          
           <div className="space-y-4">
             <div>
-              <Label className="text-white">Workflow Name</Label>
+              <Label htmlFor="workflow-name">Workflow Name</Label>
               <Input
-                value={workflowName}
-                onChange={(e) => setWorkflowName(e.target.value)}
-                placeholder="Enter workflow name"
-                className="bg-gray-700 border-gray-600 text-white"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleCreateWorkflow();
-                  }
-                }}
+                id="workflow-name"
+                value={newWorkflow.name}
+                onChange={(e) => setNewWorkflow(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Enter workflow name..."
+                className="mt-1"
               />
             </div>
-            <div className="flex justify-end gap-2">
+
+            <div>
+              <Label htmlFor="workflow-description">Description (Optional)</Label>
+              <Input
+                id="workflow-description"
+                value={newWorkflow.description}
+                onChange={(e) => setNewWorkflow(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Enter workflow description..."
+                className="mt-1"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 pt-4">
               <Button
-                variant="outline"
-                onClick={() => setShowNameDialog(false)}
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                onClick={createWorkflow}
+                disabled={isSaving}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                Cancel
+                {isSaving ? 'Creating...' : 'Create Workflow'}
               </Button>
-              <Button
-                onClick={handleCreateWorkflow}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                Create Workflow
+              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                Cancel
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Step Selection Modal */}
+      <StepSelectionModal
+        isOpen={stepModalOpen}
+        onClose={() => setStepModalOpen(false)}
+        onSelectStep={handleStepSelect}
+        stepType={stepModalType}
+      />
     </div>
   );
 }
