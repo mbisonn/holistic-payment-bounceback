@@ -4,7 +4,6 @@ import {
   ShoppingBag, 
   Users, 
   TrendingUp, 
-  TrendingDown,
   Plus, 
   Tag, 
   Star, 
@@ -215,7 +214,10 @@ import {
   CalendarGauge,
   CalendarTimer,
   CalendarStopwatch,
-  Crown
+  Crown,
+  TrendingDown,
+  Minus,
+  Trophy
 } from 'lucide-react';
 
 export interface TriggerDefinition {
